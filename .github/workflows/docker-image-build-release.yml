@@ -23,7 +23,10 @@ permissions:
   attestations: write
 
 concurrency:
-  group: release-${{ github.ref }}
+  # github.ref is refs/tags/vX.Y.Z on release events, so distinct tags get
+  # distinct groups and run in parallel; only re-publishes of the same tag
+  # queue. cancel-in-progress=false: never let a second push abort the first.
+  group: release-${{ github.workflow }}-${{ github.event.release.tag_name || github.ref }}
   cancel-in-progress: false
 
 env:
@@ -191,13 +194,13 @@ jobs:
         run: |
           set -euo pipefail
           BASE="${{ steps.tags.outputs.base }}"
-          mapfile -t TAG_ARGS < <(printf '%s\n' "${{ steps.tags.outputs.args }}")
+          REL="${{ steps.ver.outputs.tag }}"
+          # Read multi-line tag args (heredoc-style GitHub output) into an array.
+          mapfile -t TAG_ARGS <<< "${{ steps.tags.outputs.args }}"
           # shellcheck disable=SC2046
           docker buildx imagetools create "${TAG_ARGS[@]}" \
             $(printf "${BASE}@sha256:%s " *)
-          REL="${{ steps.ver.outputs.tag }}"
-          DIGEST=$(docker buildx imagetools inspect "${BASE}:${REL}" --raw | sha256sum | awk '{print "sha256:"$1}')
-          # Authoritative digest from registry
+          # Canonical manifest-list digest from the registry — what cosign will sign.
           DIGEST=$(docker buildx imagetools inspect "${BASE}:${REL}" --format '{{.Manifest.Digest}}')
           echo "image_ref=${BASE}:${REL}" >> "$GITHUB_OUTPUT"
           echo "digest=${DIGEST}" >> "$GITHUB_OUTPUT"
@@ -226,14 +229,17 @@ jobs:
       - name: Install cosign
         uses: sigstore/cosign-installer@7e8b541eb2e61bf99390e1afd4be13a184e9ebc5  # v3.10.1
 
-      - name: Sign the published image (keyless)
+      - name: Sign the published image (keyless, recursive)
         env:
           COSIGN_EXPERIMENTAL: "true"
         run: |
           set -euo pipefail
           BASE="${{ steps.tags.outputs.base }}"
           DIGEST="${{ steps.publish.outputs.digest }}"
-          cosign sign --yes "${BASE}@${DIGEST}"
+          # --recursive signs the manifest-list AND each per-platform image so
+          # `cosign verify --platform linux/amd64` and `--platform linux/arm64`
+          # both succeed against the published tag.
+          cosign sign --yes --recursive "${BASE}@${DIGEST}"
 
       - name: Attest build provenance
         uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be  # v2.4.0

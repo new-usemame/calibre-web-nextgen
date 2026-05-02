@@ -31,6 +31,28 @@ gh attestation verify \
 A passing verification means the image was built by this repo's release workflow,
 on a GitHub-hosted runner, from the commit referenced in the attestation.
 
+The release workflow signs the manifest list **and** each per-platform image
+recursively, so `cosign verify --platform linux/amd64` and
+`cosign verify --platform linux/arm64` both succeed.
+
+### SBOM scope
+
+SBOM and per-arch SLSA provenance attestations live as OCI referrers on the
+**per-architecture digests**, not the manifest-list tag. To inspect the SBOM
+for a specific platform:
+
+```bash
+# Resolve per-arch digest first
+docker buildx imagetools inspect ghcr.io/new-usemame/calibre-web-nextgen:vX.Y.Z \
+  --format '{{ range .Manifest.Manifests }}{{ .Platform.Architecture }} {{ .Digest }}{{ "\n" }}{{ end }}'
+
+# Then download the SBOM
+cosign download sbom \
+  ghcr.io/new-usemame/calibre-web-nextgen@<per-arch-digest>
+```
+
+The top-level `gh attestation verify` covers the manifest list itself.
+
 ## Supported versions
 
 The latest published GitHub Release receives security backports. Older releases

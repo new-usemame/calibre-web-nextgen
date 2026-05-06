@@ -94,10 +94,16 @@ class PaddingSettings:
     def settings_hash(self) -> str:
         """Stable short hash of the settings tuple. Used in cache filenames
         and (optionally) appended to CoverImageId for device-side cache
-        invalidation when settings change."""
+        invalidation when settings change.
+
+        Only hashes fields that actually affect rendered output:
+        manual_color is ignored unless fill_mode is "manual", so toggling
+        it while in another mode doesn't bust the cache.
+        """
         if not self.enabled:
             return "off"
-        parts = [self.target_aspect, self.fill_mode, self.manual_color or ""]
+        effective_color = self.manual_color or "" if self.fill_mode == "manual" else ""
+        parts = [self.target_aspect, self.fill_mode, effective_color]
         digest = hashlib.md5("|".join(parts).encode("utf-8")).hexdigest()
         return digest[:10]
 

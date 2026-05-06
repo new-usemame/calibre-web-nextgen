@@ -159,6 +159,13 @@ class TestPaddingSettings:
         s2 = padding.PaddingSettings(True, "kobo_libra_color", "manual", "#ffffff")
         assert s1.settings_hash() != s2.settings_hash()
 
+    def test_manual_color_irrelevant_when_mode_not_manual(self):
+        # Cache hit-rate matters: changing the manual color while in a
+        # non-manual mode should NOT bust the cache.
+        s1 = padding.PaddingSettings(True, "kobo_libra_color", "edge_mirror", "")
+        s2 = padding.PaddingSettings(True, "kobo_libra_color", "edge_mirror", "#1a1a1a")
+        assert s1.settings_hash() == s2.settings_hash()
+
     def test_hash_is_short_and_stable(self):
         s = padding.PaddingSettings(True, "kobo_libra_color", "edge_mirror", "")
         h1 = s.settings_hash()

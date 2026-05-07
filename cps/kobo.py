@@ -1448,7 +1448,7 @@ def HandleCoverImageRequest(book_uuid, width, height, Quality, isGreyscale):
         else:
             resolution = COVER_THUMBNAIL_SMALL
     except ValueError:
-        log.error("Requested height %s of book %s is invalid" % (book_uuid, height))
+        log.error("Requested height %s of book %s is invalid" % (height, book_uuid))
         resolution = COVER_THUMBNAIL_SMALL
 
     padded_response = _serve_padded_cover_if_enabled(book_uuid, resolution)

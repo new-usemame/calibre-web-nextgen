@@ -87,7 +87,21 @@ jobs:
           set -euo pipefail
           # Forbidden path patterns — these PRs MUST go through human review,
           # regardless of the LOC heuristic that put a tier label on them.
-          FORBIDDEN_RE='^(cps/(oauth|admin)|.*/(auth|csrf|session|alembic)|migrations?/|.*/migrations?/)'
+          # Covers: auth/oauth/admin/login subsystem, settings/db/user models,
+          # blueprint registration, dependency files, container/orchestration
+          # files, migrations.
+          FORBIDDEN_RE='^(cps/(oauth|admin|usermanagement|cw_login/|main|db|ub|config_sql|kobo_auth|cwa_password)|.*/(auth|csrf|session|alembic)|migrations?/|.*/migrations?/|requirements.*\.txt|package\.json|package-lock\.json|Dockerfile|docker-compose.*\.ya?ml|optional-requirements\.txt)'
+
+          # Tier-2 hard caps — re-checked even though the triage script
+          # labeled the PR. Catches mis-labels and label-laundering.
+          TIER2_MAX_ADDITIONS=80
+          TIER2_MAX_FILES=3
+
+          # Sensitive-token regex run against the *diff content* (not
+          # filenames). Catches "PR touches an allowed path but adds
+          # auth/secret/migration code anyway" — the kind of thing the
+          # filename check misses.
+          DIFF_SENSITIVE_RE='\b(Authorization\s*[:=]|setattr\s*\(\s*request|app\.secret_key|csrf\.exempt|@csrf_exempt|generate_password_hash|check_password_hash|access_token|refresh_token|secret_key|migrations?\.create_all|metadata\.create_all|alembic|drop_table|alter_table|add_column|os\.execv|subprocess\.(call|run|Popen).*shell=True|eval\s*\(|exec\s*\()'
 
           comment_and_skip() {
             local n="$1" reason="$2"
@@ -133,13 +147,68 @@ jobs:
             if printf '%s\n' "$files" | grep -qiE "$FORBIDDEN_RE"; then
               echo "PR #$n touches forbidden paths; demoting label and skipping"
               gh pr edit "$n" --repo "$REPO" --remove-label safe-tier-1 --remove-label safe-tier-2 --add-label needs-review || true
-              comment_and_skip "$n" "PR touches forbidden paths (auth/csrf/session/admin/migrations); demoted to needs-review."
+              comment_and_skip "$n" "PR touches forbidden paths (auth/csrf/session/admin/migrations/deps/container); demoted to needs-review."
               continue
             fi
 
-            # Required checks must have run AND succeeded
+            # Tier-2 hard caps re-checked at merge time. The triage script
+            # may have applied the label based on stale data; re-verify.
+            if [ "$tier" = "safe-tier-2" ]; then
+              additions=$(gh pr view "$n" --repo "$REPO" --json additions --jq '.additions')
+              file_count=$(jq -r '.files | length' <<<"$META")
+              if [ "${additions:-0}" -gt "$TIER2_MAX_ADDITIONS" ] || [ "${file_count:-0}" -gt "$TIER2_MAX_FILES" ]; then
+                echo "PR #$n exceeds tier-2 caps (additions=$additions files=$file_count > $TIER2_MAX_ADDITIONS / $TIER2_MAX_FILES); demoting"
+                gh pr edit "$n" --repo "$REPO" --remove-label safe-tier-2 --add-label needs-review || true
+                comment_and_skip "$n" "PR is too large for safe-tier-2 (additions=$additions, files=$file_count; caps are $TIER2_MAX_ADDITIONS LOC / $TIER2_MAX_FILES files). Demoted to needs-review."
+                continue
+              fi
+            fi
+
+            # Diff-content scan: catch sensitive tokens added in the
+            # diff itself, not just the filename. cw_advocate/auth/etc
+            # surfaces can be touched indirectly.
+            DIFF=$(gh pr diff "$n" --repo "$REPO" 2>/dev/null || true)
+            # Only scan added lines (those starting with +, but not the +++ header)
+            ADDED=$(printf '%s\n' "$DIFF" | grep -E '^\+[^+]' || true)
+            if printf '%s\n' "$ADDED" | grep -qE "$DIFF_SENSITIVE_RE"; then
+              echo "PR #$n diff contains sensitive tokens; demoting label and skipping"
+              gh pr edit "$n" --repo "$REPO" --remove-label safe-tier-1 --remove-label safe-tier-2 --add-label needs-review || true
+              hit=$(printf '%s\n' "$ADDED" | grep -oE "$DIFF_SENSITIVE_RE" | sort -u | head -3 | paste -sd ', ' -)
+              comment_and_skip "$n" "PR diff contains sensitive token(s) — \`$hit\` — demoted to needs-review for human eyes."
+              continue
+            fi
+
+            # CHANGES-vs-upstream.md update required for non-trivial code
+            # PRs. Tier-1 (.po + *.md only) is exempt — translations don't
+            # need a CHANGES row. Tier-2 PRs that touch any non-doc, non-po
+            # file MUST also update CHANGES-vs-upstream.md.
+            if [ "$tier" = "safe-tier-2" ]; then
+              has_code=0
+              has_changes_update=0
+              while IFS= read -r f; do
+                case "$f" in
+                  *.po|*.pot) ;;
+                  *.md|README*) ;;
+                  CHANGES-vs-upstream.md) has_changes_update=1 ;;
+                  *) has_code=1 ;;
+                esac
+              done <<<"$files"
+              if [ "$has_code" = "1" ] && [ "$has_changes_update" = "0" ]; then
+                echo "PR #$n is tier-2 with code changes but no CHANGES-vs-upstream.md update"
+                comment_and_skip "$n" "tier-2 PRs with code changes must update CHANGES-vs-upstream.md to document the divergence. Add a row, push, and CI will re-evaluate."
+                continue
+              fi
+            fi
+
+            # Required checks must have run AND succeeded.
+            # Tier-2 adds Integration Tests as a hard gate — small code
+            # changes still need to clear the actual ingest/Calibre flow.
             CHECKS=$(gh api "repos/$REPO/commits/$head_sha/check-runs" --jq '.check_runs')
-            required=("validate-author" "Fast Tests (Smoke + Unit)")
+            if [ "$tier" = "safe-tier-2" ]; then
+              required=("validate-author" "Fast Tests (Smoke + Unit)" "Integration Tests (Docker)")
+            else
+              required=("validate-author" "Fast Tests (Smoke + Unit)")
+            fi
             all_ok=1
             for req in "${required[@]}"; do
               run=$(jq -c --arg n "$req" '.[] | select(.name == $n)' <<<"$CHECKS" | tail -1)

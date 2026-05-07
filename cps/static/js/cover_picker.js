@@ -526,7 +526,11 @@
           perImg.set(key, dataUrl);
           if (toggle.checked && key === settingsKey()) img.src = dataUrl;
         } catch (e) {
-          console.warn("[cover-picker] kobo preview failed", e);
+          // Expected for SSRF-blocked / unreachable provider URLs. Use
+          // console.info so the devtools "errors" count stays clean —
+          // this is graceful-degrade, not a bug. Original <img src> is
+          // preserved.
+          console.info("[cover-picker] kobo preview unavailable for one cover", e);
         } finally {
           perImgInflight.delete(key);
         }

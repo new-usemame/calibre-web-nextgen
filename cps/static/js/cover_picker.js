@@ -427,4 +427,129 @@
   // Kick off the candidate fetch as soon as the page renders.
   document.addEventListener("DOMContentLoaded", loadCandidates);
   if (document.readyState !== "loading") loadCandidates();
+
+  // -------- Kobo preview (issue #84) ----------------------------------------
+  // When the operator has Kobo cover padding enabled at the admin level,
+  // the template renders an extra <details> panel with a toggle + the same
+  // aspect / fill_mode / color controls that live in Settings. Flipping the
+  // toggle on swaps every visible cover <img> to a server-padded variant.
+  // Picker-session-local — does NOT mutate global config.
+  (function setupKoboPreview() {
+    const panel = document.getElementById("cwa-cover-picker-kobo-panel");
+    if (!panel) return;
+
+    const toggle = document.getElementById("cwa-cover-picker-kobo-enabled");
+    const aspectSel = document.getElementById("cwa-cover-picker-kobo-aspect");
+    const fillSel = document.getElementById("cwa-cover-picker-kobo-fill-mode");
+    const colorInput = document.getElementById("cwa-cover-picker-kobo-color");
+    const endpoint = cfg.endpoints.koboPreview;
+    if (!toggle || !aspectSel || !fillSel || !colorInput || !endpoint) return;
+
+    const cache = new WeakMap();
+
+    function settingsKey() {
+      return aspectSel.value + "|" + fillSel.value + "|" + (colorInput.value || "");
+    }
+
+    function syncColorEnabled() {
+      const isManual = fillSel.value === "manual";
+      colorInput.disabled = !isManual;
+      colorInput.style.opacity = isManual ? "1" : "0.5";
+    }
+    syncColorEnabled();
+    fillSel.addEventListener("change", syncColorEnabled);
+
+    function originalSrcOf(img) {
+      if (!img.dataset.koboOriginalSrc) {
+        img.dataset.koboOriginalSrc = img.src;
+      }
+      return img.dataset.koboOriginalSrc;
+    }
+
+    async function fetchPreview(srcUrl) {
+      const body = {
+        candidate_url: srcUrl,
+        aspect: aspectSel.value,
+        fill_mode: fillSel.value,
+        color: colorInput.value || "",
+      };
+      const resp = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-CSRFToken": cfg.csrfToken },
+        body: JSON.stringify(body),
+      });
+      if (!resp.ok) throw new Error("kobo-preview HTTP " + resp.status);
+      const data = await resp.json();
+      if (!data || !data.ok) throw new Error("kobo-preview body !ok");
+      return data.data_url;
+    }
+
+    async function applyPreviewTo(img) {
+      const orig = originalSrcOf(img);
+      if (!orig) return;
+      const key = settingsKey();
+      let perImg = cache.get(img);
+      if (!perImg) { perImg = new Map(); cache.set(img, perImg); }
+      if (perImg.has(key)) {
+        img.src = perImg.get(key);
+        return;
+      }
+      try {
+        const dataUrl = await fetchPreview(orig);
+        perImg.set(key, dataUrl);
+        if (toggle.checked) img.src = dataUrl;
+      } catch (e) {
+        console.warn("[cover-picker] kobo preview failed", e);
+      }
+    }
+
+    function revertImg(img) {
+      const orig = img.dataset.koboOriginalSrc;
+      if (orig) img.src = orig;
+    }
+
+    function visibleCoverImgs() {
+      const ids = [
+        "cwa-cover-picker-current-img",
+        "cwa-cover-picker-confirm-current",
+        "cwa-cover-picker-confirm-new",
+        "cwa-cover-picker-url-thumb",
+      ];
+      const out = [];
+      ids.forEach(function (id) {
+        const el = document.getElementById(id);
+        if (el && el.tagName === "IMG" && el.src) out.push(el);
+      });
+      const grid = document.getElementById("cwa-cover-picker-grid");
+      if (grid) Array.prototype.forEach.call(grid.querySelectorAll("img"), function (i) { out.push(i); });
+      return out;
+    }
+
+    function refreshAll() {
+      const imgs = visibleCoverImgs();
+      if (toggle.checked) imgs.forEach(applyPreviewTo);
+      else imgs.forEach(revertImg);
+    }
+
+    toggle.addEventListener("change", refreshAll);
+
+    let debounceTimer = null;
+    function debouncedRefresh() {
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(function () {
+        if (toggle.checked) refreshAll();
+      }, 250);
+    }
+    aspectSel.addEventListener("change", debouncedRefresh);
+    fillSel.addEventListener("change", debouncedRefresh);
+    colorInput.addEventListener("input", debouncedRefresh);
+
+    const grid = document.getElementById("cwa-cover-picker-grid");
+    if (grid) {
+      const obs = new MutationObserver(function () {
+        if (toggle.checked) refreshAll();
+      });
+      obs.observe(grid, { childList: true, subtree: true });
+    }
+  })();
 })();

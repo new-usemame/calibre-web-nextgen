@@ -96,6 +96,7 @@
             <label class="cwa-cover-picker__kobo-toggle">
               <input type="checkbox" id="cwa-cover-picker-kobo-enabled">
               <span>{{ _('Show how each cover would look on a Kobo') }}</span>
+              <span id="cwa-cover-picker-kobo-status" class="cwa-cover-picker__kobo-status" hidden></span>
             </label>
 
             <div class="cwa-cover-picker__kobo-controls">
@@ -222,6 +223,7 @@ window.cwaCoverPicker = {
     applying:  {{ _('Applying…')|tojson|safe }},
     applied:   {{ _('Cover updated.')|tojson|safe }},
     error:     {{ _('Something went wrong. Try again.')|tojson|safe }},
+    koboRendering: {{ _('Rendering Kobo previews:')|tojson|safe }},
   },
 };
 </script>

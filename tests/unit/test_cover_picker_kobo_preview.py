@@ -248,6 +248,31 @@ class TestKoboPreviewEndpointStructure:
             "render_kobo_preview_data_url" in src or "pad_blob" in src
         ), "endpoint must route through cover_padding"
 
+    def test_endpoint_rejects_non_http_scheme(self):
+        # Defense-in-depth: cw_advocate is the SSRF guard, but we don't
+        # actively maintain it. Reject file:// / javascript: / data: / etc.
+        # at the endpoint before they ever hit the fetch path.
+        src = self._read()
+        kobo_idx = src.find("def cover_picker_kobo_preview")
+        block = src[kobo_idx:kobo_idx + 2500]
+        assert (
+            'scheme not in ("http", "https")' in block
+            or "scheme not in ('http', 'https')" in block
+        ), "endpoint must reject non-http(s) schemes server-side"
+        assert "bad_scheme" in block, "should return a structured error code"
+
+    def test_fetch_url_bytes_pre_streams_content_length(self):
+        # Stop a 1 GB advertised-Content-Length attacker before we waste
+        # a worker iterating chunks.
+        src = self._read()
+        helper_idx = src.find("def _fetch_url_bytes")
+        block = src[helper_idx:helper_idx + 2500]
+        assert (
+            'resp.headers.get("Content-Length")' in block
+            or "resp.headers.get('Content-Length')" in block
+        ), "fetch helper must check Content-Length before streaming"
+        assert "max_bytes" in block
+
     def test_picker_page_passes_config_to_template(self):
         # Regression caught during browser e2e: the picker GET handler must
         # explicitly pass config=config so cover_picker.html's
@@ -305,6 +330,45 @@ class TestCoverPickerJsKoboPreview:
             "isSameOriginCoverUrl" in src
         ), "must detect same-origin /cover/ URLs"
 
+    def test_js_uses_abort_controller(self):
+        # Toggle off / settings change must abort in-flight server work.
+        # Otherwise the user pays for Wand cycles they no longer want.
+        src = self._read()
+        assert "AbortController" in src, "must wire up an AbortController"
+        assert "abort()" in src, "must actually call abort somewhere"
+        assert "signal" in src, "fetch must be passed the signal"
+
+    def test_js_renders_loading_status(self):
+        # User-visible feedback while a burst is processing — no more
+        # 5 seconds of "did the toggle even work?"
+        src = self._read()
+        assert "cwa-cover-picker-kobo-status" in src, "must read the status pill element"
+        assert "inFlightCount" in src, "must track the in-flight count"
+
+
+class TestCoverPaddingConcurrencyCap:
+    """Server-side semaphore around pad_blob so a single user's burst
+    can't starve all gunicorn workers on a multi-user instance."""
+
+    PAD_FILE = REPO_ROOT / "cps" / "services" / "cover_padding.py"
+
+    def _read(self) -> str:
+        return self.PAD_FILE.read_text(encoding="utf-8")
+
+    def test_module_declares_bounded_semaphore(self):
+        src = self._read()
+        assert (
+            "BoundedSemaphore" in src or "Semaphore(" in src
+        ), "cover_padding must declare a concurrency-cap semaphore"
+
+    def test_render_helper_acquires_the_semaphore(self):
+        src = self._read()
+        helper_idx = src.find("def render_kobo_preview_data_url")
+        block = src[helper_idx:helper_idx + 1500]
+        assert (
+            "_PREVIEW_SEMAPHORE" in block or "with " in block and "Semaphore" in src
+        ), "render_kobo_preview_data_url must hold the semaphore around pad_blob"
+
 
 # --------------------------------------------------------------------- template surface
 
@@ -358,3 +422,9 @@ class TestCoverPickerTemplateSurface:
         assert (
             "cover_picker.cover_picker_kobo_preview" in src
         ), "the kobo-preview endpoint URL must be in window.cwaCoverPicker.endpoints"
+
+    def test_template_includes_loading_status_pill(self):
+        src = self._read()
+        assert (
+            'id="cwa-cover-picker-kobo-status"' in src
+        ), "Kobo loading status pill needs a stable ID"

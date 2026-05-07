@@ -39,6 +39,7 @@ from __future__ import annotations
 import base64
 import hashlib
 import os
+import threading
 from dataclasses import dataclass
 from typing import Optional, Tuple
 
@@ -386,6 +387,14 @@ def pad_blob(blob: bytes, settings: PaddingSettings) -> bytes:
         return blob
 
 
+# Bound concurrent Wand work. Wand is CPU-heavy (50-500 ms per call) and
+# the cover-picker can fire 60+ pad requests at once when a user toggles
+# Kobo preview on. Without a cap, all gunicorn workers can saturate on a
+# single user's burst on a multi-user instance. 4 keeps a normal
+# household responsive while leaving headroom for everything else.
+_PREVIEW_SEMAPHORE = threading.BoundedSemaphore(4)
+
+
 def render_kobo_preview_data_url(
     blob: bytes,
     aspect: str,
@@ -405,6 +414,9 @@ def render_kobo_preview_data_url(
     (Wand missing, source already on-target, decode failure), the
     URL still wraps the original bytes so the caller can swap an
     ``<img src>`` unconditionally.
+
+    Concurrent calls are bounded by ``_PREVIEW_SEMAPHORE`` so a single
+    user's burst can't starve all workers.
     """
     settings = PaddingSettings(
         enabled=True,
@@ -412,7 +424,8 @@ def render_kobo_preview_data_url(
         fill_mode=fill_mode or DEFAULT_FILL_MODE,
         manual_color=color or "",
     )
-    padded = pad_blob(blob, settings) if blob else b""
+    with _PREVIEW_SEMAPHORE:
+        padded = pad_blob(blob, settings) if blob else b""
     payload = padded if padded else (blob or b"")
     encoded = base64.b64encode(payload).decode("ascii")
     return "data:image/jpeg;base64," + encoded

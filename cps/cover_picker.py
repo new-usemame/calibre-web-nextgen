@@ -30,6 +30,7 @@ from __future__ import annotations
 import base64
 import os
 from datetime import datetime, timezone
+from urllib.parse import urlparse
 from functools import wraps
 from typing import Optional
 
@@ -284,6 +285,19 @@ def cover_picker_kobo_preview(book_id):
     fill_mode = body.get("fill_mode") or ""
     color = body.get("color") or ""
 
+    # Belt-and-suspenders: cw_advocate (the SSRF guard) is the primary line
+    # of defense, but it's a vendored library we don't actively maintain.
+    # Reject anything that's not http(s) here so a future cw_advocate parser
+    # bug can't widen the attack surface.
+    if candidate_url:
+        scheme = urlparse(candidate_url).scheme.lower()
+        if scheme not in ("http", "https"):
+            return _json_error(
+                "bad_scheme",
+                _(u"Only http(s) URLs can be previewed."),
+                400,
+            )
+
     blob = _resolve_preview_source(book, candidate_url, use_embedded)
     if blob is None:
         return _json_error("source_unavailable", _(u"Could not load a source image to preview."), 502)
@@ -324,6 +338,13 @@ def _fetch_url_bytes(url: str) -> Optional[bytes]:
         if resp.status_code != 200:
             return None
         max_bytes = 10 * 1024 * 1024
+        # Pre-stream cap: trust Content-Length when the server bothers to
+        # send one. This drops the worker fast when an attacker advertises
+        # a 1 GB image instead of waiting to stream past max_bytes.
+        size_hint = resp.headers.get("Content-Length")
+        if size_hint and size_hint.isdigit() and int(size_hint) > max_bytes:
+            log.info("cover_picker_kobo_preview rejecting %s — Content-Length %s exceeds cap", url, size_hint)
+            return None
         chunks = []
         total = 0
         for chunk in resp.iter_content(chunk_size=64 * 1024):

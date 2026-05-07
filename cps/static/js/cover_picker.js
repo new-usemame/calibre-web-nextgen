@@ -442,10 +442,39 @@
     const aspectSel = document.getElementById("cwa-cover-picker-kobo-aspect");
     const fillSel = document.getElementById("cwa-cover-picker-kobo-fill-mode");
     const colorInput = document.getElementById("cwa-cover-picker-kobo-color");
+    const statusEl = document.getElementById("cwa-cover-picker-kobo-status");
     const endpoint = cfg.endpoints.koboPreview;
     if (!toggle || !aspectSel || !fillSel || !colorInput || !endpoint) return;
 
     const cache = new WeakMap();
+    // One AbortController per "burst" (toggle-on or settings-change). When
+    // the user toggles off or changes a control, abort the prior burst so
+    // we stop burning server CPU on Wand work the user no longer wants.
+    let currentBurst = null;
+    // Loading pill: counts how many fetches are in flight in the current
+    // burst. Decrements as each promise settles. Hidden when count <= 0.
+    let inFlightCount = 0;
+    function updateStatus() {
+      if (!statusEl) return;
+      if (inFlightCount > 0) {
+        statusEl.textContent = " · " + (cfg.i18n.koboRendering || "Rendering Kobo previews:") + " " + inFlightCount + "…";
+        statusEl.hidden = false;
+      } else {
+        statusEl.hidden = true;
+      }
+    }
+    function abortCurrentBurst() {
+      if (currentBurst) {
+        currentBurst.abort();
+        currentBurst = null;
+      }
+      inFlightCount = 0;
+      updateStatus();
+    }
+    function ensureBurst() {
+      if (!currentBurst) currentBurst = new AbortController();
+      return currentBurst;
+    }
 
     function settingsKey() {
       return aspectSel.value + "|" + fillSel.value + "|" + (colorInput.value || "");
@@ -475,7 +504,7 @@
       } catch { return false; }
     }
 
-    async function fetchPreview(srcUrl) {
+    async function fetchPreview(srcUrl, signal) {
       const body = {
         aspect: aspectSel.value,
         fill_mode: fillSel.value,
@@ -493,6 +522,7 @@
         method: "POST",
         headers: { "Content-Type": "application/json", "X-CSRFToken": cfg.csrfToken },
         body: JSON.stringify(body),
+        signal,
       });
       if (!resp.ok) throw new Error("kobo-preview HTTP " + resp.status);
       const data = await resp.json();
@@ -520,19 +550,28 @@
         // A fetch is already in flight for this exact (img, settings); skip.
         return;
       }
+      const burst = ensureBurst();
+      inFlightCount += 1;
+      updateStatus();
       const promise = (async () => {
         try {
-          const dataUrl = await fetchPreview(orig);
+          const dataUrl = await fetchPreview(orig, burst.signal);
           perImg.set(key, dataUrl);
           if (toggle.checked && key === settingsKey()) img.src = dataUrl;
         } catch (e) {
-          // Expected for SSRF-blocked / unreachable provider URLs. Use
-          // console.info so the devtools "errors" count stays clean —
-          // this is graceful-degrade, not a bug. Original <img src> is
-          // preserved.
-          console.info("[cover-picker] kobo preview unavailable for one cover", e);
+          // AbortError is the user toggling off / changing settings —
+          // expected, not a problem. Other errors are SSRF-blocked or
+          // unreachable provider URLs — graceful-degrade, info-level so
+          // the devtools "errors" count stays clean.
+          if (e && e.name === "AbortError") {
+            // intentional cancellation; nothing to do.
+          } else {
+            console.info("[cover-picker] kobo preview unavailable for one cover", e);
+          }
         } finally {
           perImgInflight.delete(key);
+          inFlightCount = Math.max(0, inFlightCount - 1);
+          updateStatus();
         }
       })();
       perImgInflight.set(key, promise);
@@ -562,17 +601,32 @@
 
     function refreshAll() {
       const imgs = visibleCoverImgs();
-      if (toggle.checked) imgs.forEach(applyPreviewTo);
-      else imgs.forEach(revertImg);
+      if (toggle.checked) {
+        imgs.forEach(applyPreviewTo);
+      } else {
+        // Toggle off: kill any in-flight server work and revert.
+        abortCurrentBurst();
+        imgs.forEach(revertImg);
+      }
     }
 
     toggle.addEventListener("change", refreshAll);
+    // Closing the <details> panel implicitly cancels too — same effect as
+    // toggle off as far as "stop burning server cycles" goes.
+    panel.addEventListener("toggle", function () {
+      if (!panel.open && currentBurst) abortCurrentBurst();
+    });
 
     let debounceTimer = null;
     function debouncedRefresh() {
       clearTimeout(debounceTimer);
       debounceTimer = setTimeout(function () {
-        if (toggle.checked) refreshAll();
+        if (toggle.checked) {
+          // New settings → cancel the prior burst so we don't waste work
+          // on results the user has already moved past.
+          abortCurrentBurst();
+          refreshAll();
+        }
       }, 250);
     }
     aspectSel.addEventListener("change", debouncedRefresh);

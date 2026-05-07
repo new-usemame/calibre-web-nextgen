@@ -93,6 +93,31 @@
     padding: 10px 20px;
     font-size: 14px;
 }
+
+/* Secondary-style Cancel button on the config page: white bg, brand-orange
+   text + matching border. Hover darkens the background slightly without
+   changing the text. Works on both light + caliBlur dark themes. */
+.btn-secondary {
+    background-color: #ffffff;
+    color: #cc7b19;
+    border: 1px solid #cc7b19;
+}
+.btn-secondary:hover,
+.btn-secondary:focus,
+.btn-secondary:active {
+    background-color: #fdf3e7;
+    color: #cc7b19;
+    border-color: #cc7b19;
+    text-decoration: none;
+}
+body.blur .btn-secondary {
+    background-color: rgba(255, 255, 255, 0.92);
+}
+body.blur .btn-secondary:hover,
+body.blur .btn-secondary:focus,
+body.blur .btn-secondary:active {
+    background-color: #ffffff;
+}
 </style>
 {% endblock %}
 {% block body %}
@@ -653,9 +678,9 @@
             </div>
     </div>
 
-    <div style="max-width: 900px; justify-self: center; margin-bottom: 1rem; display: flex; flex-direction: row; flex-wrap: wrap; width: -webkit-fill-available; justify-content: space-between; margin-inline: 2rem;">
+    <div style="max-width: 900px; justify-self: center; margin-bottom: 1rem; display: flex; flex-direction: row; flex-wrap: wrap; width: -webkit-fill-available; justify-content: flex-end; gap: 0.75rem; margin-inline: 2rem;">
+      <a href="{{ url_for('admin.admin') }}" id="config_back" class="btn btn-secondary">{{_('Cancel')}}</a>
       <button type="button" name="submit" id="config_submit" class="btn btn-default">{{_('Save')}}</button>
-      <a href="{{ url_for('admin.admin') }}" id="config_back" class="btn btn-default">{{_('Cancel')}}</a>
     </div>
   </form>
 </div>

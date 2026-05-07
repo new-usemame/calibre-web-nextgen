@@ -105,6 +105,7 @@ def cover_picker_page(book_id):
         "cover_picker.html",
         book=book,
         cover_locked=locked,
+        config=config,
         title=_(u"Change cover — %(title)s", title=book.title),
         page="coverpicker",
     )

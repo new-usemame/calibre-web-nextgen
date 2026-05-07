@@ -248,6 +248,63 @@ class TestKoboPreviewEndpointStructure:
             "render_kobo_preview_data_url" in src or "pad_blob" in src
         ), "endpoint must route through cover_padding"
 
+    def test_picker_page_passes_config_to_template(self):
+        # Regression caught during browser e2e: the picker GET handler must
+        # explicitly pass config=config so cover_picker.html's
+        # `{% if config.config_kobo_cover_padding_enabled %}` resolves. Without
+        # that pass, Jinja silently sees `config` as Undefined and the Kobo
+        # panel never renders even when the admin flag is on.
+        src = self._read()
+        page_idx = src.find("def cover_picker_page(")
+        assert page_idx != -1
+        render_idx = src.find("render_title_template(", page_idx)
+        assert render_idx != -1, "picker page must call render_title_template"
+        block = src[render_idx:render_idx + 800]
+        assert (
+            "config=config" in block
+        ), "cover_picker_page must pass config=config (regression: silent panel-missing)"
+
+
+# --------------------------------------------------------------------- JS module surface
+
+
+class TestCoverPickerJsKoboPreview:
+    """Smoke checks that the JS module wires up the toggle, dedupes in-flight
+    fetches, and debounces the candidate-grid MutationObserver. These guard
+    against the two regressions browser e2e caught (rate-limit explosion +
+    stale src-revert)."""
+
+    JS_FILE = REPO_ROOT / "cps" / "static" / "js" / "cover_picker.js"
+
+    def _read(self) -> str:
+        return self.JS_FILE.read_text(encoding="utf-8")
+
+    def test_js_has_kobo_setup_block(self):
+        assert "setupKoboPreview" in self._read()
+
+    def test_js_dedupes_inflight_fetches(self):
+        # Without this, toggling on with 60+ candidate cards rendered fires
+        # 60+ concurrent fetches and the browser hits ERR_INSUFFICIENT_RESOURCES.
+        src = self._read()
+        assert "inflight" in src, "must track in-flight requests to dedupe"
+
+    def test_js_debounces_mutation_observer(self):
+        # MutationObserver fires once per appended candidate card. We need
+        # to coalesce a render burst into one refresh, not N parallel fetches.
+        src = self._read()
+        assert (
+            "obsTimer" in src or "MutationObserver" in src and "setTimeout" in src
+        ), "must debounce the grid MutationObserver"
+
+    def test_js_handles_same_origin_cover_url(self):
+        # cw_advocate refuses to fetch the host's own URL (SSRF guard). Same-
+        # origin /cover/<id>/... must short-circuit to the server's disk-cover
+        # path instead.
+        src = self._read()
+        assert (
+            "isSameOriginCoverUrl" in src
+        ), "must detect same-origin /cover/ URLs"
+
 
 # --------------------------------------------------------------------- template surface
 

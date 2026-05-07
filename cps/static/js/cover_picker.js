@@ -466,13 +466,29 @@
       return img.dataset.koboOriginalSrc;
     }
 
+    function isSameOriginCoverUrl(url) {
+      // Same-origin /cover/<id>/... — let server load from disk; cw_advocate
+      // SSRF guard refuses to fetch our own host.
+      try {
+        const u = new URL(url, location.href);
+        return u.origin === location.origin && /^\/cover\/\d+/.test(u.pathname);
+      } catch { return false; }
+    }
+
     async function fetchPreview(srcUrl) {
       const body = {
-        candidate_url: srcUrl,
         aspect: aspectSel.value,
         fill_mode: fillSel.value,
         color: colorInput.value || "",
       };
+      if (srcUrl && srcUrl.startsWith("data:")) {
+        // Embedded data URL — too large to round-trip; tell server to use
+        // the embedded-cover extract path instead.
+        body.embedded = true;
+      } else if (srcUrl && !isSameOriginCoverUrl(srcUrl)) {
+        body.candidate_url = srcUrl;
+      }
+      // Else: leave both empty → server uses on-disk current cover.
       const resp = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json", "X-CSRFToken": cfg.csrfToken },
@@ -484,6 +500,10 @@
       return data.data_url;
     }
 
+    // In-flight de-dup: per-img/per-settings promise, so concurrent
+    // refreshAll() calls (toggle + observer fires) coalesce into one fetch.
+    const inflight = new WeakMap();
+
     async function applyPreviewTo(img) {
       const orig = originalSrcOf(img);
       if (!orig) return;
@@ -491,16 +511,27 @@
       let perImg = cache.get(img);
       if (!perImg) { perImg = new Map(); cache.set(img, perImg); }
       if (perImg.has(key)) {
-        img.src = perImg.get(key);
+        if (toggle.checked) img.src = perImg.get(key);
         return;
       }
-      try {
-        const dataUrl = await fetchPreview(orig);
-        perImg.set(key, dataUrl);
-        if (toggle.checked) img.src = dataUrl;
-      } catch (e) {
-        console.warn("[cover-picker] kobo preview failed", e);
+      let perImgInflight = inflight.get(img);
+      if (!perImgInflight) { perImgInflight = new Map(); inflight.set(img, perImgInflight); }
+      if (perImgInflight.has(key)) {
+        // A fetch is already in flight for this exact (img, settings); skip.
+        return;
       }
+      const promise = (async () => {
+        try {
+          const dataUrl = await fetchPreview(orig);
+          perImg.set(key, dataUrl);
+          if (toggle.checked && key === settingsKey()) img.src = dataUrl;
+        } catch (e) {
+          console.warn("[cover-picker] kobo preview failed", e);
+        } finally {
+          perImgInflight.delete(key);
+        }
+      })();
+      perImgInflight.set(key, promise);
     }
 
     function revertImg(img) {
@@ -544,10 +575,17 @@
     fillSel.addEventListener("change", debouncedRefresh);
     colorInput.addEventListener("input", debouncedRefresh);
 
+    // Watch the candidate grid for new <img> nodes (the API response renders
+    // ~67 cards in a burst). Debounce so we trigger one refresh per burst
+    // instead of one per card — without this we'd fire 67 concurrent fetches
+    // and the browser hits ERR_INSUFFICIENT_RESOURCES.
     const grid = document.getElementById("cwa-cover-picker-grid");
     if (grid) {
+      let obsTimer = null;
       const obs = new MutationObserver(function () {
-        if (toggle.checked) refreshAll();
+        if (!toggle.checked) return;
+        clearTimeout(obsTimer);
+        obsTimer = setTimeout(refreshAll, 200);
       });
       obs.observe(grid, { childList: true, subtree: true });
     }

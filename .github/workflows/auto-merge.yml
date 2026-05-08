@@ -11,14 +11,14 @@ name: auto-merge
 #   1. State == OPEN, mergeable, no conflicts
 #   2. Has label `safe-tier-1` (or `safe-tier-2` and the operator has set
 #      repo variable AUTOPILOT_TIER2_ENABLED == 'true')
-#   3. Filename is NOT in FORBIDDEN_PATHS_REGEX (.github/policy/tier-policy.env)
+#   3. Filename is NOT in FORBIDDEN_PATHS_REGEX (.github/policy/tier-policy.config)
 #   4. Diff content does NOT match FORBIDDEN_DIFF_CONTENT_REGEX (same file)
 #   5. Tier-2 only: actual diff size <= TIER2_MAX_ADDITIONS LOC and
 #      <= TIER2_MAX_FILES files (re-checked at merge time)
 #   6. Tier-2 only: non-translation/docs PRs update CHANGES-vs-upstream.md
-#   7. TIER{1,2}_REQUIRED_CHECKS (tier-policy.env) all green
+#   7. TIER{1,2}_REQUIRED_CHECKS (tier-policy.config) all green
 #
-# All numeric/regex policy values live in .github/policy/tier-policy.env
+# All numeric/regex policy values live in .github/policy/tier-policy.config
 # — single source of truth shared with scripts/triage-prs.sh and the
 # autopilot test suite. To change them, edit that file, not this one.
 #
@@ -47,8 +47,8 @@ jobs:
   evaluate:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout main (for tier-policy.env)
-        # The evaluate step sources .github/policy/tier-policy.env. We
+      - name: Checkout main (for tier-policy.config)
+        # The evaluate step sources .github/policy/tier-policy.config. We
         # check out main rather than the PR head so the policy values
         # used to gate the PR are always the ones currently on main —
         # a malicious PR can't widen its own auto-merge rules.
@@ -104,19 +104,19 @@ jobs:
 
           # Single source of truth for tier policy — values shared with
           # scripts/triage-prs.sh and tests/autopilot/test_tier_policy.sh.
-          # Edit .github/policy/tier-policy.env to change any of these.
-          if [ ! -f .github/policy/tier-policy.env ]; then
-            echo "::error::missing .github/policy/tier-policy.env — auto-merge cannot run safely"
+          # Edit .github/policy/tier-policy.config to change any of these.
+          if [ ! -f .github/policy/tier-policy.config ]; then
+            echo "::error::missing .github/policy/tier-policy.config — auto-merge cannot run safely"
             exit 1
           fi
           # shellcheck disable=SC1091
-          source .github/policy/tier-policy.env
-          : "${FORBIDDEN_PATHS_REGEX:?missing in tier-policy.env}"
-          : "${FORBIDDEN_DIFF_CONTENT_REGEX:?missing in tier-policy.env}"
-          : "${TIER2_MAX_ADDITIONS:?missing in tier-policy.env}"
-          : "${TIER2_MAX_FILES:?missing in tier-policy.env}"
-          : "${TIER1_REQUIRED_CHECKS:?missing in tier-policy.env}"
-          : "${TIER2_REQUIRED_CHECKS:?missing in tier-policy.env}"
+          source .github/policy/tier-policy.config
+          : "${FORBIDDEN_PATHS_REGEX:?missing in tier-policy.config}"
+          : "${FORBIDDEN_DIFF_CONTENT_REGEX:?missing in tier-policy.config}"
+          : "${TIER2_MAX_ADDITIONS:?missing in tier-policy.config}"
+          : "${TIER2_MAX_FILES:?missing in tier-policy.config}"
+          : "${TIER1_REQUIRED_CHECKS:?missing in tier-policy.config}"
+          : "${TIER2_REQUIRED_CHECKS:?missing in tier-policy.config}"
 
           # Aliases preserved so the rest of the script reads naturally.
           FORBIDDEN_RE="$FORBIDDEN_PATHS_REGEX"
@@ -222,7 +222,7 @@ jobs:
             # Required checks must have run AND succeeded.
             # Tier-2 adds Integration Tests as a hard gate — small code
             # changes still need to clear the actual ingest/Calibre flow.
-            # Lists come from .github/policy/tier-policy.env for parity
+            # Lists come from .github/policy/tier-policy.config for parity
             # with the triage script + tests.
             CHECKS=$(gh api "repos/$REPO/commits/$head_sha/check-runs" --jq '.check_runs')
             if [ "$tier" = "safe-tier-2" ]; then

@@ -435,17 +435,6 @@ def update_book_read_status(user, book_id: int, percentage: float) -> None:
     # Merge the record (caller commits)
     ub.session.merge(book_read)
 
-    # # Push to Hardcover
-    # # TODO: just pass in the user?
-    # from ... import calibre_db
-    # book = calibre_db.get_book(book_id)
-    
-    # if user is not None:
-    #     log.debug(f"Going to sync book {book_id} to Hardcover.")
-    #     push_reading_state_to_hardcover(user, book, int(percentage))
-    # else:
-    #     log.debug(f"Book {book_id} not syncing to Hardcover, no matched user.")
-
 
 def get_progress_record(user_id, document_checksum, book_id) -> KOSyncProgress:
     """
@@ -767,11 +756,11 @@ def update_progress():
                 ub.session.commit()
                 log.info(f"Updated ReadBook status: user={user.id}, book={book_id} "
                         f"({book_title}), status based on {percentage_float:.1f}%")
-                
+
                 # Push to Hardcover
                 from ... import calibre_db
                 book = calibre_db.get_book(book_id)
-                
+
                 if user is not None:
                     log.debug(f"Going to sync book {book_id} to Hardcover.")
                     push_reading_state_to_hardcover(user, book, int(percentage_float))

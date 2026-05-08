@@ -1,4 +1,4 @@
-name: auto-merge-tier1
+name: auto-merge
 
 # Tier-based auto-merge for safe-tier-1 / safe-tier-2 PRs.
 #
@@ -11,10 +11,16 @@ name: auto-merge-tier1
 #   1. State == OPEN, mergeable, no conflicts
 #   2. Has label `safe-tier-1` (or `safe-tier-2` and the operator has set
 #      repo variable AUTOPILOT_TIER2_ENABLED == 'true')
-#   3. Touches NO forbidden paths (auth/csrf/session/admin/migration/alembic)
-#   4. Every check on the head SHA reports a non-failing conclusion
-#      (success, skipped, or neutral). validate-author and Test Suite are
-#      both required to have run and reported success.
+#   3. Filename is NOT in FORBIDDEN_PATHS_REGEX (.github/policy/tier-policy.env)
+#   4. Diff content does NOT match FORBIDDEN_DIFF_CONTENT_REGEX (same file)
+#   5. Tier-2 only: actual diff size <= TIER2_MAX_ADDITIONS LOC and
+#      <= TIER2_MAX_FILES files (re-checked at merge time)
+#   6. Tier-2 only: non-translation/docs PRs update CHANGES-vs-upstream.md
+#   7. TIER{1,2}_REQUIRED_CHECKS (tier-policy.env) all green
+#
+# All numeric/regex policy values live in .github/policy/tier-policy.env
+# — single source of truth shared with scripts/triage-prs.sh and the
+# autopilot test suite. To change them, edit that file, not this one.
 #
 # Anything else: the workflow comments why and stops. It never bypasses
 # checks, never merges without a label, and will demote labels on a PR
@@ -41,6 +47,16 @@ jobs:
   evaluate:
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout main (for tier-policy.env)
+        # The evaluate step sources .github/policy/tier-policy.env. We
+        # check out main rather than the PR head so the policy values
+        # used to gate the PR are always the ones currently on main —
+        # a malicious PR can't widen its own auto-merge rules.
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 1
+
       - name: Resolve candidate PR numbers
         id: prs
         env:
@@ -85,23 +101,26 @@ jobs:
           TIER2_ENABLED: ${{ vars.AUTOPILOT_TIER2_ENABLED }}
         run: |
           set -euo pipefail
-          # Forbidden path patterns — these PRs MUST go through human review,
-          # regardless of the LOC heuristic that put a tier label on them.
-          # Covers: auth/oauth/admin/login subsystem, settings/db/user models,
-          # blueprint registration, dependency files, container/orchestration
-          # files, migrations.
-          FORBIDDEN_RE='^(cps/(oauth|admin|usermanagement|cw_login/|main|db|ub|config_sql|kobo_auth|cwa_password)|.*/(auth|csrf|session|alembic)|migrations?/|.*/migrations?/|requirements.*\.txt|package\.json|package-lock\.json|Dockerfile|docker-compose.*\.ya?ml|optional-requirements\.txt)'
 
-          # Tier-2 hard caps — re-checked even though the triage script
-          # labeled the PR. Catches mis-labels and label-laundering.
-          TIER2_MAX_ADDITIONS=80
-          TIER2_MAX_FILES=3
+          # Single source of truth for tier policy — values shared with
+          # scripts/triage-prs.sh and tests/autopilot/test_tier_policy.sh.
+          # Edit .github/policy/tier-policy.env to change any of these.
+          if [ ! -f .github/policy/tier-policy.env ]; then
+            echo "::error::missing .github/policy/tier-policy.env — auto-merge cannot run safely"
+            exit 1
+          fi
+          # shellcheck disable=SC1091
+          source .github/policy/tier-policy.env
+          : "${FORBIDDEN_PATHS_REGEX:?missing in tier-policy.env}"
+          : "${FORBIDDEN_DIFF_CONTENT_REGEX:?missing in tier-policy.env}"
+          : "${TIER2_MAX_ADDITIONS:?missing in tier-policy.env}"
+          : "${TIER2_MAX_FILES:?missing in tier-policy.env}"
+          : "${TIER1_REQUIRED_CHECKS:?missing in tier-policy.env}"
+          : "${TIER2_REQUIRED_CHECKS:?missing in tier-policy.env}"
 
-          # Sensitive-token regex run against the *diff content* (not
-          # filenames). Catches "PR touches an allowed path but adds
-          # auth/secret/migration code anyway" — the kind of thing the
-          # filename check misses.
-          DIFF_SENSITIVE_RE='\b(Authorization\s*[:=]|setattr\s*\(\s*request|app\.secret_key|csrf\.exempt|@csrf_exempt|generate_password_hash|check_password_hash|access_token|refresh_token|secret_key|migrations?\.create_all|metadata\.create_all|alembic|drop_table|alter_table|add_column|os\.execv|subprocess\.(call|run|Popen).*shell=True|eval\s*\(|exec\s*\()'
+          # Aliases preserved so the rest of the script reads naturally.
+          FORBIDDEN_RE="$FORBIDDEN_PATHS_REGEX"
+          DIFF_SENSITIVE_RE="$FORBIDDEN_DIFF_CONTENT_REGEX"
 
           comment_and_skip() {
             local n="$1" reason="$2"
@@ -203,11 +222,13 @@ jobs:
             # Required checks must have run AND succeeded.
             # Tier-2 adds Integration Tests as a hard gate — small code
             # changes still need to clear the actual ingest/Calibre flow.
+            # Lists come from .github/policy/tier-policy.env for parity
+            # with the triage script + tests.
             CHECKS=$(gh api "repos/$REPO/commits/$head_sha/check-runs" --jq '.check_runs')
             if [ "$tier" = "safe-tier-2" ]; then
-              required=("validate-author" "Fast Tests (Smoke + Unit)" "Integration Tests (Docker)")
+              IFS=',' read -ra required <<< "$TIER2_REQUIRED_CHECKS"
             else
-              required=("validate-author" "Fast Tests (Smoke + Unit)")
+              IFS=',' read -ra required <<< "$TIER1_REQUIRED_CHECKS"
             fi
             all_ok=1
             for req in "${required[@]}"; do

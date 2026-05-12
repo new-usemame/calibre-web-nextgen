@@ -331,7 +331,6 @@ def cover_picker_ereader_preview(book_id):
 @cover_picker.route("/book/<int:book_id>/cover/kobo-preview", methods=["POST"])
 @user_login_required
 def cover_picker_kobo_preview_legacy(book_id):
-    from flask import redirect, url_for
     return redirect(
         url_for("cover_picker.cover_picker_ereader_preview", book_id=book_id),
         code=308,

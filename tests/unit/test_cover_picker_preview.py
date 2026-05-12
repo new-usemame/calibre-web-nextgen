@@ -339,7 +339,7 @@ class TestCoverPickerJsKoboPreview:
         return self.JS_FILE.read_text(encoding="utf-8")
 
     def test_js_has_kobo_setup_block(self):
-        assert "setupKoboPreview" in self._read()
+        assert "setupEreaderPreview" in self._read()
 
     def test_js_caches_per_settings(self):
         # Settings-change refresh must hit cache for previously-fetched
@@ -377,7 +377,7 @@ class TestCoverPickerJsKoboPreview:
         # User-visible feedback while a burst is processing — no more
         # 5 seconds of "did the toggle even work?"
         src = self._read()
-        assert "cwa-cover-picker-kobo-status" in src, "must read the status pill element"
+        assert "cwa-cover-picker-ereader-status" in src, "must read the status pill element"
         assert "activeInFlight" in src, "must track the active in-flight count"
 
     def test_js_refresh_on_aspect_change(self):
@@ -424,7 +424,7 @@ class TestCoverPickerJsKoboPreview:
         # routes until the burst drains.
         src = self._read()
         assert (
-            "KOBO_MAX_CONCURRENT" in src
+            "EREADER_MAX_CONCURRENT" in src
         ), "must declare a client-side max-concurrency cap"
 
     def test_js_uses_generation_for_race_safety(self):

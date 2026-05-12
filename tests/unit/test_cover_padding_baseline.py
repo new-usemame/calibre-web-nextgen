@@ -29,12 +29,12 @@ def sample_cover_bytes():
     reason="local rename-equivalence pin; runs locally only",
 )
 def test_pad_blob_kobo_libra_color_edge_mirror_is_stable(sample_cover_bytes):
-    from cps.services import cover_padding
+    from cps.services import cover_preview as cover_padding   # rename alias keeps diff minimal
 
     if not cover_padding.use_IM:
         pytest.skip("Wand/ImageMagick not available")
 
-    settings = cover_padding.PaddingSettings(
+    settings = cover_padding.CoverPreviewSettings(
         enabled=True,
         target_aspect="kobo_libra_color",
         fill_mode="edge_mirror",

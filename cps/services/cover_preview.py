@@ -1,6 +1,6 @@
+# -*- coding: utf-8 -*-
 # Calibre-Web Automated – fork of Calibre-Web
-# Copyright (C) 2018-2026 Calibre-Web contributors
-# Copyright (C) 2024-2026 Calibre-Web Automated contributors
+# Copyright (C) 2024-2026 Calibre-Web-NextGen contributors
 # SPDX-License-Identifier: GPL-3.0-or-later
 # See CONTRIBUTORS for full list of authors.
 
@@ -666,6 +666,10 @@ def pad_path_to_cache(
 def cache_filename_for(book_uuid: str, resolution, src_mtime: int, settings: CoverPreviewSettings) -> str:
     """Deterministic cache filename. Encodes everything that could change
     the rendered output."""
+    # TODO(Task 5 cleanup): rename cache prefix from `kobopad-` to a
+    # device-neutral name (e.g. `preview-`) when cover_padding.py is
+    # deleted. Doing it then bundles the cache-invalidation event with the
+    # module rename, rather than splitting it across two releases.
     return "kobopad-{uuid}-{res}-{mtime}-{hash}.jpg".format(
         uuid=book_uuid,
         res=int(resolution) if resolution else 0,

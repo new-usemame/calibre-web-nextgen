@@ -517,31 +517,31 @@ class TestCoverPickerTemplateSurface:
         src = self._read()
         assert (
             "config.config_kobo_cover_padding_enabled" in src
-        ), "Kobo preview panel must be conditional on config_kobo_cover_padding_enabled"
+        ), "E-reader preview panel must be conditional on config_kobo_cover_padding_enabled"
 
-    def test_template_includes_kobo_preview_panel_id(self):
+    def test_template_includes_ereader_preview_panel_id(self):
         src = self._read()
         assert (
-            'id="cwa-cover-picker-kobo-panel"' in src
-        ), "Kobo preview panel needs a stable ID for JS hookup"
+            'id="cwa-cover-picker-ereader-panel"' in src
+        ), "E-reader preview panel needs a stable ID for JS hookup"
 
-    def test_template_includes_kobo_preview_toggle(self):
+    def test_template_includes_ereader_preview_toggle(self):
         src = self._read()
         assert (
-            'id="cwa-cover-picker-kobo-enabled"' in src
-        ), "Kobo preview toggle checkbox needs a stable ID"
+            'id="cwa-cover-picker-ereader-enabled"' in src
+        ), "E-reader preview toggle checkbox needs a stable ID"
 
     def test_template_includes_aspect_select(self):
         src = self._read()
         assert (
-            'id="cwa-cover-picker-kobo-aspect"' in src
-        ), "Kobo aspect select needs a stable ID"
+            'id="cwa-cover-picker-ereader-aspect"' in src
+        ), "E-reader aspect select needs a stable ID"
 
     def test_template_includes_fill_mode_select(self):
         src = self._read()
         assert (
-            'id="cwa-cover-picker-kobo-fill-mode"' in src
-        ), "Kobo fill-mode select needs a stable ID"
+            'id="cwa-cover-picker-ereader-fill-mode"' in src
+        ), "E-reader fill-mode select needs a stable ID"
 
     def test_template_includes_gradient_option(self):
         # The new gradient mode must be selectable in both the picker and
@@ -553,26 +553,27 @@ class TestCoverPickerTemplateSurface:
     def test_template_includes_color_input(self):
         src = self._read()
         assert (
-            'id="cwa-cover-picker-kobo-color"' in src
-        ), "Kobo manual-color input needs a stable ID"
+            'id="cwa-cover-picker-ereader-color"' in src
+        ), "E-reader manual-color input needs a stable ID"
 
-    def test_template_passes_kobo_preview_endpoint_to_js(self):
-        # TODO(phase1-task9): once the template is updated to call
-        # url_for('cover_picker.cover_picker_ereader_preview', ...),
-        # flip this assertion to match. Currently the template still
-        # uses the legacy endpoint name (handled by the kobo_preview
-        # legacy shim's 308 redirect at runtime).
+    def test_template_passes_ereader_preview_endpoint_to_js(self):
+        # Pinned in Task 8 (template rename): the template must call the new
+        # endpoint name. If anyone reverts to cover_picker_kobo_preview, the
+        # page will raise werkzeug.routing.BuildError at render time -- this
+        # assertion catches it before render.
         src = self._read()
         assert (
-            "cover_picker.cover_picker_kobo_preview" in src
-            or "cover_picker.cover_picker_ereader_preview" in src
+            "cover_picker.cover_picker_ereader_preview" in src
         ), "the cover-preview endpoint URL must be in window.cwaCoverPicker.endpoints"
+        assert (
+            "cover_picker.cover_picker_kobo_preview" not in src
+        ), "template must not call the legacy endpoint name (BuildError after Task 4)"
 
     def test_template_includes_loading_status_pill(self):
         src = self._read()
         assert (
-            'id="cwa-cover-picker-kobo-status"' in src
-        ), "Kobo loading status pill needs a stable ID"
+            'id="cwa-cover-picker-ereader-status"' in src
+        ), "E-reader loading status pill needs a stable ID"
 
 
 # --------------------------------------------------------------------- legacy URL 308 redirect

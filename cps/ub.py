@@ -1055,6 +1055,45 @@ def migrate_user_table(engine, _session):
         print(f"[Migration] Warning: Could not update duplicates sidebar setting: {e}")
         _session.rollback()
 
+    # Migration for cover-preview per-user preference columns (Phase 2 of
+    # cover-normalization — see notes/COVER-NORMALIZATION-DESIGN.md).
+    # Existing users default to False on upgrade so the rollout is silent;
+    # new users default True per the column-level default.
+    try:
+        _session.query(exists().where(User.show_ereader_previews)).scalar()
+        _session.commit()
+    except exc.OperationalError:
+        _safe_session_rollback(_session, "user.show_ereader_previews")
+        _run_ddl_with_retry(engine, "ALTER TABLE user ADD column 'show_ereader_previews' Boolean DEFAULT 1")
+        try:
+            updated = _session.query(User).update({User.show_ereader_previews: 0})
+            _session.commit()
+            print(f"[cover-preview-migration] Defaulted show_ereader_previews=0 for {updated} existing user(s) to preserve current view on upgrade.", flush=True)
+        except Exception as e:
+            print(f"[cover-preview-migration] Could not back-fill show_ereader_previews=0 for existing users: {e}", flush=True)
+            _session.rollback()
+
+    try:
+        _session.query(exists().where(User.preview_preset)).scalar()
+        _session.commit()
+    except exc.OperationalError:
+        _safe_session_rollback(_session, "user.preview_preset")
+        _run_ddl_with_retry(engine, "ALTER TABLE user ADD column 'preview_preset' String DEFAULT 'kobo_libra_color'")
+
+    try:
+        _session.query(exists().where(User.preview_default_fill)).scalar()
+        _session.commit()
+    except exc.OperationalError:
+        _safe_session_rollback(_session, "user.preview_default_fill")
+        _run_ddl_with_retry(engine, "ALTER TABLE user ADD column 'preview_default_fill' String DEFAULT 'edge_mirror'")
+
+    try:
+        _session.query(exists().where(User.preview_default_color)).scalar()
+        _session.commit()
+    except exc.OperationalError:
+        _safe_session_rollback(_session, "user.preview_default_color")
+        _run_ddl_with_retry(engine, "ALTER TABLE user ADD column 'preview_default_color' String")
+
 def migrate_oauth_provider_table(engine, _session):
     try:
         _session.query(exists().where(OAuthProvider.oauth_base_url)).scalar()
@@ -1456,6 +1495,29 @@ def _loser_wins_lm(loser, winner):
 # Migrate database to current version, has to be updated after every database change. Currently migration from
 # maybe 4/5 versions back to current should work.
 # Migration is done by checking if relevant columns are existing, and then adding rows with SQL commands
+def migrate_book_cover_preview_table(engine, _session):
+    """Create the book_cover_preview table if it doesn't exist.
+    Idempotent — `BookCoverPreview.__table__.create(engine, checkfirst=True)`
+    no-ops if the table already exists.
+    """
+    try:
+        with engine.connect() as conn:
+            has_table = engine.dialect.has_table(conn, "book_cover_preview")
+    except Exception:
+        # Fall back to the SQLAlchemy 2.0-friendly form if dialect.has_table
+        # signature differs across versions.
+        has_table = False
+    if not has_table:
+        BookCoverPreview.__table__.create(engine, checkfirst=True)
+        try:
+            _run_ddl_with_retry(
+                engine,
+                "CREATE INDEX IF NOT EXISTS idx_bcp_user_locked ON book_cover_preview(user_id, locked)",
+            )
+        except Exception as e:
+            print(f"[cover-preview-migration] Could not create idx_bcp_user_locked: {e}", flush=True)
+
+
 def migrate_Database(_session):
     engine = _session.bind
     add_missing_tables(engine, _session)
@@ -1466,6 +1528,7 @@ def migrate_Database(_session):
     migrate_config_table(engine, _session)
     migrate_magic_shelf_table(engine, _session)
     migrate_kobo_unique_constraints(engine, _session)
+    migrate_book_cover_preview_table(engine, _session)
 
     # Ensure progress syncing tables in app.db (user-related tables)
     from .progress_syncing.models import ensure_app_db_tables

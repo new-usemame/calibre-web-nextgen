@@ -287,6 +287,15 @@ class User(UserBase, Base):
     auto_send_enabled = Column(Boolean, default=False)
     # Allow entering additional email addresses on send-to-eReader
     allow_additional_ereader_emails = Column(Boolean, default=True)
+    # Cover-preview rendering (eReader-shape previews on book detail / shelf).
+    # Defaults match cps.services.cover_preview.DEFAULT_PRESET +
+    # DEFAULT_FILL_MODE. New users opt-in; the Phase-2 migration in Task 2
+    # sets show_ereader_previews=False for existing users so behavior is
+    # unchanged on upgrade.
+    show_ereader_previews = Column(Boolean, default=True)
+    preview_preset = Column(String, default="kobo_libra_color")
+    preview_default_fill = Column(String, default="edge_mirror")
+    preview_default_color = Column(String, nullable=True)
 
 
 if oauth_support:
@@ -606,6 +615,31 @@ class BookCoverLock(Base):
     locked = Column(Boolean, nullable=False, default=False)
     locked_by = Column(Integer)
     locked_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+
+class BookCoverPreview(Base):
+    """Per-user-per-book override of the cover-preview fill style + color.
+
+    Row exists only when the user has explicitly set fill/color for this
+    book OR toggled the lock. No row = follows the user's default fill +
+    default color (stored on the User row).
+
+    user_id has FK with ON DELETE CASCADE.
+    book_id references metadata.db's books.id but cannot be a SQL-level
+    FK because the two databases are separate SQLite files; orphaned
+    rows are swept by the daily cleanup task in
+    cps/services/cover_preview_cleanup.py.
+    """
+    __tablename__ = "book_cover_preview"
+
+    user_id = Column(Integer, ForeignKey("user.id", ondelete="CASCADE"), primary_key=True)
+    book_id = Column(Integer, primary_key=True)
+    fill_mode = Column(String, nullable=False)
+    custom_color = Column(String, nullable=True)
+    locked = Column(Boolean, nullable=False, default=False)
+    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+
+    user = relationship("User", lazy="joined", backref="cover_previews")
 
 
 # Baseclass representing books that are archived on the user's Kobo device.

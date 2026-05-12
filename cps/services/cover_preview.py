@@ -63,13 +63,83 @@ except (ImportError, RuntimeError):  # ImageMagick missing → degrade gracefull
 FILL_MODES = ("edge_mirror", "edge_blur", "gradient", "average", "dominant", "manual")
 DEFAULT_FILL_MODE = "edge_mirror"
 
-# 1264:1680 = Libra Color / Libra 2 native; 1072:1448 = Clara family. We
-# default to Libra Color since it has the larger user base in the fork.
+# Aspect-ratio presets grouped by manufacturer. Values are device screen
+# resolutions in PIXELS — width × height when the device is held in
+# portrait. The padding engine only uses the ratio (W/H), not absolute
+# dimensions, so a "1264×1680" entry just locks the ratio to 1264:1680
+# regardless of actual cover resolution.
+#
+# Sources: device-spec pages from each manufacturer. Verified 2026-05.
 PRESET_ASPECTS = {
-    "kobo_libra_color": (1264, 1680),
-    "kobo_libra_2": (1264, 1680),
-    "kobo_clara": (1072, 1448),
+    # Kobo
+    "kobo_libra_color":   (1264, 1680),
+    "kobo_libra_2":       (1264, 1680),
+    "kobo_clara_color":   (1072, 1448),
+    "kobo_clara_bw":      (1072, 1448),
+    "kobo_clara_2e":      (1072, 1448),
+    "kobo_clara":         (1072, 1448),
+    "kobo_sage":          (1440, 1920),
+    "kobo_elipsa_2e":     (1404, 1872),
+    "kobo_forma":         (1440, 1920),
+    # Kindle
+    "kindle_paperwhite":  (1236, 1648),
+    "kindle_oasis":       (1264, 1680),
+    "kindle_basic":       (1072, 1448),
+    "kindle_scribe":      (1860, 2480),
+    # PocketBook
+    "pocketbook_era":     (1264, 1680),
+    "pocketbook_inkpad":  (1404, 1872),
+    "pocketbook_color":   (1264, 1680),
+    # Boox
+    "boox_page":          (1264, 1680),
+    "boox_leaf":          (1264, 1680),
+    "boox_note_air":      (1404, 1872),
+    # Generic e-ink classes
+    "generic_6in_eink":   (1072, 1448),
+    "generic_7in_eink":   (1264, 1680),
+    "generic_10in_eink":  (1404, 1872),
 }
+
+# Human-friendly labels grouped for the UI. Order intentionally
+# matches PRESET_GROUPS below — the dict insertion order is iteration
+# order in Python 3.7+, so dropdowns can iterate this dict directly.
+PRESET_LABELS = {
+    "kobo_libra_color":   "Kobo Libra Color (1264×1680)",
+    "kobo_libra_2":       "Kobo Libra 2 (1264×1680)",
+    "kobo_clara_color":   "Kobo Clara Color (1072×1448)",
+    "kobo_clara_bw":      "Kobo Clara BW (1072×1448)",
+    "kobo_clara_2e":      "Kobo Clara 2E (1072×1448)",
+    "kobo_clara":         "Kobo Clara HD (1072×1448)",
+    "kobo_sage":          "Kobo Sage (1440×1920)",
+    "kobo_elipsa_2e":     "Kobo Elipsa 2E (1404×1872)",
+    "kobo_forma":         "Kobo Forma (1440×1920)",
+    "kindle_paperwhite":  "Kindle Paperwhite (1236×1648)",
+    "kindle_oasis":       "Kindle Oasis (1264×1680)",
+    "kindle_basic":       "Kindle Basic (1072×1448)",
+    "kindle_scribe":      "Kindle Scribe (1860×2480)",
+    "pocketbook_era":     "PocketBook Era (1264×1680)",
+    "pocketbook_inkpad":  "PocketBook InkPad (1404×1872)",
+    "pocketbook_color":   "PocketBook Color (1264×1680)",
+    "boox_page":          "Boox Page (1264×1680)",
+    "boox_leaf":          "Boox Leaf (1264×1680)",
+    "boox_note_air":      "Boox Note Air (1404×1872)",
+    "generic_6in_eink":   "Generic 6\" e-ink (1072×1448)",
+    "generic_7in_eink":   "Generic 7\" e-ink (1264×1680)",
+    "generic_10in_eink":  "Generic 10\" e-ink (1404×1872)",
+}
+
+# Manufacturer-grouped tuples for rendering optgroup-style dropdowns.
+# Iterate these in the UI; each tuple is (group_label, (key, key, ...)).
+PRESET_GROUPS = (
+    ("Kobo", ("kobo_libra_color", "kobo_libra_2", "kobo_clara_color",
+              "kobo_clara_bw", "kobo_clara_2e", "kobo_clara",
+              "kobo_sage", "kobo_elipsa_2e", "kobo_forma")),
+    ("Kindle", ("kindle_paperwhite", "kindle_oasis", "kindle_basic", "kindle_scribe")),
+    ("PocketBook", ("pocketbook_era", "pocketbook_inkpad", "pocketbook_color")),
+    ("Boox", ("boox_page", "boox_leaf", "boox_note_air")),
+    ("Generic e-ink", ("generic_6in_eink", "generic_7in_eink", "generic_10in_eink")),
+)
+
 DEFAULT_PRESET = "kobo_libra_color"
 
 # How close the source must be to the target ratio to skip padding entirely.

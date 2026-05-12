@@ -369,3 +369,58 @@ class TestPadPathToCache:
             str(tmp_path / "no-such.jpg"), str(tmp_path / "cache"), "out.jpg", s,
         )
         assert target is None
+
+
+# ---- Preset catalog coverage --------------------------------------------
+
+
+class TestPresetCatalogCoverage:
+    """Three dicts (PRESET_ASPECTS, PRESET_LABELS, PRESET_GROUPS) must stay
+    in lock-step. Drift causes UI dropdowns to render mismatched options or
+    omit devices that the engine knows about.
+    """
+
+    def test_preset_aspects_keys_match_labels_and_groups(self):
+        """Every PRESET_ASPECTS key must have a PRESET_LABELS entry and
+        appear in exactly one PRESET_GROUPS bucket."""
+        from cps.services import cover_preview as cp
+
+        assert set(cp.PRESET_ASPECTS.keys()) == set(cp.PRESET_LABELS.keys()), (
+            "PRESET_ASPECTS / PRESET_LABELS key sets diverged"
+        )
+
+        grouped = []
+        for _group_label, keys in cp.PRESET_GROUPS:
+            grouped.extend(keys)
+        assert sorted(grouped) == sorted(cp.PRESET_ASPECTS.keys()), (
+            "PRESET_GROUPS doesn't cover the same keys as PRESET_ASPECTS"
+        )
+        assert len(grouped) == len(set(grouped)), (
+            "a preset appears in more than one PRESET_GROUPS bucket"
+        )
+
+    def test_default_preset_is_in_catalog(self):
+        """DEFAULT_PRESET must be a valid key in PRESET_ASPECTS — otherwise
+        first-run users get an empty preview."""
+        from cps.services import cover_preview as cp
+        assert cp.DEFAULT_PRESET in cp.PRESET_ASPECTS
+
+    def test_every_preset_yields_a_portrait_ratio(self):
+        """Every preset, parsed through parse_target_ratio, must produce a
+        ratio in the plausible e-reader range [0.5, 1.0] — taller than
+        wide, matching portrait orientation."""
+        from cps.services import cover_preview as cp
+        for key in cp.PRESET_ASPECTS:
+            ratio = cp.parse_target_ratio(key)
+            assert 0.5 <= ratio <= 1.0, f"{key}: ratio={ratio} out of e-reader range"
+
+    def test_historical_kobo_presets_preserved(self):
+        """The original 3 Kobo preset keys must be present forever — they
+        are persisted in admin DB rows as `config_kobo_cover_padding_aspect`.
+        Removing any of them breaks existing Kobo-sync setups on upgrade."""
+        from cps.services import cover_preview as cp
+        for key in ("kobo_libra_color", "kobo_libra_2", "kobo_clara"):
+            assert key in cp.PRESET_ASPECTS, (
+                f"historical kobo preset {key!r} disappeared — "
+                "this would break existing admin DB configs on upgrade"
+            )

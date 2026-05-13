@@ -1564,6 +1564,18 @@ def _loser_wins_lm(loser, winner):
     return lo > wn
 
 
+def migrate_shelf_table(engine, _session):
+    """Ensure Shelf.kobo_sync column exists; backfill DDL if not (legacy
+    fork branch — predates the dedicated kobo_sync migrations elsewhere).
+    Called from migrate_Database below."""
+    try:
+        _session.query(exists().where(Shelf.kobo_sync)).scalar()
+        _session.commit()
+    except exc.OperationalError:
+        _safe_session_rollback(_session, "shelf.kobo_sync")
+        _run_ddl_with_retry(engine, "ALTER TABLE shelf ADD column 'kobo_sync' Boolean DEFAULT 0")
+
+
 # Migrate database to current version, has to be updated after every database change. Currently migration from
 # maybe 4/5 versions back to current should work.
 # Migration is done by checking if relevant columns are existing, and then adding rows with SQL commands

@@ -1,0 +1,210 @@
+/* Drag-and-drop merge styles for the book grid. */
+
+/* Cursor hint: books are draggable */
+.book.drag-merge-enabled {
+  cursor: grab;
+}
+.book.drag-merge-enabled:active {
+  cursor: grabbing;
+}
+
+/* Book being dragged */
+.book.drag-merge-dragging {
+  opacity: 0.4;
+  outline: 2px dashed #5bc0de;
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+/* Valid drop target being hovered */
+.book.drag-merge-over > .cover .img {
+  outline: 3px solid #d9534f;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+.book.drag-merge-over > .cover::after {
+  content: "Merge into";
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: rgba(217, 83, 79, 0.88);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  text-align: center;
+  padding: 4px 0;
+  pointer-events: none;
+  border-radius: 0 0 4px 4px;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+/* The cover needs position:relative for the ::after to anchor correctly */
+.book.drag-merge-over > .cover {
+  position: relative;
+}
+
+/* --- Merge confirmation modal --- */
+
+.book-merge-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  background: rgba(0, 0, 0, 0.65);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+}
+
+.book-merge-modal-backdrop[hidden] {
+  display: none;
+}
+
+.book-merge-modal-dialog {
+  background: #1e2d3a;
+  border: 1px solid #2e4058;
+  border-radius: 8px;
+  width: 100%;
+  max-width: 520px;
+  margin: 16px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6);
+  color: #d0dce8;
+  animation: merge-modal-in 0.18s ease;
+}
+
+@keyframes merge-modal-in {
+  from { opacity: 0; transform: scale(0.96) translateY(-8px); }
+  to   { opacity: 1; transform: scale(1)    translateY(0);    }
+}
+
+.book-merge-modal-header {
+  padding: 16px 20px 12px;
+  border-bottom: 1px solid #2e4058;
+}
+
+.book-merge-modal-header h4 {
+  margin: 0;
+  font-size: 16px;
+  color: #e8f0f8;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.book-merge-modal-body {
+  padding: 20px;
+}
+
+.book-merge-warning {
+  background: rgba(217, 83, 79, 0.15);
+  border-left: 3px solid #d9534f;
+  border-radius: 4px;
+  padding: 8px 12px;
+  margin-bottom: 16px;
+  font-size: 13px;
+  color: #f2a09b;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Two book cards side by side with an arrow between them */
+.book-merge-cards {
+  display: flex;
+  align-items: stretch;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.book-merge-card {
+  flex: 1;
+  background: #253544;
+  border: 1px solid #2e4058;
+  border-radius: 6px;
+  padding: 12px;
+  min-width: 0;
+}
+
+.book-merge-card-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.book-merge-label-delete {
+  color: #d9534f;
+}
+
+.book-merge-label-keep {
+  color: #5cb85c;
+}
+
+.book-merge-card-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #e8f0f8;
+  margin-bottom: 6px;
+  word-break: break-word;
+}
+
+.book-merge-card-formats {
+  font-size: 12px;
+  color: #7a9ab5;
+}
+
+.book-merge-arrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #5bc0de;
+  font-size: 18px;
+  flex-shrink: 0;
+  padding: 0 4px;
+}
+
+.book-merge-result {
+  background: rgba(92, 184, 92, 0.1);
+  border-left: 3px solid #5cb85c;
+  border-radius: 4px;
+  padding: 8px 12px;
+  font-size: 13px;
+  color: #9dd69e;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.book-merge-result strong {
+  color: #c0e8c1;
+}
+
+.book-merge-modal-footer {
+  padding: 12px 20px 16px;
+  border-top: 1px solid #2e4058;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+@media (max-width: 480px) {
+  .book-merge-cards {
+    flex-direction: column;
+  }
+  .book-merge-arrow {
+    transform: rotate(90deg);
+    align-self: center;
+  }
+  .book-merge-modal-footer {
+    flex-direction: column-reverse;
+  }
+  .book-merge-modal-footer .btn {
+    width: 100%;
+  }
+}

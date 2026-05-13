@@ -68,6 +68,77 @@ body.drag-merge-active .row {
   position: relative;
 }
 
+/* --- Format conflict resolution --- */
+
+.book-merge-conflicts {
+  background: rgba(240, 173, 78, 0.1);
+  border-left: 3px solid #f0ad4e;
+  border-radius: 4px;
+  padding: 10px 12px;
+  margin-bottom: 14px;
+  font-size: 13px;
+}
+
+.book-merge-conflicts[hidden] {
+  display: none;
+}
+
+.book-merge-conflicts-header {
+  color: #f0c070;
+  font-weight: 700;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.book-merge-conflict-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 5px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.book-merge-conflict-row:first-child {
+  border-top: none;
+}
+
+.book-merge-conflict-fmt {
+  font-weight: 700;
+  color: #e8f0f8;
+  min-width: 48px;
+  font-size: 12px;
+  letter-spacing: 0.03em;
+}
+
+.book-merge-conflict-opt {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+  font-weight: 400;
+  margin: 0;
+  padding: 3px 8px;
+  border-radius: 3px;
+  color: #7a9ab5;
+  transition: color 0.15s, background 0.15s;
+}
+
+.book-merge-conflict-opt input[type="radio"] {
+  cursor: pointer;
+}
+
+.book-merge-conflict-keep:has(input:checked) {
+  color: #5cb85c;
+  background: rgba(92, 184, 92, 0.1);
+}
+
+.book-merge-conflict-replace:has(input:checked) {
+  color: #d9534f;
+  background: rgba(217, 83, 79, 0.1);
+}
+
 /* --- Merge confirmation modal --- */
 
 .book-merge-modal-backdrop {

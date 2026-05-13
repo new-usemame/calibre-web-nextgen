@@ -58,6 +58,30 @@
 
   function getModal() { return document.getElementById("book-merge-modal"); }
 
+  function buildConflictRows(conflictFormats, rowsEl) {
+    rowsEl.innerHTML = "";
+    conflictFormats.forEach(function (fmt) {
+      var row = document.createElement("div");
+      row.className = "book-merge-conflict-row";
+      row.innerHTML =
+        '<span class="book-merge-conflict-fmt">' + fmt + '</span>' +
+        '<label class="book-merge-conflict-opt book-merge-conflict-keep">' +
+          '<input type="radio" name="conflict-' + fmt + '" value="keep" checked> Keep existing' +
+        '</label>' +
+        '<label class="book-merge-conflict-opt book-merge-conflict-replace">' +
+          '<input type="radio" name="conflict-' + fmt + '" value="replace"> Replace with source' +
+        '</label>';
+      rowsEl.appendChild(row);
+    });
+  }
+
+  function getOverwriteFormats(modal, conflictFormats) {
+    return conflictFormats.filter(function (fmt) {
+      var radio = modal.querySelector('input[name="conflict-' + fmt + '"]:checked');
+      return radio && radio.value === "replace";
+    });
+  }
+
   function showModal(keeperTitle, keeperFormats, sourceTitle, sourceFormats, onConfirm) {
     var modal = getModal();
     if (!modal) return;
@@ -70,7 +94,18 @@
     keeperFmtEl.textContent = keeperFormats.length ? keeperFormats.join(", ") : "—";
     sourceFmtEl.textContent = sourceFormats.length ? sourceFormats.join(", ") : "—";
 
-    // Compute merged format list for preview
+    // Detect conflicts
+    var conflicts = sourceFormats.filter(function (f) { return keeperFormats.indexOf(f) !== -1; });
+    var conflictsEl = modal.querySelector("[data-merge-conflicts]");
+    var rowsEl = modal.querySelector("[data-merge-conflict-rows]");
+    if (conflicts.length && conflictsEl && rowsEl) {
+      buildConflictRows(conflicts, rowsEl);
+      conflictsEl.removeAttribute("hidden");
+    } else if (conflictsEl) {
+      conflictsEl.setAttribute("hidden", "");
+    }
+
+    // Compute merged format list for preview (always shows all formats)
     var merged = keeperFormats.slice();
     sourceFormats.forEach(function (f) {
       if (merged.indexOf(f) === -1) merged.push(f);
@@ -82,7 +117,8 @@
     function handleConfirm() {
       confirmBtn.removeEventListener("click", handleConfirm);
       hideModal();
-      onConfirm();
+      var overwrite = getOverwriteFormats(modal, conflicts);
+      onConfirm(overwrite);
     }
     confirmBtn.addEventListener("click", handleConfirm);
 
@@ -131,7 +167,9 @@
 
   // --- Merge API call ---
 
-  function doMerge(keeperId, sourceId, onSuccess, onError) {
+  function doMerge(keeperId, sourceId, overwriteFormats, onSuccess, onError) {
+    var body = { Merge_books: [parseInt(keeperId, 10), parseInt(sourceId, 10)] };
+    if (overwriteFormats && overwriteFormats.length) body.overwrite_formats = overwriteFormats;
     fetch("/ajax/mergebooks", {
       method: "POST",
       credentials: "same-origin",
@@ -139,7 +177,7 @@
         "Content-Type": "application/json",
         "X-CSRFToken": getCsrfToken(),
       },
-      body: JSON.stringify({ Merge_books: [parseInt(keeperId, 10), parseInt(sourceId, 10)] }),
+      body: JSON.stringify(body),
     })
       .then(function (resp) {
         return resp.json().then(function (data) {
@@ -285,8 +323,8 @@
     var capturedSourceTitle = dragSourceTitle;
     var capturedSourceFormats = dragSourceFormats;
 
-    showModal(keeperTitle, keeperFormats, capturedSourceTitle, capturedSourceFormats, function () {
-      doMerge(keeperId, capturedSourceId,
+    showModal(keeperTitle, keeperFormats, capturedSourceTitle, capturedSourceFormats, function (overwrite) {
+      doMerge(keeperId, capturedSourceId, overwrite,
         function () {
           flash("“" + capturedSourceTitle + "” merged into “" + keeperTitle + "”.", "success");
           setTimeout(function () { window.location.reload(); }, 800);

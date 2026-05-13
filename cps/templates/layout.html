@@ -447,6 +447,14 @@
               </div>
             </div>
           </div>
+          <!-- Shown when source has formats the keeper already has -->
+          <div class="book-merge-conflicts" data-merge-conflicts hidden>
+            <div class="book-merge-conflicts-header">
+              <span class="glyphicon glyphicon-question-sign" aria-hidden="true"></span>
+              {{_('Format conflicts — choose what to do:')}}
+            </div>
+            <div data-merge-conflict-rows></div>
+          </div>
           <div class="book-merge-result">
             <span class="glyphicon glyphicon-book" aria-hidden="true"></span>
             {{_('Result will have formats:')}} <strong data-merge-result-formats></strong>

@@ -27,7 +27,7 @@ end
 local CWASync = WidgetContainer:extend{
     name = "cwasync",
     title = _("Login to CWA Server"),
-    version = "1.0.2",  -- Plugin version
+    version = "4.0.54",  -- Plugin version mirrors CWNG release tag
 
     push_timestamp = nil,
     pull_timestamp = nil,

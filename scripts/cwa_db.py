@@ -26,6 +26,14 @@ class CWA_DB:
         self.db_path = os.environ.get("CWA_DB_PATH", "/config/")
         if self.db_path and not self.db_path.endswith("/"):
             self.db_path = self.db_path + "/"
+        # Ensure the parent dir exists so sqlite3 can create the file.
+        # In production /config/ always exists (Docker volume mount); the
+        # makedirs is defense-in-depth and the path that test isolation
+        # relies on (CWA_DB_PATH may point at a fresh tmp_path subdir).
+        try:
+            os.makedirs(self.db_path, exist_ok=True)
+        except OSError as e:
+            print(f"[cwa-db]: Could not create CWA DB directory {self.db_path}: {e}", flush=True)
         self.con, self.cur = self.connect_to_db() # type: ignore
 
         # Support both Docker and CI environments for schema path

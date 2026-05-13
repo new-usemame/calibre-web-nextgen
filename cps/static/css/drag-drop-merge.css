@@ -12,16 +12,34 @@
 .book.drag-merge-dragging {
   opacity: 0.4;
   outline: 2px dashed #5bc0de;
-  outline-offset: 3px;
+  outline-offset: -2px;
   border-radius: 4px;
 }
 
-/* Valid drop target being hovered */
-.book.drag-merge-over > .cover .img {
-  outline: 3px solid #d9534f;
-  outline-offset: 2px;
-  border-radius: 4px;
+/* During any drag, block pointer events on all book children so the browser
+   can't paint its native drag-highlight on them. The .drag-merge-shield overlay
+   (injected by JS) sits on top and absorbs all drag events instead. */
+body.drag-merge-active .book.drag-merge-enabled * {
+  pointer-events: none;
 }
+
+/* Tone down the browser's rgb(230,230,230) drag-over highlight on ancestors */
+body.drag-merge-active .container-fluid,
+body.drag-merge-active .row-fluid,
+body.drag-merge-active .row {
+  background-color: rgba(230, 230, 230, 0.15) !important;
+}
+
+/* Transparent full-cover shield injected per book during drag */
+.drag-merge-shield {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  background: transparent;
+  pointer-events: auto;
+}
+
+/* Valid drop target being hovered */
 .book.drag-merge-over > .cover::after {
   content: "Merge into";
   position: absolute;
@@ -39,8 +57,14 @@
   letter-spacing: 0.03em;
   text-transform: uppercase;
 }
+.book.drag-merge-over {
+  outline: 3px solid #d9534f;
+  outline-offset: -3px;
+  border-radius: 4px;
+}
 /* The cover needs position:relative for the ::after to anchor correctly */
-.book.drag-merge-over > .cover {
+.book.drag-merge-over > .cover,
+.book.drag-merge-enabled > .cover {
   position: relative;
 }
 

@@ -181,6 +181,23 @@
 
   // --- Drag event handlers ---
 
+  function addShields() {
+    document.querySelectorAll(BOOK_SELECTOR).forEach(function (bookEl) {
+      if (bookEl.querySelector(".drag-merge-shield")) return;
+      var shield = document.createElement("div");
+      shield.className = "drag-merge-shield";
+      bookEl.appendChild(shield);
+    });
+    document.body.classList.add("drag-merge-active");
+  }
+
+  function removeShields() {
+    document.querySelectorAll(".drag-merge-shield").forEach(function (el) {
+      el.parentNode.removeChild(el);
+    });
+    document.body.classList.remove("drag-merge-active");
+  }
+
   function onDragStart(e) {
     // Don't interfere with multi-select mode
     if (document.body.classList.contains("book-organizer-select-mode")) return;
@@ -194,21 +211,39 @@
 
     if (!dragSourceId) return;
 
-    bookEl.classList.add(DRAGGING_CLASS);
     e.dataTransfer.effectAllowed = "move";
     e.dataTransfer.setData("text/plain", dragSourceId);
+
+    // Defer both the dragging style and shield injection so the browser
+    // captures the ghost image before we mutate the element's appearance.
+    setTimeout(function () {
+      bookEl.classList.add(DRAGGING_CLASS);
+      addShields();
+    }, 0);
   }
 
   function onDragEnd(e) {
     var bookEl = getBookEl(e.target);
     if (bookEl) bookEl.classList.remove(DRAGGING_CLASS);
-    // Clean up any lingering over-states
     document.querySelectorAll("." + OVER_CLASS).forEach(function (el) {
       el.classList.remove(OVER_CLASS);
     });
+    removeShields();
     dragSourceId = null;
     dragSourceTitle = null;
     dragSourceFormats = null;
+  }
+
+  function onDragEnter(e) {
+    if (!dragSourceId) return;
+    var bookEl = getBookEl(e.target);
+    if (!bookEl) return;
+
+    var targetId = getBookId(bookEl);
+    if (!targetId || targetId === dragSourceId) return;
+
+    e.preventDefault();
+    bookEl.classList.add(OVER_CLASS);
   }
 
   function onDragOver(e) {
@@ -221,12 +256,15 @@
 
     e.preventDefault();
     e.dataTransfer.dropEffect = "move";
-    bookEl.classList.add(OVER_CLASS);
   }
 
   function onDragLeave(e) {
     var bookEl = getBookEl(e.target);
-    if (bookEl) bookEl.classList.remove(OVER_CLASS);
+    if (!bookEl) return;
+    var bookId = getBookId(bookEl);
+    if (bookId === dragSourceId) return;
+    if (bookEl.contains(e.relatedTarget)) return;
+    bookEl.classList.remove(OVER_CLASS);
   }
 
   function onDrop(e) {
@@ -268,6 +306,7 @@
     bookEl.setAttribute("draggable", "true");
     bookEl.addEventListener("dragstart", onDragStart);
     bookEl.addEventListener("dragend", onDragEnd);
+    bookEl.addEventListener("dragenter", onDragEnter);
     bookEl.addEventListener("dragover", onDragOver);
     bookEl.addEventListener("dragleave", onDragLeave);
     bookEl.addEventListener("drop", onDrop);
@@ -289,6 +328,31 @@
         }
       });
     });
+  });
+
+  // Suppress the background flash when dragging files in from outside the browser
+  var docDragDepth = 0;
+  document.addEventListener("dragenter", function () {
+    docDragDepth++;
+    document.body.classList.add("drag-merge-active");
+  });
+  document.addEventListener("dragleave", function (e) {
+    // relatedTarget is null when leaving the browser window entirely
+    if (e.relatedTarget === null) {
+      docDragDepth = 0;
+      document.body.classList.remove("drag-merge-active");
+    } else {
+      docDragDepth = Math.max(0, docDragDepth - 1);
+      if (docDragDepth === 0) document.body.classList.remove("drag-merge-active");
+    }
+  });
+  document.addEventListener("drop", function () {
+    docDragDepth = 0;
+    document.body.classList.remove("drag-merge-active");
+  });
+  document.addEventListener("dragend", function () {
+    docDragDepth = 0;
+    document.body.classList.remove("drag-merge-active");
   });
 
   if (document.readyState === "loading") {

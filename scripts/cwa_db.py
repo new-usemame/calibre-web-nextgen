@@ -19,7 +19,13 @@ class CWA_DB:
         self.verbose = verbose
 
         self.db_file = "cwa.db"
-        self.db_path = "/config/"
+        # Honor CWA_DB_PATH for test isolation. In production this env var is
+        # not set, so we fall back to the canonical /config/ location that
+        # matches the Docker volume mount. The trailing slash is significant
+        # because connect_to_db() does string concatenation against db_file.
+        self.db_path = os.environ.get("CWA_DB_PATH", "/config/")
+        if self.db_path and not self.db_path.endswith("/"):
+            self.db_path = self.db_path + "/"
         self.con, self.cur = self.connect_to_db() # type: ignore
 
         # Support both Docker and CI environments for schema path

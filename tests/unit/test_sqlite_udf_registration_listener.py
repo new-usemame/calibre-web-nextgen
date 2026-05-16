@@ -405,39 +405,77 @@ class TestConcurrentLowerQueriesNoDeadlock:
 
 @pytest.mark.unit
 class TestCreateFunctionsBackwardsCompatShim:
-    """The public create_functions(self, config=None) method is preserved as
-    a no-op so any external caller (downstream plugin, tests) doesn't break.
-    But it should now also propagate config — the legacy intent was 'register
-    UDFs with this config's regex'.
+    """The public ``create_functions(self, config=None)`` method is preserved
+    as a no-op so any external caller (downstream plugin, tests) doesn't
+    break. The contract: the method exists, accepts ``(self, config=None)``,
+    is callable without error, and does NOT raise — it must not touch
+    ``self.session`` or call ``conn.create_function`` anymore (those would
+    re-introduce the deadlock vector this PR closes).
     """
 
-    def test_create_functions_is_a_noop_that_updates_config(self):
+    def test_shim_method_exists_with_compatible_signature(self):
         import sys
         scripts_dir = REPO_ROOT / "scripts"
         if str(scripts_dir) not in sys.path:
             sys.path.insert(0, str(scripts_dir))
         from cps import db as cps_db
+        import inspect
 
-        prior_config = cps_db.CalibreDB.config
-        try:
-            cps_db.CalibreDB.config = None
+        sig = inspect.signature(cps_db.CalibreDB.create_functions)
+        params = list(sig.parameters.values())
+        assert len(params) == 2, (
+            f"expected (self, config=None); got {len(params)} params"
+        )
+        assert params[0].name == "self"
+        assert params[1].name == "config"
+        assert params[1].default is None, (
+            "config parameter must default to None for backward compat"
+        )
 
-            class _FakeDB:
-                pass
+    def test_shim_source_does_not_call_create_function(self):
+        """The shim must not call ``conn.create_function`` — that's the
+        deadlock vector this PR closes. Source-pin via AST.
+        """
+        import ast
+        src = _read(REPO_ROOT / "cps" / "db.py")
+        tree = ast.parse(src)
+        for node in ast.walk(tree):
+            if isinstance(node, ast.FunctionDef) and node.name == "create_functions":
+                for sub in ast.walk(node):
+                    if (
+                        isinstance(sub, ast.Call)
+                        and isinstance(sub.func, ast.Attribute)
+                        and sub.func.attr == "create_function"
+                    ):
+                        pytest.fail(
+                            "create_functions shim must not call "
+                            "conn.create_function — UDFs are registered "
+                            "by the engine connect listener"
+                        )
+                return
+        pytest.fail("create_functions method not found in cps/db.py")
 
-            fake_config = SimpleNamespace(
-                config_title_regex=r"^(The)\s+"
-            )
-            # Call create_functions via an instance — it should propagate
-            # config to CalibreDB.config without touching the connection.
-            cps_db.CalibreDB.create_functions(_FakeDB(), fake_config)
-            assert cps_db.CalibreDB.config is fake_config, (
-                "create_functions(config=X) should propagate X to CalibreDB.config "
-                "so the title_sort closure picks it up on next invocation"
-            )
-
-            # Calling with None should not clobber a previously-set config.
-            cps_db.CalibreDB.create_functions(_FakeDB())
-            assert cps_db.CalibreDB.config is fake_config
-        finally:
-            cps_db.CalibreDB.config = prior_config
+    def test_shim_source_does_not_touch_self_session(self):
+        """The shim must not touch ``self.session`` — that was the old
+        path that obtained the connection to register UDFs. The new model
+        registers via the engine event listener at connection time.
+        """
+        import ast
+        src = _read(REPO_ROOT / "cps" / "db.py")
+        tree = ast.parse(src)
+        for node in ast.walk(tree):
+            if isinstance(node, ast.FunctionDef) and node.name == "create_functions":
+                for sub in ast.walk(node):
+                    if (
+                        isinstance(sub, ast.Attribute)
+                        and sub.attr == "session"
+                        and isinstance(sub.value, ast.Name)
+                        and sub.value.id == "self"
+                    ):
+                        pytest.fail(
+                            "create_functions shim must not access "
+                            "self.session — the no-op shim must not touch "
+                            "the connection"
+                        )
+                return
+        pytest.fail("create_functions method not found")

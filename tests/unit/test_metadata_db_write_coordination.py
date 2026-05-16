@@ -389,6 +389,20 @@ class TestCalibredbAddRetriesOnLockError:
     "database is locked" / "BusyError" in stderr and retry with
     exponential backoff (2s, 4s, 8s) before giving up."""
 
+    @pytest.fixture(autouse=True)
+    def _drop_kindle_epub_fixer_lockfile(self):
+        # scripts/kindle_epub_fixer.py acquires /tmp/kindle_epub_fixer.lock
+        # at module-import time via O_CREAT|O_EXCL and sys.exit(2)s if
+        # it already exists. pytest-xdist runs workers as separate
+        # processes that share /tmp; a sibling worker that imported
+        # ingest_processor first can leave the lockfile behind, breaking
+        # any later worker that re-imports here. Clear it before each
+        # test in this class to guarantee the import succeeds.
+        lock_path = Path(tempfile.gettempdir()) / "kindle_epub_fixer.lock"
+        lock_path.unlink(missing_ok=True)
+        yield
+        lock_path.unlink(missing_ok=True)
+
     def test_helper_function_exists_in_ingest_processor(self):
         # Pin by source — we don't want to invoke calibredb in a unit test.
         path = REPO_ROOT / "scripts" / "ingest_processor.py"

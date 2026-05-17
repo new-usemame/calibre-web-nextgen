@@ -819,8 +819,8 @@ def _queue_duplicate_scan_after_change():
         from cwa_db import CWA_DB
 
         cwa_db = CWA_DB()
-        delay_seconds = int(cwa_db.cwa_settings.get('duplicate_scan_debounce_seconds', 5))
-        delay_seconds = max(5, min(600, delay_seconds))
+        delay_seconds = int(cwa_db.cwa_settings.get('duplicate_scan_debounce_seconds', 30))
+        delay_seconds = max(10, min(600, delay_seconds))
         url = helper.get_internal_api_url("/cwa-internal/queue-duplicate-scan")
         requests.post(
             url,
@@ -883,9 +883,6 @@ def do_edit_book(book_id, upload_formats=None):
     modify_date = False
     edit_error = False
     refresh_cover_thumbnail_after_commit = False
-
-    # create the function for sorting...
-    calibre_db.create_functions(config)
 
     book = calibre_db.get_filtered_book(book_id, allow_show_archived=True)
     # Book not found
@@ -1866,7 +1863,6 @@ def upload_book_formats(requested_files, book, book_id, no_cover=True):
                     db_format = db.Data(book_id, file_ext.upper(), file_size, file_name)
                     calibre_db.session.add(db_format)
                     calibre_db.session.commit()
-                    calibre_db.create_functions(config)
                 except (OperationalError, IntegrityError, StaleDataError) as e:
                     calibre_db.session.rollback()
                     log.error_or_exception("Database error: {}".format(e))

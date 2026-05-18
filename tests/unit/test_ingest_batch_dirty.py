@@ -43,6 +43,7 @@ def test_successful_import_marks_batch_dirty_without_hot_loop_http_calls(monkeyp
     scripts_dir = Path(__file__).resolve().parents[2] / "scripts"
     monkeypatch.syspath_prepend(str(scripts_dir))
     monkeypatch.setenv("CWA_INGEST_BATCH_DIRTY_FILE", str(tmp_path / "batch_dirty"))
+    monkeypatch.setenv("CWA_METADATA_LOCK_DIR", str(tmp_path))
 
     import ingest_processor
 
@@ -81,6 +82,7 @@ def test_failed_import_does_not_mark_batch_dirty(monkeypatch, tmp_path):
     scripts_dir = Path(__file__).resolve().parents[2] / "scripts"
     monkeypatch.syspath_prepend(str(scripts_dir))
     monkeypatch.setenv("CWA_INGEST_BATCH_DIRTY_FILE", str(tmp_path / "batch_dirty"))
+    monkeypatch.setenv("CWA_METADATA_LOCK_DIR", str(tmp_path))
 
     import ingest_processor
 
@@ -106,6 +108,7 @@ def test_successful_add_format_marks_batch_dirty(monkeypatch, tmp_path):
     scripts_dir = Path(__file__).resolve().parents[2] / "scripts"
     monkeypatch.syspath_prepend(str(scripts_dir))
     monkeypatch.setenv("CWA_INGEST_BATCH_DIRTY_FILE", str(tmp_path / "batch_dirty"))
+    monkeypatch.setenv("CWA_METADATA_LOCK_DIR", str(tmp_path))
 
     import ingest_processor
 

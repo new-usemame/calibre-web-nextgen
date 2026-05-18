@@ -450,10 +450,13 @@ def gdrive_sync_if_enabled():
 def _acquire_process_lock_or_exit():
     """Single-instance guard. Run only when this module is executed as a
     script — never on import — so pytest-xdist workers (which share /tmp
-    across processes) don't take each other out at import time. The
-    process_lock is instantiated by initialize_runtime() (CWA #1349 by
-    @navels) before _acquire_process_lock_or_exit() runs from main()."""
+    across processes) don't take each other out at import time. Triggers
+    initialize_runtime() (CWA #1349 by @navels) which instantiates the
+    process_lock lazily. If initialize_runtime() fails (e.g. missing
+    heavy dependencies in a test environment), bail with exit code 2."""
     atexit.register(cleanup_lock)
+    if not initialize_runtime():
+        sys.exit(2)
     if process_lock is None or not process_lock.acquire(timeout=10):
         sys.exit(2)
 
@@ -1454,8 +1457,6 @@ def main(filepath=None):
     """Checks if filepath is a directory. If it is, main will be ran on every file in the given directory
     Inotifywait won't detect files inside folders if the folder was moved rather than copied"""
 
-    _acquire_process_lock_or_exit()
-
     if filepath is None:
         if len(sys.argv) < 2:
             print("[ingest-processor] ERROR: No file path provided", flush=True)
@@ -1464,7 +1465,21 @@ def main(filepath=None):
         filepath = sys.argv[1]
 
     if filepath == "--post-batch-follow-up":
+        # Post-batch follow-up triggers the per-batch refresh + duplicate
+        # scan that used to happen per-book. Acquire the lock since this
+        # may take a moment and shouldn't race with another follow-up.
+        _acquire_process_lock_or_exit()
         return run_post_batch_follow_up()
+
+    # Fast-exit path: stale ingest events that target an already-moved
+    # or deleted file should skip the lock + heavy startup entirely.
+    # CWA #1349 by @navels — prevents polling-fallback / NFS watchers
+    # from re-emitting the same path indefinitely.
+    if _is_missing_ingest_target(filepath):
+        print(f"[ingest-processor] Skipping missing ingest target: {filepath}", flush=True)
+        return 0
+
+    _acquire_process_lock_or_exit()
 
     nbp = None
     skip_delete = False
@@ -1481,9 +1496,9 @@ def main(filepath=None):
             print(f"[ingest-processor] Skipping sidecar manifest file: {filename}", flush=True)
             return 0
 
-        if _is_missing_ingest_target(filepath):
-            print(f"[ingest-processor] Skipping missing ingest target: {filepath}", flush=True)
-            return 0
+        # Note: missing-target fast-exit already happened earlier in main()
+        # before the lock acquisition. Reaching here means the file
+        # existed at function entry; intentionally do NOT re-check.
 
         if len(name) > allowed_len:
             new_name = name[:allowed_len] + ext

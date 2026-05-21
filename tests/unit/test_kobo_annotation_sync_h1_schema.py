@@ -562,25 +562,37 @@ class TestMigrationPreservesAllUserData:
 
 @pytest.mark.unit
 class TestHardcoverSyncTagsSource:
-    """Source-pin: the Hardcover annotation sync path in
-    ``cps/readingservices.py::process_annotation_for_sync`` must pass
-    ``source='hardcover'`` when constructing a new ``KoboAnnotationSync``.
+    """Source-pin (post-decouple): ``cps/readingservices.py`` must NOT
+    construct any Annotation row with ``source='hardcover'`` anymore.
 
-    Without this, every Hardcover-sync row gets ``source=NULL`` at insert
-    time — the migration backfill only labels CURRENT rows at restart,
-    not rows created between restarts. Source-pinning the constructor
-    keeps the source column meaningful for the H1 import path's
-    deduplication and source-of-truth logic.
+    Per notes/2026-05-21-annotation-decouple-source-target-DESIGN.md, the
+    Kobo PATCH path tags annotations with ``source='kobo'`` (the dispatcher
+    handles this) and records the Hardcover destination in the separate
+    AnnotationSyncTarget table — not on the source column.
     """
 
-    def test_readingservices_constructor_passes_source(self):
+    def test_readingservices_never_constructs_source_hardcover(self):
         import inspect as py_inspect
         from cps import readingservices
 
         src = py_inspect.getsource(readingservices)
-        # The constructor block must include source='hardcover'.
-        assert "source='hardcover'" in src or 'source="hardcover"' in src, (
-            "readingservices.py must tag new Hardcover-sync rows with "
-            "source='hardcover'; otherwise they appear as un-sourced "
-            "until the next migrate_Database run backfills them"
+        assert "source='hardcover'" not in src, (
+            "readingservices.py must NOT construct rows with source='hardcover' "
+            "— per decouple design, source tracks origin (kobo/webreader/koreader) "
+            "and the Hardcover destination lives on AnnotationSyncTarget."
+        )
+        assert 'source="hardcover"' not in src
+
+    def test_readingservices_dispatches_through_annotation_sync(self):
+        import inspect as py_inspect
+        from cps import readingservices
+
+        src = py_inspect.getsource(readingservices)
+        assert "dispatch_annotation_sync" in src, (
+            "readingservices.py PATCH handler must call dispatch_annotation_sync "
+            "from cps.services.annotation_sync"
+        )
+        assert "dispatch_annotation_deletes" in src, (
+            "readingservices.py PATCH handler must call dispatch_annotation_deletes "
+            "from cps.services.annotation_sync"
         )

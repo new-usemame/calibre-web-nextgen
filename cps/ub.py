@@ -232,11 +232,20 @@ class UserBase:
         return [strip_whitespaces(t) for t in mct.split(",")]
 
     def get_view_property(self, page, prop):
-        if not self.view_settings.get(page):
+        # Defensive against NULL view_settings on legacy user rows
+        # created before the JSON-column default existed. layout.html
+        # calls this on every page render (since v4.0.97 cover-settings
+        # cog toggle); a NULL row would 500 every page for that user.
+        vs = self.view_settings or {}
+        if not vs.get(page):
             return None
-        return self.view_settings[page].get(prop)
+        return vs[page].get(prop)
 
     def set_view_property(self, page, prop, value):
+        # Materialize the dict on legacy NULL rows so the in-place
+        # mutation + the SQLAlchemy onupdate fire correctly.
+        if not self.view_settings:
+            self.view_settings = {}
         if not self.view_settings.get(page):
             self.view_settings[page] = dict()
         self.view_settings[page][prop] = value

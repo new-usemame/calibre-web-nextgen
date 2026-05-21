@@ -334,6 +334,58 @@ def test_full_migration_fresh_install_noop():
     assert "annotation" not in inspector.get_table_names()
 
 
+def test_full_migration_handles_orm_created_placeholder(pre_decouple_engine):
+    """add_missing_tables() runs before the migration during migrate_Database
+    and creates an empty 'annotation' table from ORM. Migration must drop
+    the empty placeholder before RENAME-ing kobo_annotation_sync onto it.
+    """
+    from cps.ub import migrate_annotation_decouple_source_target
+
+    with pre_decouple_engine.begin() as conn:
+        _seed_row(conn, annotation_id="a1", synced_to_hardcover=1, hardcover_journal_id=11)
+        # Simulate add_missing_tables having just created an empty annotation.
+        conn.execute(text("""
+            CREATE TABLE annotation (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                annotation_id VARCHAR NOT NULL,
+                book_id INTEGER NOT NULL,
+                source VARCHAR
+            )
+        """))
+    migrate_annotation_decouple_source_target(pre_decouple_engine, None)
+    inspector = sa_inspect(pre_decouple_engine)
+    tables = set(inspector.get_table_names())
+    assert "annotation" in tables
+    assert "kobo_annotation_sync" not in tables
+    with pre_decouple_engine.connect() as conn:
+        # The user's row from kobo_annotation_sync survived under the new name.
+        row = conn.execute(text("SELECT annotation_id FROM annotation")).fetchone()
+    assert row.annotation_id == "a1"
+
+
+def test_full_migration_refuses_when_placeholder_has_rows(pre_decouple_engine):
+    """If both tables exist AND placeholder annotation has rows, refuse +
+    raise rather than silently destroying data. Operator must investigate."""
+    from cps.ub import migrate_annotation_decouple_source_target
+
+    with pre_decouple_engine.begin() as conn:
+        _seed_row(conn, annotation_id="legacy", synced_to_hardcover=1, hardcover_journal_id=11)
+        conn.execute(text("""
+            CREATE TABLE annotation (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER, annotation_id VARCHAR, book_id INTEGER,
+                source VARCHAR
+            )
+        """))
+        conn.execute(text(
+            "INSERT INTO annotation (user_id, annotation_id, book_id, source) "
+            "VALUES (1, 'rogue', 1, 'kobo')"
+        ))
+    with pytest.raises(RuntimeError, match="manual investigation required"):
+        migrate_annotation_decouple_source_target(pre_decouple_engine, None)
+
+
 def test_full_migration_rollback_on_failure(pre_decouple_engine, monkeypatch):
     """Inject a failure between step 6 and 7 — DB rolls back to pre-migration."""
     from cps import ub

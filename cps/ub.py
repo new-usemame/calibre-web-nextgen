@@ -2091,20 +2091,25 @@ def migrate_annotation_decouple_source_target(engine, _session):
 
     Refuses destructive steps if the sanity check (step 4) detects a
     count mismatch — DB stays in pre-migration state in that case.
+
+    Note on co-existence: ``add_missing_tables`` (which runs before this
+    migration in ``migrate_Database``) creates an empty ``annotation``
+    table via ``Base.metadata.create_all``. We detect that case + drop
+    the empty placeholder before renaming the real ``kobo_annotation_sync``
+    onto it.
     """
     from sqlalchemy import inspect as sa_inspect
 
     inspector = sa_inspect(engine)
     tables = set(inspector.get_table_names())
 
-    # Step 0: idempotency check
-    if "annotation" in tables and "annotation_sync_target" in tables:
-        cols = {c["name"] for c in inspector.get_columns("annotation")}
-        if "synced_to_hardcover" not in cols and "hardcover_journal_id" not in cols:
-            log.info("[annotation-decouple-migration] target schema already in place; skip")
-            return
-    if "kobo_annotation_sync" not in tables:
-        log.info("[annotation-decouple-migration] no kobo_annotation_sync table; fresh install or already complete")
+    # Idempotency check: migration is already complete when the legacy
+    # table is gone AND the target table exists.
+    if "kobo_annotation_sync" not in tables and "annotation" in tables:
+        log.info("[annotation-decouple-migration] target schema already in place; skip")
+        return
+    if "kobo_annotation_sync" not in tables and "annotation" not in tables:
+        log.info("[annotation-decouple-migration] fresh install; nothing to migrate")
         return
 
     log.info("[annotation-decouple-migration] starting")
@@ -2114,6 +2119,21 @@ def migrate_annotation_decouple_source_target(engine, _session):
             inserted = _migrate_step2_backfill_sync_state(conn)
             updated = _migrate_step3_fix_source_values(conn)
             _migrate_step4_sanity_check(conn)
+            # Drop the empty ORM-created annotation placeholder so RENAME
+            # below has a clean target. The placeholder has zero rows
+            # because add_missing_tables only just created it this boot.
+            if "annotation" in inspector.get_table_names():
+                placeholder_count = conn.execute(text(
+                    "SELECT COUNT(*) FROM annotation"
+                )).scalar()
+                if placeholder_count == 0:
+                    conn.execute(text("DROP TABLE annotation"))
+                else:
+                    raise RuntimeError(
+                        "[annotation-decouple-migration] both kobo_annotation_sync "
+                        f"and annotation tables exist + annotation has "
+                        f"{placeholder_count} rows; manual investigation required"
+                    )
             _migrate_step5_rename_table(conn)
             _migrate_step6_rename_indexes(conn)
             _migrate_step7_drop_old_columns(conn)

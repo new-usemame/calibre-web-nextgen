@@ -387,9 +387,9 @@ def process_annotation_for_sync(
         existing_sync = existing_syncs.get(annotation_id)
     else:
         # Fall back to individual query
-        existing_sync = ub.session.query(ub.KoboAnnotationSync).filter(
-            ub.KoboAnnotationSync.annotation_id == annotation_id,
-            ub.KoboAnnotationSync.user_id == current_user.id
+        existing_sync = ub.session.query(ub.Annotation).filter(
+            ub.Annotation.annotation_id == annotation_id,
+            ub.Annotation.user_id == current_user.id
         ).first()
     
     if existing_sync and existing_sync.synced_to_hardcover and existing_sync.highlighted_text == highlighted_text and existing_sync.note_text == note_text and existing_sync.highlight_color == highlight_color:
@@ -450,7 +450,7 @@ def process_annotation_for_sync(
                             existing_sync.note_text = note_text
                             existing_sync.highlight_color = highlight_color
                         else:
-                            sync_record = ub.KoboAnnotationSync(
+                            sync_record = ub.Annotation(
                                 user_id=current_user.id,
                                 annotation_id=annotation_id,
                                 book_id=book.id,
@@ -514,9 +514,9 @@ def handle_annotations(entitlement_id):
                     deleted_ids = data["deletedAnnotationIds"]
                     log.info(f"Processing {len(deleted_ids)} deleted annotation IDs")
                     for annotation_id in deleted_ids:
-                        sync_record = ub.session.query(ub.KoboAnnotationSync).filter(
-                            ub.KoboAnnotationSync.annotation_id == annotation_id,
-                            ub.KoboAnnotationSync.user_id == current_user.id
+                        sync_record = ub.session.query(ub.Annotation).filter(
+                            ub.Annotation.annotation_id == annotation_id,
+                            ub.Annotation.user_id == current_user.id
                         ).first()
                         if sync_record:
                             try:
@@ -548,9 +548,9 @@ def handle_annotations(entitlement_id):
                     existing_syncs = {}
                     annotation_ids = [a.get('id') for a in annotations if a.get('id')]
                     if annotation_ids:
-                        syncs = ub.session.query(ub.KoboAnnotationSync).filter(
-                            ub.KoboAnnotationSync.annotation_id.in_(annotation_ids),
-                            ub.KoboAnnotationSync.user_id == current_user.id
+                        syncs = ub.session.query(ub.Annotation).filter(
+                            ub.Annotation.annotation_id.in_(annotation_ids),
+                            ub.Annotation.user_id == current_user.id
                         ).all()
                         existing_syncs = {s.annotation_id: s for s in syncs}
                     

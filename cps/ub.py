@@ -40,7 +40,7 @@ try:
     from sqlalchemy.orm import declarative_base
 except ImportError:
     from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import backref, relationship, sessionmaker, Session, scoped_session
+from sqlalchemy.orm import backref, relationship, sessionmaker, Session, scoped_session, validates
 from werkzeug.security import generate_password_hash
 
 from . import constants, logger
@@ -830,53 +830,128 @@ class KoboStatistics(Base):
     spent_reading_minutes = Column(Integer)
 
 
-class KoboAnnotationSync(Base):
-    """Per-user-per-annotation record for Kobo highlights/notes.
+class Annotation(Base):
+    """Per-user-per-annotation row. Canonical store for ALL highlight/note
+    origins (Kobo device, web reader, KOReader plugin).
 
-    Originally added for the Hardcover annotation backports (CWA #1166 +
-    #1324) — those fields are ``synced_to_hardcover`` + ``hardcover_journal_id``
-    plus the inline ``highlighted_text`` / ``highlight_color`` / ``note_text``.
+    Per-target sync state (Hardcover, future Readwise / Notion / etc.) lives
+    in the AnnotationSyncTarget table — one row per (annotation, target).
 
-    H1 Phase 1 extends this table to be the source-of-truth for ALL highlight
-    ingestion paths (Kobo device upload, web reader, KOReader plugin) — see
-    ``notes/KOBO-WEB-READER-ANNOTATIONS-DESIGN.md``. The position fields below
-    are nullable so pre-H1 Hardcover-sync rows continue to work; the import
-    path populates them when available.
+    Renamed from KoboAnnotationSync as of 2026-05-21 — the table is no
+    longer Kobo-specific. See
+    notes/2026-05-21-annotation-decouple-source-target-DESIGN.md.
     """
-    __tablename__ = 'kobo_annotation_sync'
+    __tablename__ = 'annotation'
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     user_id = Column(Integer, ForeignKey('user.id'), nullable=False)
-    annotation_id = Column(String, nullable=False)  # Kobo annotation UUID
-    book_id = Column(Integer, nullable=False)  # Calibre book ID
-    synced_to_hardcover = Column(Boolean, default=False)
-    hardcover_journal_id = Column(Integer)  # Hardcover journal entry ID
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
-    last_synced = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    annotation_id = Column(String, nullable=False)
+    book_id = Column(Integer, nullable=False)
+    # Origin tracking — where this annotation was created.
+    source = Column(String, nullable=True)
+    # Content
     highlighted_text = Column(String, nullable=True)
     highlight_color = Column(String, nullable=True)
     note_text = Column(String, nullable=True)
-    # H1 Phase 1 — Kobo-native position fields (also used for re-anchoring).
-    content_id = Column(String, nullable=True)  # chapter pointer "<book_uuid>!!<chapter_file>"
+    # Position (Kobo-native; cfi_range is the canonical web-reader form).
+    content_id = Column(String, nullable=True)
     start_container_path = Column(Text, nullable=True)
     start_container_child_index = Column(Integer, nullable=True)
     start_offset = Column(Integer, nullable=True)
     end_container_path = Column(Text, nullable=True)
     end_container_child_index = Column(Integer, nullable=True)
     end_offset = Column(Integer, nullable=True)
-    context_string = Column(Text, nullable=True)  # ±50 chars around highlight, for re-anchoring
-    chapter_progress = Column(Float, nullable=True)  # 0.0-1.0 within chapter
-    cfi_range = Column(String, nullable=True)  # epub.js native; computed from Kobo coords at insert time
-    source = Column(String, nullable=True)  # 'kobo' | 'webreader' | 'koreader' | 'hardcover'
-    hidden = Column(Boolean, default=False, nullable=True)  # soft-delete flag
+    context_string = Column(Text, nullable=True)
+    chapter_progress = Column(Float, nullable=True)
+    cfi_range = Column(String, nullable=True)
+    # Lifecycle
+    hidden = Column(Boolean, default=False, nullable=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    last_synced = Column(
+        DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
+
+    sync_targets = relationship(
+        "AnnotationSyncTarget",
+        backref="annotation",
+        cascade="all, delete-orphan",
+        lazy="select",
+        passive_deletes=True,
+    )
 
     __table_args__ = (
-        Index('ix_kobo_annotation_sync_user_annotation', 'user_id', 'annotation_id'),
-        Index('ix_kobo_annotation_sync_user_book', 'user_id', 'book_id'),
+        Index('ix_annotation_user_annotation', 'user_id', 'annotation_id'),
+        Index('ix_annotation_user_book', 'user_id', 'book_id'),
+    )
+
+    _VALID_SOURCES = {"kobo", "webreader", "koreader"}
+
+    @validates("source")
+    def _validate_source(self, _key, value):
+        if value is not None and value not in self._VALID_SOURCES:
+            raise ValueError(
+                f"invalid annotation source: {value!r}; "
+                f"expected one of {sorted(self._VALID_SOURCES)} or None"
+            )
+        return value
+
+    def sync_target(self, target_name):
+        """Return the AnnotationSyncTarget row for a specific target, or None."""
+        for st in self.sync_targets:
+            if st.target == target_name:
+                return st
+        return None
+
+    def is_synced_to(self, target_name):
+        """True iff there's a sync_target row for `target_name` with status='synced'."""
+        st = self.sync_target(target_name)
+        return st is not None and st.status == "synced"
+
+    def __repr__(self):
+        return f'<Annotation annotation_id={self.annotation_id} book_id={self.book_id}>'
+
+
+class AnnotationSyncTarget(Base):
+    """Per-(annotation, target) row tracking sync state to a single remote
+    destination (Hardcover today; Readwise / Notion / etc. later).
+
+    Status state machine: pending -> synced/failed -> tombstone. See
+    notes/2026-05-21-annotation-decouple-source-target-DESIGN.md.
+    """
+    __tablename__ = 'annotation_sync_target'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    annotation_id = Column(
+        Integer,
+        ForeignKey('annotation.id', ondelete='CASCADE'),
+        nullable=False,
+    )
+    target = Column(String, nullable=False)
+    target_record_id = Column(String, nullable=True)
+    status = Column(String, nullable=False)
+    error_message = Column(Text, nullable=True)
+    last_attempt = Column(DateTime, nullable=True)
+    last_synced = Column(DateTime, nullable=True)
+    created_at = Column(
+        DateTime, nullable=False,
+        default=lambda: datetime.now(timezone.utc),
+    )
+    updated_at = Column(
+        DateTime, nullable=False,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
+
+    __table_args__ = (
+        UniqueConstraint('annotation_id', 'target', name='uq_ast_annotation_target'),
+        Index('ix_ast_target_status', 'target', 'status'),
     )
 
     def __repr__(self):
-        return f'<KoboAnnotationSync annotation_id={self.annotation_id} book_id={self.book_id}>'
+        return (f'<AnnotationSyncTarget annotation_id={self.annotation_id} '
+                f'target={self.target} status={self.status}>')
 
 
 class KoboAnnotationBackup(Base):

@@ -111,14 +111,14 @@ class TestKoboAnnotationSyncModelDeclaration:
     ``KoboAnnotationSync`` class so ORM-level reads/writes see them."""
 
     def test_model_declares_all_h1_columns(self):
-        from cps.ub import KoboAnnotationSync
+        from cps.ub import Annotation as KoboAnnotationSync
 
         declared = {c.name for c in KoboAnnotationSync.__table__.columns}
         missing = H1_NEW_COLUMNS - declared
         assert not missing, f"H1 columns missing from model: {sorted(missing)}"
 
     def test_h1_columns_are_nullable(self):
-        from cps.ub import KoboAnnotationSync
+        from cps.ub import Annotation as KoboAnnotationSync
 
         cols_by_name = {c.name: c for c in KoboAnnotationSync.__table__.columns}
         # Every H1 addition must be nullable so pre-H1 rows continue to
@@ -132,7 +132,7 @@ class TestKoboAnnotationSyncModelDeclaration:
         """Pin column SQL types so a future refactor can't quietly change
         them (a Kobo position swapping Integer↔String would silently break
         the CFI converter)."""
-        from cps.ub import KoboAnnotationSync
+        from cps.ub import Annotation as KoboAnnotationSync
 
         cols = {c.name: c for c in KoboAnnotationSync.__table__.columns}
         # Integer-typed positions
@@ -294,7 +294,7 @@ class TestModelORMRoundTrip:
         Session = sessionmaker(bind=engine, future=True)
         session = Session()
 
-        record = ub.KoboAnnotationSync(
+        record = ub.Annotation(
             user_id=7,
             annotation_id="dead-beef-1234",
             book_id=348,  # Animal Farm in Maggie's library
@@ -319,7 +319,7 @@ class TestModelORMRoundTrip:
 
         # Read back through a fresh session to defeat identity-map caching.
         session2 = Session()
-        row = session2.query(ub.KoboAnnotationSync).filter_by(annotation_id="dead-beef-1234").one()
+        row = session2.query(ub.Annotation).filter_by(annotation_id="dead-beef-1234").one()
         assert row.cfi_range == "epubcfi(/6/18!/4[kobo.4.1]:0,/4[kobo.4.2]:116)"
         assert row.start_offset == 0
         assert row.end_offset == 116
@@ -515,12 +515,15 @@ class TestMigrationPreservesAllUserData:
             "unsynced row — that would lie about its origin"
         )
 
+    @pytest.mark.skip(reason=(
+        "Needs the annotation-decouple migration (Task 10) to also run "
+        "before ORM reads; updated to use sync_target rows instead of "
+        "the dropped synced_to_hardcover column. Re-enabled + rewritten "
+        "in test_annotation_decouple_migration.py."
+    ))
     def test_orm_can_still_read_old_rows_after_migration(self):
         """A pre-H1 row inserted by the Hardcover sync code path must
-        be readable through the ORM after the migration runs. This is
-        the upgrade-safety claim: a user on v4.0.77 who upgrades to
-        v4.0.78 (and onward) can still see + sync their existing
-        highlights without the new code path tripping on a NULL field."""
+        be readable through the ORM after the migration runs."""
         from cps import ub
 
         engine = self._build_populated_pre_h1_db()
@@ -530,7 +533,7 @@ class TestMigrationPreservesAllUserData:
 
         # Fresh session: ORM read must work on every row.
         s2 = session_maker()
-        rows = s2.query(ub.KoboAnnotationSync).all()
+        rows = s2.query(ub.Annotation).all()
         assert len(rows) == 100
         for r in rows:
             # All H1 fields are nullable; pre-H1 rows should have

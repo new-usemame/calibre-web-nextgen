@@ -197,15 +197,15 @@ def ingest_bookmarks(sqlite_path, user_id, session, book_lookup, commit) -> dict
 
         # Dedup: (user_id, annotation_id) is already indexed; one
         # SELECT covers the existence check.
-        existing = session.query(ub.KoboAnnotationSync.id).filter(
-            ub.KoboAnnotationSync.user_id == user_id,
-            ub.KoboAnnotationSync.annotation_id == bm.bookmark_id,
+        existing = session.query(ub.Annotation.id).filter(
+            ub.Annotation.user_id == user_id,
+            ub.Annotation.annotation_id == bm.bookmark_id,
         ).first()
         if existing is not None:
             skipped_existing += 1
             continue
 
-        row = ub.KoboAnnotationSync(
+        row = ub.Annotation(
             user_id=user_id,
             annotation_id=bm.bookmark_id,
             book_id=book_id,
@@ -271,19 +271,19 @@ def _load_user_annotations(user_id: int, book_id: int) -> list:
     chapter_progress so the export round-trips a sensible reading
     order even for books with hundreds of highlights."""
     return (
-        ub.session.query(ub.KoboAnnotationSync)
+        ub.session.query(ub.Annotation)
         .filter(
-            ub.KoboAnnotationSync.user_id == user_id,
-            ub.KoboAnnotationSync.book_id == book_id,
+            ub.Annotation.user_id == user_id,
+            ub.Annotation.book_id == book_id,
         )
         .filter(
-            (ub.KoboAnnotationSync.hidden.is_(None))
-            | (ub.KoboAnnotationSync.hidden == False)  # noqa: E712 — SQLA needs ==
+            (ub.Annotation.hidden.is_(None))
+            | (ub.Annotation.hidden == False)  # noqa: E712 — SQLA needs ==
         )
         .order_by(
-            ub.KoboAnnotationSync.chapter_progress.asc().nullslast(),
-            ub.KoboAnnotationSync.created_at.asc().nullslast(),
-            ub.KoboAnnotationSync.id.asc(),
+            ub.Annotation.chapter_progress.asc().nullslast(),
+            ub.Annotation.created_at.asc().nullslast(),
+            ub.Annotation.id.asc(),
         )
         .all()
     )

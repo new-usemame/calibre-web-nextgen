@@ -2234,7 +2234,9 @@ def reload_metadata_from_disk(book_id):
 
             if updated:
                 book.last_modified = datetime.now(timezone.utc)
-                calibre_db.session_commit("Reload metadata for book {} from disk".format(book.id))
+                calibre_db.session.commit()
+                log.info("Reloaded metadata for book %d from disk (fields: %s)",
+                         book.id, ', '.join(updated))
             else:
                 calibre_db.session.rollback()
     except Exception as ex:

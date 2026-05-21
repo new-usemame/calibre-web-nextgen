@@ -1972,6 +1972,161 @@ def migrate_kobo_annotation_sync_h1_columns(engine, _session):
         )
 
 
+def _migrate_step1_create_target_table(conn):
+    """Create annotation_sync_target table + indexes if not present."""
+    conn.execute(text("""
+        CREATE TABLE IF NOT EXISTS annotation_sync_target (
+            id                INTEGER PRIMARY KEY AUTOINCREMENT,
+            annotation_id     INTEGER NOT NULL,
+            target            VARCHAR NOT NULL,
+            target_record_id  VARCHAR,
+            status            VARCHAR NOT NULL,
+            error_message     TEXT,
+            last_attempt      DATETIME,
+            last_synced       DATETIME,
+            created_at        DATETIME NOT NULL,
+            updated_at        DATETIME NOT NULL,
+            UNIQUE (annotation_id, target),
+            FOREIGN KEY (annotation_id) REFERENCES annotation(id) ON DELETE CASCADE
+        )
+    """))
+    conn.execute(text(
+        "CREATE INDEX IF NOT EXISTS ix_ast_target_status "
+        "ON annotation_sync_target (target, status)"
+    ))
+
+
+def _migrate_step2_backfill_sync_state(conn):
+    """Copy synced_to_hardcover=1 rows into annotation_sync_target.
+
+    Idempotent — WHERE NOT EXISTS so re-runs insert nothing new.
+    Returns the row-count actually inserted.
+    """
+    result = conn.execute(text("""
+        INSERT INTO annotation_sync_target
+            (annotation_id, target, target_record_id, status,
+             last_synced, last_attempt, created_at, updated_at)
+        SELECT
+            kas.id,
+            'hardcover',
+            CAST(kas.hardcover_journal_id AS VARCHAR),
+            'synced',
+            kas.last_synced,
+            kas.last_synced,
+            kas.last_synced,
+            kas.last_synced
+        FROM kobo_annotation_sync kas
+        WHERE kas.synced_to_hardcover = 1
+          AND NOT EXISTS (
+              SELECT 1 FROM annotation_sync_target ast
+              WHERE ast.annotation_id = kas.id AND ast.target = 'hardcover'
+          )
+    """))
+    return result.rowcount
+
+
+def _migrate_step3_fix_source_values(conn):
+    """Correct source='hardcover' rows to source='kobo'. Idempotent."""
+    result = conn.execute(text(
+        "UPDATE kobo_annotation_sync SET source = 'kobo' WHERE source = 'hardcover'"
+    ))
+    return result.rowcount
+
+
+def _migrate_step4_sanity_check(conn):
+    """Refuse destructive steps unless backfill row counts match exactly."""
+    pre = conn.execute(text(
+        "SELECT COUNT(*) FROM kobo_annotation_sync WHERE synced_to_hardcover = 1"
+    )).scalar()
+    post = conn.execute(text(
+        "SELECT COUNT(*) FROM annotation_sync_target WHERE target = 'hardcover'"
+    )).scalar()
+    if pre != post:
+        raise RuntimeError(
+            f"[annotation-decouple-migration] count mismatch: "
+            f"pre-migration synced_to_hardcover=1 rows={pre}, "
+            f"post-backfill annotation_sync_target rows={post}"
+        )
+
+
+def _migrate_step5_rename_table(conn):
+    """Rename kobo_annotation_sync -> annotation."""
+    conn.execute(text("ALTER TABLE kobo_annotation_sync RENAME TO annotation"))
+
+
+def _migrate_step6_rename_indexes(conn):
+    """SQLite doesn't have ALTER INDEX RENAME; drop + create."""
+    conn.execute(text("DROP INDEX IF EXISTS ix_kobo_annotation_sync_user_annotation"))
+    conn.execute(text("DROP INDEX IF EXISTS ix_kobo_annotation_sync_user_book"))
+    conn.execute(text(
+        "CREATE INDEX IF NOT EXISTS ix_annotation_user_annotation "
+        "ON annotation (user_id, annotation_id)"
+    ))
+    conn.execute(text(
+        "CREATE INDEX IF NOT EXISTS ix_annotation_user_book "
+        "ON annotation (user_id, book_id)"
+    ))
+
+
+def _migrate_step7_drop_old_columns(conn):
+    """Drop synced_to_hardcover + hardcover_journal_id columns.
+
+    SQLite >= 3.35 supports DROP COLUMN. Each DROP is guarded by
+    column-existence so re-runs are no-ops.
+    """
+    from sqlalchemy import inspect as sa_inspect
+    inspector = sa_inspect(conn)
+    cols = {c["name"] for c in inspector.get_columns("annotation")}
+    if "synced_to_hardcover" in cols:
+        conn.execute(text("ALTER TABLE annotation DROP COLUMN synced_to_hardcover"))
+    if "hardcover_journal_id" in cols:
+        conn.execute(text("ALTER TABLE annotation DROP COLUMN hardcover_journal_id"))
+
+
+def migrate_annotation_decouple_source_target(engine, _session):
+    """Decouple annotation origin from sync target.
+
+    8-step transactional migration. Idempotent. See
+    notes/2026-05-21-annotation-decouple-source-target-DESIGN.md §4.
+
+    Refuses destructive steps if the sanity check (step 4) detects a
+    count mismatch — DB stays in pre-migration state in that case.
+    """
+    from sqlalchemy import inspect as sa_inspect
+
+    inspector = sa_inspect(engine)
+    tables = set(inspector.get_table_names())
+
+    # Step 0: idempotency check
+    if "annotation" in tables and "annotation_sync_target" in tables:
+        cols = {c["name"] for c in inspector.get_columns("annotation")}
+        if "synced_to_hardcover" not in cols and "hardcover_journal_id" not in cols:
+            log.info("[annotation-decouple-migration] target schema already in place; skip")
+            return
+    if "kobo_annotation_sync" not in tables:
+        log.info("[annotation-decouple-migration] no kobo_annotation_sync table; fresh install or already complete")
+        return
+
+    log.info("[annotation-decouple-migration] starting")
+    try:
+        with engine.begin() as conn:
+            _migrate_step1_create_target_table(conn)
+            inserted = _migrate_step2_backfill_sync_state(conn)
+            updated = _migrate_step3_fix_source_values(conn)
+            _migrate_step4_sanity_check(conn)
+            _migrate_step5_rename_table(conn)
+            _migrate_step6_rename_indexes(conn)
+            _migrate_step7_drop_old_columns(conn)
+            log.info(
+                "[annotation-decouple-migration] complete: "
+                "%d sync_target rows backfilled, %d source values corrected",
+                inserted, updated,
+            )
+    except Exception:
+        log.exception("[annotation-decouple-migration] failed; rolling back")
+        raise
+
+
 def migrate_Database(_session):
     engine = _session.bind
     add_missing_tables(engine, _session)
@@ -1988,6 +2143,7 @@ def migrate_Database(_session):
     migrate_kobo_unique_constraints(engine, _session)
     migrate_kobo_deleted_book(engine, _session)
     migrate_kobo_annotation_sync_h1_columns(engine, _session)
+    migrate_annotation_decouple_source_target(engine, _session)
     migrate_book_cover_preview_table(engine, _session)
 
     # Ensure progress syncing tables in app.db (user-related tables).

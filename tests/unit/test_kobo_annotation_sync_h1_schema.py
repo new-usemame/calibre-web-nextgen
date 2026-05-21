@@ -515,21 +515,20 @@ class TestMigrationPreservesAllUserData:
             "unsynced row — that would lie about its origin"
         )
 
-    @pytest.mark.skip(reason=(
-        "Needs the annotation-decouple migration (Task 10) to also run "
-        "before ORM reads; updated to use sync_target rows instead of "
-        "the dropped synced_to_hardcover column. Re-enabled + rewritten "
-        "in test_annotation_decouple_migration.py."
-    ))
     def test_orm_can_still_read_old_rows_after_migration(self):
         """A pre-H1 row inserted by the Hardcover sync code path must
-        be readable through the ORM after the migration runs."""
+        be readable through the ORM after the migration runs.
+
+        Post-decouple: both H1 and decouple migrations run in sequence
+        (matching production's migrate_Database() flow). The dropped
+        synced_to_hardcover column is replaced by sync_target rows."""
         from cps import ub
 
         engine = self._build_populated_pre_h1_db()
         session_maker = sessionmaker(bind=engine, future=True)
         session = session_maker()
         ub.migrate_kobo_annotation_sync_h1_columns(engine, session)
+        ub.migrate_annotation_decouple_source_target(engine, session)
 
         # Fresh session: ORM read must work on every row.
         s2 = session_maker()
@@ -544,9 +543,14 @@ class TestMigrationPreservesAllUserData:
             assert r.start_offset is None
             assert r.context_string is None
             assert r.hidden in (0, False)
-            # Hardcover-sync rows: source = 'hardcover'; unsynced: None.
-            if r.synced_to_hardcover:
-                assert r.source == "hardcover"
+            # Post-decouple: every previously-synced row gets a
+            # sync_target row with status='synced' AND source='kobo'
+            # (the 'hardcover' placeholder was corrected by the
+            # decouple migration). Unsynced rows have no sync_target.
+            hc = r.sync_target("hardcover")
+            if hc is not None:
+                assert hc.status == "synced"
+                assert r.source == "kobo"
             else:
                 assert r.source is None
             # The precious fields are non-None for synced rows.

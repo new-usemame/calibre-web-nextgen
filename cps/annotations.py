@@ -438,12 +438,27 @@ def _ensure_cfi_range(row, book) -> Optional[str]:
 def annotations_data(book_id):
     """Lightweight JSON list for the web reader — every visible
     annotation for the current user + book, with cfi_range computed on
-    the fly + cached if missing. Excludes hidden rows."""
+    the fly + cached if missing. Excludes hidden rows.
+
+    Sub-projects (3)/(4): also emits ``position_type``, ``pdf_page``,
+    ``pdf_quad`` (parsed from ``pdf_quad_json``) and ``comic_page`` so the
+    PDF / comic reader JS can decide how to overlay each row.
+    """
     book = _resolve_book_or_404(book_id)
     rows = _load_user_annotations(current_user.id, book_id)
     out = []
     for r in rows:
-        cfi = _ensure_cfi_range(r, book)
+        # CFI computation only applies to EPUB-origin rows. For PDF/comic
+        # rows, skip the lookup — they have their own position fields.
+        cfi = None
+        if getattr(r, "position_type", None) in (None, "cfi"):
+            cfi = _ensure_cfi_range(r, book)
+        pdf_quad = None
+        if r.pdf_quad_json:
+            try:
+                pdf_quad = json.loads(r.pdf_quad_json)
+            except (ValueError, TypeError):
+                pdf_quad = None
         out.append({
             "annotation_id": r.annotation_id,
             "cfi_range": cfi,
@@ -452,6 +467,10 @@ def annotations_data(book_id):
             "note_text": r.note_text,
             "chapter_progress": r.chapter_progress,
             "source": r.source,
+            "position_type": getattr(r, "position_type", None),
+            "pdf_page": getattr(r, "pdf_page", None),
+            "pdf_quad": pdf_quad,
+            "comic_page": getattr(r, "comic_page", None),
         })
     return jsonify({"annotations": out, "annotation_count": len(out)})
 

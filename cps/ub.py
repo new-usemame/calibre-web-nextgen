@@ -864,6 +864,13 @@ class Annotation(Base):
     context_string = Column(Text, nullable=True)
     chapter_progress = Column(Float, nullable=True)
     cfi_range = Column(String, nullable=True)
+    # Sub-project (3)/(4) — polymorphic position support for non-CFI formats.
+    # position_type values: 'cfi' (default for EPUB), 'pdf_quad', 'comic_page'.
+    # NULL on legacy rows means EPUB CFI (backward compatible).
+    position_type = Column(String, nullable=True)
+    pdf_page = Column(Integer, nullable=True)         # 1-indexed PDF page number
+    pdf_quad_json = Column(Text, nullable=True)       # JSON: [[x,y,w,h], ...] in PDF user-space coords
+    comic_page = Column(Integer, nullable=True)       # 1-indexed comic page (CBR/CBZ)
     # Lifecycle
     hidden = Column(Boolean, default=False, nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
@@ -887,6 +894,7 @@ class Annotation(Base):
     )
 
     _VALID_SOURCES = {"kobo", "webreader", "koreader"}
+    _VALID_POSITION_TYPES = {"cfi", "pdf_quad", "comic_page"}
 
     @validates("source")
     def _validate_source(self, _key, value):
@@ -894,6 +902,15 @@ class Annotation(Base):
             raise ValueError(
                 f"invalid annotation source: {value!r}; "
                 f"expected one of {sorted(self._VALID_SOURCES)} or None"
+            )
+        return value
+
+    @validates("position_type")
+    def _validate_position_type(self, _key, value):
+        if value is not None and value not in self._VALID_POSITION_TYPES:
+            raise ValueError(
+                f"invalid position_type: {value!r}; "
+                f"expected one of {sorted(self._VALID_POSITION_TYPES)} or None"
             )
         return value
 
@@ -2083,6 +2100,44 @@ def _migrate_step7_drop_old_columns(conn):
         conn.execute(text("ALTER TABLE annotation DROP COLUMN hardcover_journal_id"))
 
 
+def migrate_annotation_polymorphic_position(engine, _session):
+    """Sub-projects (3)/(4) — add polymorphic position columns to annotation.
+
+    Adds position_type, pdf_page, pdf_quad_json, comic_page. Idempotent —
+    each ADD COLUMN is guarded by existence check. Runs AFTER the decouple
+    migration (so the table is already named 'annotation').
+    """
+    from sqlalchemy import inspect as sa_inspect
+
+    inspector = sa_inspect(engine)
+    if "annotation" not in inspector.get_table_names():
+        return  # Fresh install — create_all already produced the full schema.
+
+    existing = {c["name"] for c in inspector.get_columns("annotation")}
+    pending = [
+        ("position_type",   "position_type VARCHAR"),
+        ("pdf_page",        "pdf_page INTEGER"),
+        ("pdf_quad_json",   "pdf_quad_json TEXT"),
+        ("comic_page",      "comic_page INTEGER"),
+    ]
+    statements = [
+        f"ALTER TABLE annotation ADD COLUMN {ddl}"
+        for col, ddl in pending if col not in existing
+    ]
+    if not statements:
+        return
+    try:
+        with engine.begin() as conn:
+            for stmt in statements:
+                conn.execute(text(stmt))
+        log.info(
+            "[annotation-polymorphic-position] added %d columns",
+            len(statements),
+        )
+    except Exception:
+        log.exception("[annotation-polymorphic-position] failed")
+
+
 def migrate_annotation_decouple_source_target(engine, _session):
     """Decouple annotation origin from sync target.
 
@@ -2164,6 +2219,7 @@ def migrate_Database(_session):
     migrate_kobo_deleted_book(engine, _session)
     migrate_kobo_annotation_sync_h1_columns(engine, _session)
     migrate_annotation_decouple_source_target(engine, _session)
+    migrate_annotation_polymorphic_position(engine, _session)
     migrate_book_cover_preview_table(engine, _session)
 
     # Ensure progress syncing tables in app.db (user-related tables).

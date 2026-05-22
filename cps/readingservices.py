@@ -115,30 +115,27 @@ def proxy_to_kobo_reading_services():
 
 
 def requires_reading_services_auth_and_config(f):
-    """
-    Auth decorator for Reading Services endpoints.
-    Checks if annotation sync is enabled and user is authenticated.
-    If not enabled or not authenticated, proxies the request to Kobo without processing.
+    """Auth gate for Reading Services endpoints.
+
+    Sub-project (2): the Hardcover-specific config check has been removed
+    from this gate. We always intercept Kobo PATCH requests when the user
+    is authenticated + Kobo sync is on — the dispatcher then decides which
+    enabled handlers (if any) to push to. This lets us capture annotations
+    locally even when Hardcover is off, which is the whole point of (2).
+
+    Authentication still relies on the Kobo-sync cookie (set during the
+    Kobo sync handshake). If Kobo sync is off OR the user isn't logged in,
+    we proxy through to Kobo untouched.
     """
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        # Check if annotation sync is enabled
-        if not config.config_hardcover_annotations_sync:
-            log.debug("Kobo annotation sync disabled, proxying to Kobo")
-            return proxy_to_kobo_reading_services()
-        
-        # Check if Kobo sync is enabled (annotation sync depends on it)
         if not config.config_kobo_sync:
             log.debug("Kobo sync disabled, proxying to Kobo")
             return proxy_to_kobo_reading_services()
-        
-        # Check if user is authenticated (cookie from Kobo sync)
         if current_user.is_authenticated:
             return f(*args, **kwargs)
-        else:
-            # User not authenticated - just proxy to Kobo
-            log.debug("Reading services request without auth, proxying to Kobo")
-            return proxy_to_kobo_reading_services()
+        log.debug("Reading services request without auth, proxying to Kobo")
+        return proxy_to_kobo_reading_services()
     return decorated_function
 
 

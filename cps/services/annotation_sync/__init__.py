@@ -52,8 +52,22 @@ def _now():
     return datetime.now(timezone.utc)
 
 
+def _book_uuid(book):
+    """Best-effort UUID extraction for the book (used to build content_id)."""
+    uuid_attr = getattr(book, "uuid", None)
+    if uuid_attr:
+        return uuid_attr
+    return None
+
+
 def _upsert_annotation(session, payload, book, user):
-    """Find-or-create Annotation row keyed on (user_id, annotation_id)."""
+    """Find-or-create Annotation row keyed on (user_id, annotation_id).
+
+    Populates content fields AND position fields from the Kobo PATCH payload
+    so subsequent CFI computation has everything it needs.  This is the
+    sub-project (2) work: annotation persistence happens unconditionally —
+    independent of any registered sync target (Hardcover etc.).
+    """
     from cps import ub
     annotation_id = payload.get("id")
     if not annotation_id:
@@ -74,16 +88,35 @@ def _upsert_annotation(session, payload, book, user):
             source="kobo",
         )
         session.add(ann)
-    # Update content fields from payload (only when present — preserve existing).
+    # If a previously soft-deleted (hidden) annotation comes back, un-hide it.
+    ann.hidden = False
+    # Content fields
     if "highlightedText" in payload:
         ann.highlighted_text = payload.get("highlightedText")
     if "noteText" in payload:
         ann.note_text = payload.get("noteText")
     if "highlightColor" in payload:
         ann.highlight_color = payload.get("highlightColor")
-    chapter_progress = (payload.get("location") or {}).get("span", {}).get("chapterProgress")
+    # Position fields — pulled from Kobo's location.span block.
+    span = (payload.get("location") or {}).get("span") or {}
+    chapter_progress = span.get("chapterProgress")
     if chapter_progress is not None:
         ann.chapter_progress = chapter_progress
+    chapter_filename = span.get("chapterFilename")
+    if chapter_filename:
+        uuid = _book_uuid(book)
+        if uuid:
+            ann.content_id = f"{uuid}!!{chapter_filename}"
+    if "startPath" in span:
+        ann.start_container_path = span.get("startPath")
+    if "endPath" in span:
+        ann.end_container_path = span.get("endPath")
+    if "startChar" in span:
+        ann.start_offset = span.get("startChar")
+    if "endChar" in span:
+        ann.end_offset = span.get("endChar")
+    if "contextString" in span or "context" in span:
+        ann.context_string = span.get("contextString") or span.get("context")
     ann.last_synced = _now()
     session.flush()
     return ann
@@ -185,7 +218,15 @@ def dispatch_annotation_sync(payload_annotations, book, user) -> None:
 
 
 def dispatch_annotation_deletes(deleted_ids, user) -> None:
-    """For each annotation_id, transition non-tombstone sync_targets via handler.delete."""
+    """For each annotation_id, transition non-tombstone sync_targets via
+    handler.delete AND soft-delete the local Annotation row by setting
+    ``hidden=True``.
+
+    Sub-project (2): local soft-delete happens unconditionally — independent
+    of any enabled sync target. Recovery is symmetric: a subsequent
+    create/update PATCH for the same annotation_id un-hides it via
+    ``_upsert_annotation``.
+    """
     from cps import ub
     if not deleted_ids:
         return
@@ -200,6 +241,7 @@ def dispatch_annotation_deletes(deleted_ids, user) -> None:
         )
         if ann is None:
             continue
+        # Push delete through any non-tombstone sync targets first.
         for st in list(ann.sync_targets):
             if st.status == "tombstone":
                 continue
@@ -212,6 +254,12 @@ def dispatch_annotation_deletes(deleted_ids, user) -> None:
                 log.exception("dispatcher: handler %s delete raised", handler.target_name)
                 result = SyncResult(status="failed", error_message=str(exc))
             _apply_result(st, result)
+        # Soft-delete the local row regardless of sync target outcome.
+        ann.hidden = True
+        log.info(
+            "annotation_sync: soft-delete annotation_id=%s (hidden=True)",
+            annotation_id,
+        )
     ub.session_commit()
 
 

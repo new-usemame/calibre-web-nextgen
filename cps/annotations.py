@@ -641,3 +641,58 @@ def create_annotation(payload, *, user_id, book, session, commit):
         log.warning("annotations: cfi compute on create failed: %s", e)
     commit()
     return row
+
+
+# Sentinel for "field not supplied" so edit can distinguish "set note to None"
+# (clear it) from "don't touch the note".
+_UNSET = object()
+
+
+def _find_owned_annotation(annotation_id, user_id, book_id, session):
+    """Resolve a single annotation scoped to its owner — the IDOR guard. A row
+    that belongs to another user (or doesn't exist) is invisible: returns
+    ``None`` so callers 404 rather than leaking/mutating a foreign row."""
+    return (
+        session.query(ub.Annotation)
+        .filter(
+            ub.Annotation.user_id == user_id,
+            ub.Annotation.book_id == book_id,
+            ub.Annotation.annotation_id == annotation_id,
+        )
+        .first()
+    )
+
+
+def edit_annotation(annotation_id, *, user_id, book_id, session, commit,
+                    color=_UNSET, note=_UNSET):
+    """Update an annotation's color and/or note. Position is immutable.
+
+    Returns the row, or ``None`` if no annotation with that id belongs to
+    ``(user_id, book_id)``. Raises ``ValueError`` on an unsupported color.
+    """
+    row = _find_owned_annotation(annotation_id, user_id, book_id, session)
+    if row is None:
+        return None
+    if color is not _UNSET:
+        normalized = (color or "").strip().lower()
+        if normalized not in WEBREADER_COLORS:
+            raise ValueError(f"edit_annotation: unsupported color {color!r}")
+        row.highlight_color = normalized
+    if note is not _UNSET:
+        row.note_text = note
+    row.last_synced = datetime.now(timezone.utc)
+    commit()
+    return row
+
+
+def delete_annotation(annotation_id, *, user_id, book_id, session, commit):
+    """Soft-delete an annotation (``hidden=True``). Idempotent: deleting an
+    already-hidden row resolves + returns it (route 200). Returns ``None`` when
+    no such row belongs to ``(user_id, book_id)`` (route 404)."""
+    row = _find_owned_annotation(annotation_id, user_id, book_id, session)
+    if row is None:
+        return None
+    row.hidden = True
+    row.last_synced = datetime.now(timezone.utc)
+    commit()
+    return row

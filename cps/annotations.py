@@ -696,3 +696,76 @@ def delete_annotation(annotation_id, *, user_id, book_id, session, commit):
     row.last_synced = datetime.now(timezone.utc)
     commit()
     return row
+
+
+def _fanout_to_sync_targets(row, book):
+    """Push a freshly created/edited web-reader row to enabled sync targets
+    (Hardcover today). Never fatal — a remote being down must not fail the
+    local highlight."""
+    try:
+        from .services import annotation_sync
+        annotation_sync.dispatch_existing_annotation_sync(row, book, current_user)
+    except Exception as e:  # pragma: no cover - defensive
+        log.warning("annotations: sync-target fan-out failed: %s", e)
+
+
+@annotations_bp.route("/annotations/<int:book_id>", methods=["POST"])
+@user_login_required
+def annotations_create(book_id):
+    """Create a highlight from a web-reader selection (source='webreader')."""
+    book = _resolve_book_or_404(book_id)
+    payload = request.get_json(silent=True) or {}
+    try:
+        row = create_annotation(
+            payload, user_id=current_user.id, book=book,
+            session=ub.session, commit=ub.session_commit,
+        )
+    except ValueError as e:
+        return jsonify({"error": "bad_anchor", "message": str(e)}), 400
+    _fanout_to_sync_targets(row, book)
+    return jsonify(_data_json_row(row, row.cfi_range, None)), 201
+
+
+@annotations_bp.route("/annotations/<int:book_id>/<annotation_id>", methods=["PATCH"])
+@user_login_required
+def annotations_edit(book_id, annotation_id):
+    """Edit a highlight's color and/or note (position immutable)."""
+    book = _resolve_book_or_404(book_id)
+    data = request.get_json(silent=True) or {}
+    kwargs = {}
+    if "highlight_color" in data:
+        kwargs["color"] = data.get("highlight_color")
+    if "note_text" in data:
+        kwargs["note"] = data.get("note_text")
+    try:
+        row = edit_annotation(
+            annotation_id, user_id=current_user.id, book_id=book_id,
+            session=ub.session, commit=ub.session_commit, **kwargs,
+        )
+    except ValueError as e:
+        return jsonify({"error": "bad_color", "message": str(e)}), 400
+    if row is None:
+        abort(404)
+    _fanout_to_sync_targets(row, book)
+    return jsonify(_data_json_row(row, row.cfi_range, None)), 200
+
+
+@annotations_bp.route("/annotations/<int:book_id>/<annotation_id>", methods=["DELETE"])
+@user_login_required
+def annotations_delete(book_id, annotation_id):
+    """Soft-delete a highlight + tombstone any remote sync targets."""
+    _resolve_book_or_404(book_id)
+    row = delete_annotation(
+        annotation_id, user_id=current_user.id, book_id=book_id,
+        session=ub.session, commit=ub.session_commit,
+    )
+    if row is None:
+        abort(404)
+    # Propagate the delete to any remote sync targets (Hardcover) — no-op when
+    # the row has none. Idempotent (re-sets hidden=True, skips tombstones).
+    try:
+        from .services import annotation_sync
+        annotation_sync.dispatch_annotation_deletes([annotation_id], current_user)
+    except Exception as e:  # pragma: no cover - defensive
+        log.warning("annotations: delete fan-out failed: %s", e)
+    return jsonify({"status": "deleted", "annotation_id": annotation_id}), 200

@@ -8,6 +8,14 @@ green; this gate covers the device write.
 Design: `notes/2026-05-25-annotation-two-way-phase1-phase2-DESIGN.md` §4.
 Until this passes, keep the plugin's "Sync highlights" toggle default **off**.
 
+> **Already verified (2026-05-25) against a real `KoboReader.sqlite`** (1,771
+> bookmarks) — see `feat-annotation-phase2-realdb-verification.md`: the
+> provider's INSERT satisfies every NOT-NULL constraint (a missing
+> `EndContainerChildIndex` was found + fixed this way), is idempotent, and the
+> readAll SELECT round-trips. So Tests 1/2 below are really confirming the
+> **Nickel render** + the live KOReader sqlite-FFI I/O — the SQL/schema fit is
+> already proven.
+
 ## Prerequisites
 
 - A physical Kobo running **KOReader** with the `cwasync.koplugin` from this

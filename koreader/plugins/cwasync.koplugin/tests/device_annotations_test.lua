@@ -51,9 +51,12 @@ local function testBuildBookmarkRow()
     assertEqual(row.VolumeID, "bk-uuid", "VolumeID = volume id")
     assertEqual(row.ContentID, "bk-uuid!!OEBPS/c1.xhtml", "ContentID passthrough")
     assertEqual(row.StartContainerPath, "span#kobo\\.4\\.1", "start selector escaped")
-    assertEqual(row.StartContainerChildIndex, -99, "child index sentinel")
+    assertEqual(row.StartContainerChildIndex, -99, "start child index sentinel")
     assertEqual(row.StartOffset, 3, "start offset")
     assertEqual(row.EndContainerPath, "span#kobo\\.4\\.2", "end selector escaped")
+    -- EndContainerChildIndex is NOT NULL with no default in the real Kobo
+    -- Bookmark schema — must be supplied or the INSERT is rejected on-device.
+    assertEqual(row.EndContainerChildIndex, -99, "end child index sentinel")
     assertEqual(row.EndOffset, 17, "end offset")
     assertEqual(row.Text, "the passage", "Text = highlighted_text")
     assertEqual(row.Annotation, "my note", "Annotation = note_text")
@@ -68,7 +71,7 @@ local function testBookmarkRowToPortable()
         StartContainerPath = "span#kobo\\.4\\.1", StartOffset = 0,
         EndContainerPath = "span#kobo\\.4\\.2", EndOffset = 9,
         Text = "passage", Annotation = "note", Color = 1,
-        ContextString = "ctx",
+        ContextString = "ctx", ChapterProgress = 0.42,
     }
     local p = KP.bookmarkRowToPortable(row)
     assertEqual(p.annotation_id, "dev-1", "annotation_id = BookmarkID")
@@ -80,6 +83,7 @@ local function testBookmarkRowToPortable()
     assertEqual(p.highlighted_text, "passage", "text")
     assertEqual(p.note_text, "note", "note")
     assertEqual(p.content_id, "bk-uuid!!OEBPS/c1.xhtml", "content_id")
+    assertEqual(p.chapter_progress, 0.42, "chapter progress carried")
 end
 
 testColorMapping()

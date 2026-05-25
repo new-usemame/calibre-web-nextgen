@@ -66,6 +66,7 @@ function KoboSqliteProvider.buildBookmarkRow(portable, volume_id)
         StartContainerChildIndex = -99,   -- kepub selector sentinel
         StartOffset = portable.start_offset or 0,
         EndContainerPath = KoboSqliteProvider.escapeKoboSpanSelector(portable.end_kobospan or portable.start_kobospan),
+        EndContainerChildIndex = -99,     -- NOT NULL in the real Kobo schema
         EndOffset = portable.end_offset or 0,
         Text = portable.highlighted_text,
         Annotation = portable.note_text,
@@ -91,6 +92,7 @@ function KoboSqliteProvider.bookmarkRowToPortable(row)
         end_kobospan = KoboSqliteProvider.extractKoboSpanId(row.EndContainerPath),
         end_offset = row.EndOffset or 0,
         context_string = row.ContextString,
+        chapter_progress = row.ChapterProgress,
         source = "kobo",
         device_origin_id = row.BookmarkID,
     }
@@ -138,8 +140,8 @@ function KoboSqliteProvider.readAll(volume_id)
     local ok2, err = pcall(function()
         local stmt = conn:prepare(
             "SELECT BookmarkID, VolumeID, ContentID, StartContainerPath, StartOffset, " ..
-            "EndContainerPath, EndOffset, Text, Annotation, Color, ContextString " ..
-            "FROM Bookmark WHERE VolumeID = ? AND Type = 'highlight'")
+            "EndContainerPath, EndOffset, Text, Annotation, Color, ContextString, " ..
+            "ChapterProgress FROM Bookmark WHERE VolumeID = ? AND Type = 'highlight'")
         local rs = stmt:reset():bind(volume_id):step()
         while rs ~= nil do
             out[#out + 1] = KoboSqliteProvider.bookmarkRowToPortable({
@@ -147,6 +149,7 @@ function KoboSqliteProvider.readAll(volume_id)
                 StartContainerPath = rs[4], StartOffset = rs[5],
                 EndContainerPath = rs[6], EndOffset = rs[7], Text = rs[8],
                 Annotation = rs[9], Color = rs[10], ContextString = rs[11],
+                ChapterProgress = rs[12],
             })
             rs = stmt:step()
         end
@@ -174,14 +177,15 @@ function KoboSqliteProvider.applyToDevice(portables, volume_id)
                     "INSERT OR IGNORE INTO Bookmark " ..
                     "(BookmarkID, VolumeID, ContentID, StartContainerPath, " ..
                     "StartContainerChildIndex, StartOffset, EndContainerPath, " ..
-                    "EndOffset, Text, Annotation, Color, ContextString, Type, " ..
-                    "DateCreated, DateModified, Hidden) " ..
-                    "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)")
+                    "EndContainerChildIndex, EndOffset, Text, Annotation, Color, " ..
+                    "ContextString, Type, DateCreated, DateModified, Hidden) " ..
+                    "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)")
                 stmt:reset():bind(
                     row.BookmarkID, row.VolumeID, row.ContentID, row.StartContainerPath,
                     row.StartContainerChildIndex, row.StartOffset, row.EndContainerPath,
-                    row.EndOffset, row.Text, row.Annotation, row.Color, row.ContextString,
-                    row.Type, row.DateCreated, row.DateModified, row.Hidden):step()
+                    row.EndContainerChildIndex, row.EndOffset, row.Text, row.Annotation,
+                    row.Color, row.ContextString, row.Type, row.DateCreated,
+                    row.DateModified, row.Hidden):step()
                 stmt:close()
                 inserted = inserted + 1
             end

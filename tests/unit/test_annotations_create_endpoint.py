@@ -161,6 +161,21 @@ class TestCreateAnnotation:
                 session=memory_db, commit=memory_db.commit,
             )
 
+    def test_create_builds_content_id_from_chapter_filename(self, memory_db, tmp_path, monkeypatch):
+        from cps import annotations as ann_mod, config
+        monkeypatch.setattr(config, "get_book_path", lambda: str(tmp_path / "library"))
+        book = _make_book(tmp_path, with_epub=True)
+        # The reader knows the chapter href but not the book uuid; the server
+        # builds the Kobo-valid "<uuid>!!<chapter>" content_id from book.uuid.
+        payload = _payload()
+        del payload["content_id"]
+        payload["chapter_filename"] = "chapter1.html"
+        row = ann_mod.create_annotation(
+            payload, user_id=7, book=book,
+            session=memory_db, commit=memory_db.commit,
+        )
+        assert row.content_id == "00000000-0000-0000-0000-deadbeefcafe!!chapter1.html"
+
     def test_create_tolerates_missing_epub(self, memory_db, tmp_path, monkeypatch):
         from cps import annotations as ann_mod, config
         monkeypatch.setattr(config, "get_book_path", lambda: str(tmp_path / "library"))

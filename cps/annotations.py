@@ -614,6 +614,17 @@ def create_annotation(payload, *, user_id, book, session, commit):
     if color not in WEBREADER_COLORS:
         color = "yellow"
 
+    # content_id is "<book_uuid>!!<chapter_file>". The reader knows the chapter
+    # href but not the book uuid, so when it sends a bare chapter_filename we
+    # build the Kobo-valid form here (the server has the Book). A directly
+    # supplied content_id wins.
+    content_id = payload.get("content_id")
+    if not content_id:
+        chapter = (payload.get("chapter_filename") or "").strip()
+        book_uuid = getattr(book, "uuid", None)
+        if chapter and book_uuid:
+            content_id = f"{book_uuid}!!{chapter}"
+
     row = ub.Annotation(
         user_id=user_id,
         annotation_id=WEBREADER_ID_PREFIX + uuid.uuid4().hex,
@@ -622,7 +633,7 @@ def create_annotation(payload, *, user_id, book, session, commit):
         highlighted_text=payload.get("highlighted_text"),
         highlight_color=color,
         note_text=payload.get("note_text"),
-        content_id=payload.get("content_id"),
+        content_id=content_id,
         start_container_path="span#" + start_span,
         start_container_child_index=-99,
         start_offset=int(payload.get("start_offset") or 0),

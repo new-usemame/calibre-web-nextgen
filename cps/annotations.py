@@ -39,6 +39,7 @@ import json
 import os
 import re
 import tempfile
+import uuid
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -570,3 +571,73 @@ def annotations_export_json(book_id):
         mimetype="application/json",
         headers={"Content-Disposition": f'attachment; filename="{fname}"'},
     )
+
+
+# ---------------------------------------------------------------------------
+# P5 — web-reader create / edit / delete
+# ---------------------------------------------------------------------------
+
+# Web-created highlights get an origin-tagged id so logs/exports can tell them
+# apart from a Kobo device's BookmarkID UUID, and so Phase 2's device bridge
+# can recognize a row it should materialize on a device.
+WEBREADER_ID_PREFIX = "cwn-web-"
+
+# The colors the web reader offers — the set a Kobo round-trips (Color 0..3).
+# Anything else is rejected so we never store a color a device can't represent.
+WEBREADER_COLORS = ("yellow", "red", "green", "blue")
+
+
+def create_annotation(payload, *, user_id, book, session, commit):
+    """Create a ``source='webreader'`` annotation from a reader selection.
+
+    ``payload`` carries the KoboSpan anchors the reader derived from the live
+    kepub DOM: ``start_kobospan`` / ``end_kobospan`` (bare ids like
+    ``kobo.4.1``), ``start_offset`` / ``end_offset``, ``content_id``,
+    ``highlighted_text``, ``highlight_color``, optional ``note_text``.
+
+    Stores the selection as Kobo-native fields (``span#<id>`` selector + the
+    ``-99`` kepub child-index sentinel) so the same converter that renders
+    device highlights renders these, and so Phase 2 can push them to a device.
+    Computes a portable ``cfi_range`` when the kepub is on disk; a missing CFI
+    is fine (the reader rebuilds one client-side from the KoboSpan id).
+
+    Pure-ish: dependencies are explicit so it's unit-testable without a Flask
+    request context — mirrors :func:`ingest_bookmarks`. Raises ``ValueError``
+    on a payload with no usable anchor.
+    """
+    start_span = (payload.get("start_kobospan") or "").strip()
+    if not start_span:
+        raise ValueError("create_annotation: missing start_kobospan anchor")
+    end_span = (payload.get("end_kobospan") or "").strip() or start_span
+
+    color = (payload.get("highlight_color") or "yellow").strip().lower()
+    if color not in WEBREADER_COLORS:
+        color = "yellow"
+
+    row = ub.Annotation(
+        user_id=user_id,
+        annotation_id=WEBREADER_ID_PREFIX + uuid.uuid4().hex,
+        book_id=book.id,
+        source="webreader",
+        highlighted_text=payload.get("highlighted_text"),
+        highlight_color=color,
+        note_text=payload.get("note_text"),
+        content_id=payload.get("content_id"),
+        start_container_path="span#" + start_span,
+        start_container_child_index=-99,
+        start_offset=int(payload.get("start_offset") or 0),
+        end_container_path="span#" + end_span,
+        end_container_child_index=-99,
+        end_offset=int(payload.get("end_offset") or 0),
+        context_string=payload.get("context_string"),
+        hidden=False,
+    )
+    session.add(row)
+    # Compute the portable CFI for export. Never fatal — the row stands on its
+    # KoboSpan anchor regardless. _ensure_cfi_range persists it itself.
+    try:
+        _ensure_cfi_range(row, book)
+    except Exception as e:  # pragma: no cover - defensive
+        log.warning("annotations: cfi compute on create failed: %s", e)
+    commit()
+    return row

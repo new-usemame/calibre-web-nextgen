@@ -952,7 +952,10 @@ def render_hidden_books(page, sort_param):
         config.config_read_column, allow_show_hidden=True)
 
     name = _('Hidden Books') + ' (' + str(len(hidden_book_ids)) + ')'
-    page_name = "hidden"
+    # NB: must not be "hidden" — layout.html renders <body class="{{ page }}">,
+    # and Bootstrap ships .hidden{display:none!important}, so page="hidden"
+    # blanks the whole page (issue #319). Keep a non-colliding identifier.
+    page_name = "hidden_books"
     return render_title_template('index.html', random=random, entries=entries, pagination=pagination,
                                  title=name, page=page_name, order=sort_param[1])
 
@@ -1179,6 +1182,15 @@ def index(page):
 @login_required_if_no_ano
 def books_list(data, sort_param, book_id, page):
     return render_books_list(data, sort_param, book_id, page)
+
+
+@web.route("/hidden")
+@login_required_if_no_ano
+def hidden_books_redirect():
+    # Bare /hidden was referenced in issue #64's comments but only
+    # /<data>/<sort_param> is routed by books_list, so /hidden 404'd
+    # (issue #319). Redirect to the canonical sorted listing.
+    return redirect(url_for("web.books_list", data="hidden", sort_param="stored"))
 
 
 @web.route("/magicshelf/preview", methods=["POST"])
@@ -3051,12 +3063,47 @@ def read_book(book_id, book_format):
 
     book.ordered_authors = calibre_db.order_authors([book], False)
 
-    # check if book has a bookmark
+    # Kobo annotation overlays anchor on KoboSpan ids (`kobo.x.y`), which
+    # the reader resolves in the live document to regenerate each
+    # highlight's CFI (see annotations.js). Those spans only exist in the
+    # .kepub, not the plain .epub. When an authenticated user opens an
+    # EPUB-family book for which they have annotations AND a KEPUB format
+    # exists, serve the kepub so the highlights can anchor and render.
+    # Scoped to annotated books so we don't change the reader format (and
+    # orphan epub-keyed bookmarks) for everyone.
+    if (
+        current_user.is_authenticated
+        and book_format.lower() == "epub"
+        and any((d.format or "").upper() == "KEPUB" for d in (book.data or []))
+    ):
+        try:
+            has_annotations = ub.session.query(ub.Annotation).filter(
+                ub.Annotation.user_id == int(current_user.id),
+                ub.Annotation.book_id == book_id,
+                ub.Annotation.hidden == False,  # noqa: E712
+            ).first() is not None
+        except Exception as e:
+            log.debug("read_book: annotation lookup failed for %d: %s", book_id, e)
+            has_annotations = False
+        if has_annotations:
+            log.debug("read_book: serving kepub for %d so annotation overlays resolve", book_id)
+            book_format = "kepub"
+
+    # check if book has a bookmark. Position is keyed by format, but the
+    # epub<->kepub switch above must not orphan it — match either
+    # epub-family format so the reading position survives.
     bookmark = None
     if current_user.is_authenticated:
-        bookmark = ub.session.query(ub.Bookmark).filter(and_(ub.Bookmark.user_id == int(current_user.id),
+        bm_q = ub.session.query(ub.Bookmark).filter(and_(ub.Bookmark.user_id == int(current_user.id),
+                                                         ub.Bookmark.book_id == book_id,
+                                                         ub.Bookmark.format == book_format.upper())).first()
+        if bm_q is None and book_format.lower() in ("epub", "kepub"):
+            # fall back to the sibling epub-family format's bookmark
+            sibling = "EPUB" if book_format.lower() == "kepub" else "KEPUB"
+            bm_q = ub.session.query(ub.Bookmark).filter(and_(ub.Bookmark.user_id == int(current_user.id),
                                                              ub.Bookmark.book_id == book_id,
-                                                             ub.Bookmark.format == book_format.upper())).first()
+                                                             ub.Bookmark.format == sibling)).first()
+        bookmark = bm_q
 
     kosync_progress = None
     if current_user.is_authenticated:
@@ -3195,7 +3242,12 @@ def show_book(book_id):
         log.error(f"Invalid book_id passed to show_book: {book_id}")
         flash(_("Invalid book ID."), category="error")
         return redirect(url_for("web.index"))
-    entries = calibre_db.get_book_read_archived(book_id, config.config_read_column, allow_show_archived=True)
+    # allow_show_hidden=True: a user who hid a book must still be able to open
+    # its detail page to unhide it (the Unhide toggle lives there). Without
+    # this the detail route 404s for hidden books and recovery is impossible
+    # (issue #319).
+    entries = calibre_db.get_book_read_archived(book_id, config.config_read_column,
+                                                allow_show_archived=True, allow_show_hidden=True)
     if entries:
         read_book = entries[1]
         archived_book = entries[2]

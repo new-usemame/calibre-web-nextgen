@@ -32,10 +32,28 @@ SELECT column lists against a copy of the real DB:
   volume went 577 → 578 highlights).
 - All my INSERT/SELECT column **names** exist in the real schema (0 unknown).
 
-## What still needs the physical device (tonight)
+## Nickel render — VERIFIED on real hardware (2026-05-26)
 
-Only the part that is irreducibly device-side: open the book in **stock Nickel**
-and confirm the inserted highlight **renders** there, plus the live KOReader I/O
-path (the plugin actually opening KoboReader.sqlite via its sqlite FFI + the
-backup file). The SQL correctness + idempotency + schema-fit are now proven.
-Run `notes/feat-annotation-koreader-bridge-device-verification.md`.
+Inserted a highlight with the provider's **exact 17-column output** into the
+operator's real device `KoboReader.sqlite` (backed up off-device first), anchored
+to a real KoboSpan in *The Iliad*, note `CWNG-BRIDGE-TEST`, `Color=2`. After a
+safe eject, **stock Nickel rendered it**: it appears in the book's Annotations
+list under "BOOK 9: THE EMBASSY", green, over the correct passage ("Seven new
+tripods and ten pounds of gold…"), with the note shown and correctly slotted
+into the chapter (dated "TODAY"). Operator-confirmed with a device photo.
+
+**Key finding:** it rendered with **only the 17 columns the provider sets** —
+Nickel did NOT require `UserID`, `ChapterProgress`, or `Published`
+(defaulted/NULL). So `buildBookmarkRow` needs no additional columns. This was
+the single irreducibly device-side unknown, and it passed.
+
+## Residual (lower-risk) — the actual plugin runtime on-device
+
+Still only unit-tested (not yet run inside KOReader on the device): the Lua
+plugin opening `KoboReader.sqlite` via its sqlite FFI + writing this exact
+INSERT + the backup file, and the pull/push transport over wifi. The pure logic
+(diff/merge, field mapping) is busted-tested; the server endpoints are verified
+over the wire; the INSERT/SELECT + the Nickel render are now proven against real
+hardware. What remains is mechanical glue — exercise it by installing the plugin
+and running `feat-annotation-koreader-bridge-device-verification.md` Tests 1/2
+when convenient. The device-write toggle stays **default-off** until that run.

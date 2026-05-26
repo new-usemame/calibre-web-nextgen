@@ -92,9 +92,19 @@ all four tests pass.
 
 ## Sign-off
 
-- [ ] Test 1 (web → Nickel) passed
+**2026-05-26 — render half proven by direct insert** (not via the plugin yet):
+a highlight with the provider's exact 17-column output, written straight into
+the real device `KoboReader.sqlite`, **rendered in stock Nickel** (green, correct
+passage, note shown, slotted into the right chapter). See
+`feat-annotation-phase2-realdb-verification.md`. So the SQL→Nickel path is
+confirmed; Tests 1/2 below now only need to confirm the *plugin* performs that
+write + the wifi pull/push (mechanical glue; pure logic already unit-tested).
+
+- [x] Nickel renders a provider-shaped highlight (direct-insert, 2026-05-26)
+- [ ] Test 1 (web → Nickel **via the plugin**) passed
 - [ ] Test 2 (device → web) passed
 - [ ] Test 3 (backup present + integrity ok) passed
 - [ ] Test 4 (idempotent, no dupes) passed
 
-Once all four pass, the device-write default may be flipped on in a follow-up.
+Once Tests 1–4 pass via the plugin, the device-write default may be flipped on
+in a follow-up.

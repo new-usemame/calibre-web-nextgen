@@ -147,6 +147,24 @@ class TestReferenceNginxConfig:
                 f"middleware depends on it for cookie domain + scheme."
             )
 
+    def test_uses_modern_http2_directive_not_deprecated_listen_form(self, nginx_ref):
+        """`listen ... http2;` combined form was deprecated in nginx
+        1.25.1 (2023). Users on modern nginx see a warning when they
+        validate the config. Use the standalone `http2 on;` directive
+        instead (Greptile review on fork PR #335)."""
+        # Strip comments first so we don't false-match the deprecation
+        # note explaining the deprecation.
+        body = re.sub(r"#[^\n]*", "", nginx_ref)
+        assert not re.search(r"listen\s+\d+\s+ssl\s+http2", body), (
+            "reference nginx config must not use the deprecated "
+            "`listen ... http2;` combined form. Use `listen ... ssl;` "
+            "+ standalone `http2 on;` instead."
+        )
+        assert "http2 on" in body, (
+            "reference nginx config must enable HTTP/2 via the "
+            "standalone `http2 on;` directive (nginx ≥1.25.1 standard)."
+        )
+
 
 @pytest.mark.unit
 def test_readme_links_to_reference_config():

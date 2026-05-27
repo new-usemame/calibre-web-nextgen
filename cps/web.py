@@ -2076,7 +2076,9 @@ def _repair_epub_container_if_needed(book_id, original_path):
 @viewer_required
 def serve_book(book_id, book_format, anyname):
     book_format = book_format.split(".")[0]
-    book = calibre_db.get_filtered_book(book_id)
+    # allow_show_hidden=True: the user can download their own hidden books
+    # from the detail page; the serve flow must mirror that (#319 pushback).
+    book = calibre_db.get_filtered_book(book_id, allow_show_hidden=True)
     if not book:
         return "File not in Database"
     data = calibre_db.get_book_format(book_id, book_format.upper())
@@ -2964,9 +2966,18 @@ def profile():
     )
     magic_shelf_order_string = ",".join(str(sid) for sid in magic_shelf_order_normalized)
 
+    # #319 pushback @droM4X: surface a discoverable link to /hidden/stored
+    # on the profile page when (and only when) the user has hidden books.
+    # The /hidden redirect alone wasn't reachable without already knowing
+    # the URL.
+    hidden_book_count = ub.session.query(ub.UserHiddenBook).filter(
+        ub.UserHiddenBook.user_id == current_user.id
+    ).count()
+
     return render_title_template("user_edit.html",
                                  translations=translations,
                                  profile=1,
+                                 hidden_book_count=hidden_book_count,
                                  languages=languages,
                                  content=current_user,
                                  config=config,
@@ -3053,7 +3064,10 @@ def app_password_revoke(app_password_id):
 @login_required_if_no_ano
 @viewer_required
 def read_book(book_id, book_format):
-    book = calibre_db.get_filtered_book(book_id)
+    # allow_show_hidden=True: a user can read their own hidden book — the
+    # detail page's reading icon must not bounce with "unavailable" just
+    # because the book is on the user's hide list (#319 pushback @droM4X).
+    book = calibre_db.get_filtered_book(book_id, allow_show_hidden=True)
 
     if not book:
         flash(_("Oops! Selected book is unavailable. File does not exist or is not accessible"),
@@ -3211,7 +3225,10 @@ def read_book(book_id, book_format):
     else:
         for fileExt in constants.EXTENSIONS_AUDIO:
             if book_format.lower() == fileExt:
-                entries = calibre_db.get_filtered_book(book_id)
+                # allow_show_hidden=True: mirror read_book's outer gate so
+                # the audio reader doesn't re-block a user's own hidden
+                # book after the outer check let them through (#319).
+                entries = calibre_db.get_filtered_book(book_id, allow_show_hidden=True)
                 log.debug("Start mp3 listening for %d", book_id)
                 return render_title_template('listenmp3.html', mp3file=book_id, audioformat=book_format.lower(),
                                              entry=entries, bookmark=bookmark)

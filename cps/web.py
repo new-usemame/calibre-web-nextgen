@@ -237,10 +237,23 @@ def toggle_hidden(book_id):
         ub.UserHiddenBook.book_id == int(book_id),
     ).first()
     if existing:
+        # Unhide path — always allowed regardless of admin feature flag,
+        # so an admin disabling the feature mid-flight cannot strand
+        # users' already-hidden books (#319 recovery defense-in-depth).
         ub.session.delete(existing)
         ub.session.commit()
         log.debug("Book %d unhidden for user %s", book_id, current_user.name)
     else:
+        # Hide path — gated on the admin feature flag (#319 SethMilliken).
+        # If the UI button is suppressed by the flag, a direct POST
+        # (curl, bookmarklet, browser extension) must not be able to
+        # bypass it. Mirrors the template gate in detail.html.
+        if not bool(getattr(config, 'config_user_hide_enabled', False)):
+            log.info(
+                "toggle_hidden refused for user %s book %d: hide feature disabled",
+                current_user.name, book_id,
+            )
+            abort(403)
         row = ub.UserHiddenBook(user_id=int(current_user.id), book_id=int(book_id))
         ub.session.add(row)
         try:

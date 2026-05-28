@@ -471,6 +471,34 @@ class TestToggleHiddenRouteGate:
 
 @pytest.mark.unit
 class TestRecoveryAlwaysAvailable:
+    def test_change_profile_error_path_also_passes_hidden_book_count(self, web_src):
+        """Greptile catch on PR #337: the GET profile() path computes
+        hidden_book_count, but the change_profile() error-path render
+        (validation-error re-render) historically didn't, so a user
+        with hidden books would see the recovery link silently
+        disappear after a bad save (e.g. invalid email). Pin that
+        BOTH render sites pass the count."""
+        # Find both render sites for user_edit.html and assert each
+        # call kwargs include hidden_book_count.
+        renders = re.findall(
+            r'render_title_template\(\s*["\']user_edit\.html["\'][^)]*\)',
+            web_src,
+            re.DOTALL,
+        )
+        assert len(renders) >= 2, (
+            f"Expected at least 2 render sites for user_edit.html "
+            f"(profile() GET + change_profile() error-path); found "
+            f"{len(renders)}. Either there are more re-render sites "
+            f"to update, or one was removed."
+        )
+        for r in renders:
+            assert "hidden_book_count" in r, (
+                "Every render_title_template('user_edit.html', ...) site "
+                "must pass hidden_book_count, otherwise the /me Hidden "
+                "Books link silently disappears on validation errors. "
+                f"Offender:\n{r[:300]}"
+            )
+
     def test_profile_hidden_books_link_not_gated_on_config_flag(self, user_edit_html):
         """If admin disables the hide feature while users still have
         hidden books, the Hidden Books link on /me must remain visible

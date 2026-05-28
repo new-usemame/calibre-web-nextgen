@@ -2853,11 +2853,21 @@ def change_profile(kobo_support, hardcover_support, local_oauth_check, oauth_sta
             available_ids
         )
         magic_shelf_order_string = ",".join(str(sid) for sid in magic_shelf_order_normalized)
+        # Fork #319: the GET profile() path computes hidden_book_count and
+        # passes it to gate the "Hidden Books (N)" link. This error-path
+        # render must do the same — otherwise a user who hits a validation
+        # error (e.g. invalid email) on profile save lands on a re-render
+        # without the link, even if they have hidden books that need
+        # recovery. (Greptile catch on PR #337.)
+        hidden_book_count = ub.session.query(ub.UserHiddenBook).filter(
+            ub.UserHiddenBook.user_id == current_user.id
+        ).count()
         return render_title_template("user_edit.html",
                                      content=current_user,
                                      config=config,
                                      translations=translations,
                                      profile=1,
+                                     hidden_book_count=hidden_book_count,
                                      languages=languages,
                                      system_shelf_templates=system_shelf_templates,
                                      hidden_shelf_templates=hidden_shelf_templates,

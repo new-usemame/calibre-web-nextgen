@@ -514,10 +514,25 @@ def _apply_response(ok: bool, message, book):
             book.last_modified = datetime.now(timezone.utc)
             calibre_db.set_metadata_dirty(book.id)
             calibre_db.session.commit()
+        except Exception as exc:
+            # The cover bytes are on disk but we could not record the change.
+            # Do NOT report success — the UI must not show a stale "saved"
+            # state when last_modified never persisted.
+            log.error("cover apply: failed to record cover change for book %s: %s", book.id, exc)
+            try:
+                calibre_db.session.rollback()
+            except Exception:
+                pass
+            return _json_error("commit_failed", _(u"Cover save failed."), 500)
+        # Post-commit best-effort: the cover is applied and the last_modified
+        # bump above already drives both the web cache-bust and Kobo
+        # re-selection, so a failure here self-heals on the next sync /
+        # thumbnail access. Log loudly but still report success.
+        try:
             kobo_sync_status.remove_synced_book(book.id, all=True)
             helper.replace_cover_thumbnail_cache(book.id)
-        except Exception as exc:  # pragma: no cover - defensive
-            log.warning("post-apply cover housekeeping failed: %s", exc)
+        except Exception as exc:
+            log.error("post-apply cover housekeeping failed for book %s: %s", book.id, exc)
         return jsonify({
             "ok": True,
             "cover_url": url_for("web.get_cover", book_id=book.id, resolution="og") + f"?ts={int(datetime.now(timezone.utc).timestamp())}",

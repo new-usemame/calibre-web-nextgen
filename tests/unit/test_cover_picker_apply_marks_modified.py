@@ -99,6 +99,35 @@ class TestCoverApplyMarksModified:
         set_dirty.assert_not_called()
         assert resp.status_code == 400
 
+    def test_commit_failure_reports_error_and_skips_post_commit(self):
+        """If recording the cover change fails, the apply must NOT report
+        success (the cover bytes are on disk but last_modified never
+        persisted) and must not run the post-commit Kobo/thumbnail steps."""
+        from cps import cover_picker
+
+        book = _fake_book()
+        app = flask.Flask(__name__)
+        failing_session = MagicMock()
+        failing_session.commit.side_effect = RuntimeError("db is locked")
+        with app.test_request_context():
+            with patch.object(cover_picker.calibre_db, "session", failing_session), \
+                 patch.object(cover_picker.calibre_db, "set_metadata_dirty"), \
+                 patch("cps.kobo_sync_status.remove_synced_book") as remove_synced, \
+                 patch.object(cover_picker.helper, "replace_cover_thumbnail_cache") as thumb, \
+                 patch("cps.cover_picker._", side_effect=lambda s: s), \
+                 patch(
+                     "cps.cover_picker.url_for",
+                     side_effect=lambda ep, **kw: f"/cover/{kw.get('book_id')}/{kw.get('resolution')}",
+                 ):
+                resp = cover_picker._apply_response(True, None, book)
+
+        assert resp.status_code == 500
+        body = json.loads(resp.get_data(as_text=True))
+        assert body.get("ok") is False
+        failing_session.rollback.assert_called_once()
+        remove_synced.assert_not_called()
+        thumb.assert_not_called()
+
     def test_source_pins_sync_invariant(self):
         """Refactor guard: a future cleanup of the apply path must not
         silently drop the cache/sync invalidation that fixes the

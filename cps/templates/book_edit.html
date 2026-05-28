@@ -2,21 +2,13 @@
 {% block body %}
 {% if book %}
   <div class="editbook-cover-section col-sm-3 col-lg-3 col-xs-12">
-    <div class="cover{% if current_user.role_edit() %} cover-editable{% endif %}">
+    {# No clickable cover overlay here (unlike the detail page): this page hosts
+       the metadata edit form, and a large cover-sized navigation target would
+       risk discarding unsaved edits on an accidental click. The explicit
+       "Change cover" button below is the intentional entry point. #}
+    <div class="cover">
         <!-- Always use full-sized image for the book edit page -->
         <img id="detailcover" title="{{book.title}}" src="{{url_for('web.get_cover', book_id=book.id, resolution='og', c=book|last_modified)}}" />
-        {% if current_user.role_edit() %}
-        <a href="{{ url_for('cover_picker.cover_picker_page', book_id=book.id) }}"
-           class="cover-change-overlay" aria-label="{{ _('Change cover') }}" title="{{ _('Change cover') }}">
-            <span class="cover-change-overlay__hint">
-                <span class="glyphicon glyphicon-picture" aria-hidden="true"></span>
-                <span>{{ _('Change cover') }}</span>
-            </span>
-            <span class="cover-change-badge" aria-hidden="true">
-                <span class="glyphicon glyphicon-picture"></span>
-            </span>
-        </a>
-        {% endif %}
     </div>
 {% if current_user.role_delete_books() %}
     <div class="text-center">

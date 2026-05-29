@@ -10,11 +10,18 @@ title overlaps the cover) and the overlay-vs-image alignment delta per engine.
 Run: /Users/acoundou/.pyenv/versions/3.12.7/bin/python3 tests/manual/measure_cover_grid.py
 NOT a pytest — a diagnostic harness kept under tests/manual/ for repro.
 """
+import os
 import sys
 from playwright.sync_api import sync_playwright
 
-BASE = "http://localhost:8086"
-USER, PW = "cwng84test", "cwng-test-84"
+BASE = os.getenv("CWN_TEST_BASE", "http://localhost:8086")
+# Credentials come from the environment so no password is committed to the
+# repo (Greptile catch on PR #344). For the standing local cwn-local test
+# user, export CWN_TEST_USER / CWN_TEST_PW before running.
+USER = os.getenv("CWN_TEST_USER", "cwng84test")
+PW = os.getenv("CWN_TEST_PW")
+if not PW:
+    sys.exit("Set CWN_TEST_PW (and optionally CWN_TEST_USER) before running this harness.")
 
 MEASURE_JS = r"""
 () => {

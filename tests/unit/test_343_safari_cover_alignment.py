@@ -26,7 +26,7 @@ disagreed on.
 This source-pin ties the fix to the exact rule. If a future refactor
 drops `vertical-align` from the cover anchor, the Safari overlap returns
 and this test trips. The behavioural proof is the cross-engine Playwright
-measurement (documented in the PR + tests/manual/measure_cover_grid.py);
+measurement (documented in the PR + scripts/manual/measure_cover_grid.py);
 this unit test is the CI-runnable guard.
 """
 

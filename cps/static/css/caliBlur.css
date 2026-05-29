@@ -1522,7 +1522,7 @@ button#btn-book-convert {
        block ~7px up so the title overlaps the cover (Chromium reserves
        +10px). vertical-align:top removes the baseline dependency so both
        engines render identical spacing. Verified -7px(webkit)/-6px(mobile)
-       -> +10px across webkit+chromium via tests/manual/measure_cover_grid.py */
+       -> +10px across webkit+chromium via scripts/manual/measure_cover_grid.py */
     vertical-align: top;
 }
 

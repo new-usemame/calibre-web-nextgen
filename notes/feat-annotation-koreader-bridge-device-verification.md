@@ -108,3 +108,28 @@ write + the wifi pull/push (mechanical glue; pure logic already unit-tested).
 
 Once Tests 1–4 pass via the plugin, the device-write default may be flipped on
 in a follow-up.
+
+## Known limitations (found during P1+P2 integration, 2026-05-30)
+
+Surfaced while writing `tests/unit/test_kobo_sqlite_provider_real_schema.py`
+(replays the provider's exact INSERT/SELECT against the real `Bookmark` schema —
+embedded for CI, and against a real device-DB copy locally; all green):
+
+1. **`INSERT OR IGNORE` turns a malformed row into a silent skip, not an error.**
+   If `buildBookmarkRow` ever emits a row missing a NOT-NULL column (the class of
+   bug the May-26 run caught for `EndContainerChildIndex`), the device write is
+   *silently dropped* — the highlight just never appears on the Kobo, with no
+   crash and no log line. Safer for the DB than a hard failure, but harder to
+   diagnose. The schema-fit test now pins both the constraint (a plain INSERT
+   raises) and this behaviour (OR IGNORE skips) so neither can regress unnoticed.
+
+2. **`applyToDevice` over-counts.** It does `inserted = inserted + 1` after every
+   `stmt:step()` regardless of whether OR IGNORE actually wrote the row. So the
+   "N highlights synced to device" message counts *attempts*, not inserts —
+   re-syncing an unchanged book (all BookmarkIDs already present → all ignored)
+   still reports the full N, and a malformed row inflates the count. Cosmetic
+   only (user-facing info text in an experimental, default-off feature); not a
+   data-correctness issue. Fixing it needs `sqlite_changes()` after each step,
+   which is `lua-ljsqlite3`-specific and only exercisable on-device — deferred to
+   the same hardware session that runs Tests 1–4, so it can be verified, not
+   guessed. Tracked here rather than silently shipped.

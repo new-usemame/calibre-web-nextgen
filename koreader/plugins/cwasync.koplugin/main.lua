@@ -1520,12 +1520,19 @@ function CWASync:syncAnnotations(interactive)
             if #diff.send_to_server > 0 then
                 client:push_annotations(self.settings.username, self.settings.password, digest,
                     diff.send_to_server,
-                    function(_ok2, _body2)
+                    function(ok2, _body2)
                         if interactive then
-                            UIManager:show(InfoMessage:new{
-                                text = T(_("Highlights synced: %1 to device, %2 to server."), applied, #diff.send_to_server),
-                                timeout = 4,
-                            })
+                            if ok2 then
+                                UIManager:show(InfoMessage:new{
+                                    text = T(_("Highlights synced: %1 to device, %2 to server."), applied, #diff.send_to_server),
+                                    timeout = 4,
+                                })
+                            else
+                                UIManager:show(InfoMessage:new{
+                                    text = T(_("Highlights synced: %1 to device. Server push failed."), applied),
+                                    timeout = 4,
+                                })
+                            end
                         end
                     end)
             elseif interactive then

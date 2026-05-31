@@ -162,10 +162,20 @@ end
 
 -- Write annotations the server says belong on this device. INSERT OR IGNORE
 -- only (idempotent on BookmarkID); never UPDATE/DELETE Nickel's own rows in v1.
--- Returns the count inserted. Backs up before the first insert.
+-- Returns the count inserted. Backs up before the first insert of a session:
+-- `_backed_up` is a module-level flag so pressing "Sync highlights now"
+-- repeatedly in one KOReader run snapshots KoboReader.sqlite once, not once per
+-- call (an unguarded backup fills /mnt/onboard with full-size copies). A failed
+-- backup leaves the flag clear so the next call retries before any write.
+local _backed_up = false
+
 function KoboSqliteProvider.applyToDevice(portables, volume_id)
     if not portables or #portables == 0 then return 0 end
-    KoboSqliteProvider.backup()
+    if not _backed_up then
+        if KoboSqliteProvider.backup() then
+            _backed_up = true
+        end
+    end
     local ok, conn = pcall(open_db)
     if not ok then return 0 end
     local inserted = 0

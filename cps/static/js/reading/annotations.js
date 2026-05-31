@@ -191,7 +191,7 @@
         if (!rows.length) {
             var empty = document.createElement("li");
             empty.className = "text-muted small";
-            empty.textContent = "No annotations on this book.";
+            empty.textContent = t("noAnnotations", "No annotations on this book yet.");
             ol.appendChild(empty);
             return;
         }
@@ -334,6 +334,13 @@
         if (p && p.parentNode) { p.parentNode.removeChild(p); }
     }
 
+    // User-facing popup strings come translated from read.html (window.calibre
+    // .annotationsI18n) so they follow the reader's i18n convention; English
+    // fallbacks keep the popup working if the bridge is ever absent.
+    function annI18n() { return (window.calibre && window.calibre.annotationsI18n) || {}; }
+    function t(key, fallback) { var v = annI18n()[key]; return (typeof v === "string" && v) ? v : fallback; }
+    function colorLabel(c) { var m = annI18n().colors || {}; return (typeof m[c] === "string" && m[c]) ? m[c] : c; }
+
     function makeSwatchRow(selected, onPick) {
         var wrap = document.createElement("div");
         wrap.className = "cwa-ann-swatches";
@@ -341,7 +348,7 @@
             var b = document.createElement("button");
             b.type = "button";
             b.className = "cwa-ann-swatch cwa-ann-swatch-" + c + (c === selected ? " is-selected" : "");
-            b.setAttribute("aria-label", c);
+            b.setAttribute("aria-label", colorLabel(c));
             b.style.background = "rgb(" + NAMED_RGB[c].join(",") + ")";
             b.addEventListener("click", function () {
                 wrap.querySelectorAll(".cwa-ann-swatch").forEach(function (s) { s.classList.remove("is-selected"); });
@@ -368,18 +375,18 @@
         if (!anchor) {
             var msg = document.createElement("div");
             msg.className = "cwa-ann-msg";
-            msg.textContent = "Select within a paragraph to highlight.";
+            msg.textContent = t("selectWithin", "Select within a paragraph to highlight.");
             popup.appendChild(msg);
         } else {
             popup.appendChild(makeSwatchRow("yellow", function (c) { chosen.color = c; }));
             var note = document.createElement("textarea");
             note.className = "cwa-ann-note";
-            note.placeholder = "Add a note (optional)";
+            note.placeholder = t("addNote", "Add a note (optional)");
             popup.appendChild(note);
             var actions = document.createElement("div");
             actions.className = "cwa-ann-actions";
             var save = document.createElement("button");
-            save.type = "button"; save.className = "cwa-ann-save"; save.textContent = "Save";
+            save.type = "button"; save.className = "cwa-ann-save"; save.textContent = t("save", "Save");
             save.addEventListener("click", function () {
                 save.disabled = true;
                 apiFetch("POST", apiBase(), {
@@ -404,7 +411,7 @@
             });
             actions.appendChild(save);
             var cancel = document.createElement("button");
-            cancel.type = "button"; cancel.className = "cwa-ann-cancel"; cancel.textContent = "Cancel";
+            cancel.type = "button"; cancel.className = "cwa-ann-cancel"; cancel.textContent = t("cancel", "Cancel");
             cancel.addEventListener("click", removePopup);
             actions.appendChild(cancel);
             popup.appendChild(actions);
@@ -424,13 +431,13 @@
         popup.appendChild(makeSwatchRow(chosen.color, function (c) { chosen.color = c; }));
         var note = document.createElement("textarea");
         note.className = "cwa-ann-note";
-        note.placeholder = "Note";
+        note.placeholder = t("note", "Note");
         note.value = row.note_text || "";
         popup.appendChild(note);
         var actions = document.createElement("div");
         actions.className = "cwa-ann-actions";
         var save = document.createElement("button");
-        save.type = "button"; save.className = "cwa-ann-save"; save.textContent = "Save";
+        save.type = "button"; save.className = "cwa-ann-save"; save.textContent = t("save", "Save");
         save.addEventListener("click", function () {
             save.disabled = true;
             apiFetch("PATCH", apiBase() + "/" + encodeURIComponent(row.annotation_id),
@@ -441,7 +448,7 @@
         });
         actions.appendChild(save);
         var del = document.createElement("button");
-        del.type = "button"; del.className = "cwa-ann-delete"; del.textContent = "Delete";
+        del.type = "button"; del.className = "cwa-ann-delete"; del.textContent = t("del", "Delete");
         del.addEventListener("click", function () {
             del.disabled = true;
             apiFetch("DELETE", apiBase() + "/" + encodeURIComponent(row.annotation_id), null)
@@ -451,7 +458,7 @@
         });
         actions.appendChild(del);
         var cancel = document.createElement("button");
-        cancel.type = "button"; cancel.className = "cwa-ann-cancel"; cancel.textContent = "Cancel";
+        cancel.type = "button"; cancel.className = "cwa-ann-cancel"; cancel.textContent = t("cancel", "Cancel");
         cancel.addEventListener("click", removePopup);
         actions.appendChild(cancel);
         popup.appendChild(actions);

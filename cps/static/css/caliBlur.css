@@ -7474,6 +7474,12 @@ body.edituser.admin > div.container-fluid > div.row-fluid > div.col-sm-10 > div.
         width: 225px
     }
 
+    #main-nav + #scnd-nav .nav-head.shelf-section-header {
+        display: flex !important;
+        align-items: center;
+        width: 225px;
+    }
+
     .shelforder #sortTrue > div:before {
         opacity: 1;
         pointer-events: auto;

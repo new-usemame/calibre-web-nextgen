@@ -1416,8 +1416,17 @@ def migrate_oauth_provider_table(engine, _session):
     ]
     for col, coltype in managed_columns:
         if col not in existing:
-            # one ALTER per call so a stray duplicate column can't roll back the rest
-            _run_ddl_with_retry(engine, "ALTER TABLE oauthProvider ADD column '{}' {}".format(col, coltype))
+            # One ALTER per call so a stray duplicate column can't roll back the
+            # rest, and tolerate "duplicate column name" per column: a concurrent
+            # boot (gunicorn pre-fork) or a column present-but-absent-from-snapshot
+            # can make ADD COLUMN raise it. Without swallowing it here the error
+            # propagates and aborts every remaining column for a full boot cycle
+            # (fork #354 / PR #355 hardening). Treat it as already-applied.
+            try:
+                _run_ddl_with_retry(engine, "ALTER TABLE oauthProvider ADD column '{}' {}".format(col, coltype))
+            except exc.OperationalError as e:
+                if "duplicate column name" not in str(e).lower():
+                    raise
 
 
 def migrate_config_table(engine, _session):

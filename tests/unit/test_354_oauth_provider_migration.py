@@ -188,3 +188,65 @@ def test_all_new_schema_noop():
     without error. Behaviour-preservation pin — green on main and on the fix."""
     cols = _with_db(extra_columns=sorted(MANAGED_COLUMNS))
     assert MANAGED_COLUMNS <= cols
+
+
+def test_duplicate_column_midloop_does_not_abort_remaining(monkeypatch):
+    """A managed column that physically exists but is absent from the
+    introspected snapshot makes ``ADD COLUMN`` raise ``duplicate column name``
+    mid-loop. The migration must treat that as already-applied and keep adding
+    the remaining columns, not abort the loop.
+
+    This is the concurrent-startup race (Greptile P2 on PR #355): two workers
+    boot together, both snapshot the same ``existing`` set, one adds a column
+    and the other's ALTER then hits ``duplicate column name`` — a non-lock
+    ``OperationalError`` that ``_run_ddl_with_retry`` re-raises. Before the
+    hardening the exception propagates out of the for-loop and every column
+    *after* the racy one stays missing for a full boot cycle (so OAuth init
+    keeps failing and ``/admin/config`` keeps 500ing); afterwards the loop
+    swallows duplicate-column and continues.
+
+    We reproduce it deterministically: ``oauth_token_url`` (middle of the
+    managed list) physically exists, but a wrapper inspector hides it from the
+    snapshot, so the loop tries to re-add it and SQLite raises the real
+    ``duplicate column name`` error. RED before the fix (the seven columns
+    after ``oauth_token_url`` stay missing); GREEN after.
+    """
+    engine, path = _make_partial_db(
+        extra_columns=["oauth_base_url", "oauth_authorize_url", "oauth_token_url"]
+    )
+    try:
+        import sqlalchemy
+
+        real_inspect = sqlalchemy.inspect
+
+        class _StaleInspector:
+            """Delegates to the real inspector but drops ``oauth_token_url``
+            from the oauthProvider column snapshot — i.e. a stale/racy view in
+            which a column the table actually has looks missing."""
+
+            def __init__(self, real):
+                self._real = real
+
+            def __getattr__(self, name):
+                return getattr(self._real, name)
+
+            def get_columns(self, table_name, *a, **k):
+                cols = self._real.get_columns(table_name, *a, **k)
+                if table_name == "oauthProvider":
+                    return [c for c in cols if c["name"] != "oauth_token_url"]
+                return cols
+
+        monkeypatch.setattr(
+            sqlalchemy, "inspect", lambda bind: _StaleInspector(real_inspect(bind))
+        )
+        _run_migration(engine)
+        monkeypatch.undo()  # verify the real schema with the real inspector
+
+        missing = MANAGED_COLUMNS - _columns(engine)
+        assert not missing, (
+            "migration aborted on a duplicate-column ALTER and left managed "
+            f"columns missing: {sorted(missing)}"
+        )
+    finally:
+        engine.dispose()
+        os.unlink(path)

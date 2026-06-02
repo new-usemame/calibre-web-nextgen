@@ -482,10 +482,11 @@ $(function() {
     // view (IntersectionObserver). Click is the fallback for keyboard
     // nav / browsers without IntersectionObserver.
     window.cwaInit.loadMore = function () {
-        // Hide the bottom pagination — the tile supersedes it.
-        if ($(".load-more-tile").length) {
-            $(".pagination").addClass("hidden");
-        }
+        // Paginators (top + fork-#256 bottom) render visible on initial load so
+        // users can still jump to a page. They are NOT touched here so they
+        // stay visible until the user actually loads more — loadMoreFromTile
+        // hides them at that point, since page numbers are confusing once
+        // results are being appended inline.
 
         // Direct (not delegated) binding so this runs before
         // partial-nav.js's document-level click listener; preventDefault
@@ -540,6 +541,11 @@ $(function() {
         }
 
         $tile.addClass("is-loading");
+
+        // User committed to load-more: remove the fork-#256 bottom paginator.
+        // Page numbers are confusing once results are appended inline; the top
+        // paginator stays hidden (cwaInit.loadMore already hides it on init).
+        $(".pagination-bottom").remove();
 
         fetch(url, {
             credentials: "same-origin",

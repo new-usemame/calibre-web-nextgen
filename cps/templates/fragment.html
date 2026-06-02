@@ -56,6 +56,30 @@
       }}">{{_('Next')}} &raquo;</a></li>
   {% endif %}
   </div>
+  {# Fork #256 in-flow bottom paginator. layout.html renders this after the
+     book list; mirror it here so the bottom page-number control survives SPA
+     fragment swaps and load-more (otherwise it only existed on full loads). #}
+  <div class="pagination pagination-bottom">
+    {% if pagination.has_prev %}
+    <li class="page-item page-previous"><a class="page-link" aria-label="next page" href="{{ (pagination.page - 1)|url_for_other_page
+      }}">&laquo; {{_('Previous')}}</a></li>
+    {% endif %}
+  {% for page in pagination.iter_pages() %}
+    {% if page %}
+      {% if page != pagination.page %}
+        <li class="page-item"><a class="page-link" aria-label="to page {{ page }}" href="{{ (page)|url_for_other_page }}">{{ page }}</a></li>
+      {% else %}
+        <li class="page-item active"><a class="page-link" aria-label="to page {{ page }}" href="{{ (page)|url_for_other_page }}">{{ page }}</a></li>
+      {% endif %}
+    {% else %}
+      <li class="page-item page-last-separator disabled"><a class="page-link" aria-label="">…</a></li>
+    {% endif %}
+  {% endfor %}
+  {% if pagination.has_next %}
+    <li class="page-item page-next"><a class="page-link next" aria-label="next page" href="{{ (pagination.page + 1)|url_for_other_page
+      }}">{{_('Next')}} &raquo;</a></li>
+  {% endif %}
+  </div>
 {% endif %}
 {# Templates such as shelf.html declare modals (e.g. #GeneralDeleteModal)
    in {% block modal %}; layout.html renders that block, so we must too

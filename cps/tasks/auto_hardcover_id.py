@@ -14,7 +14,7 @@ from typing import List, Optional
 from cps import config, db, logger, ub
 from cps.services.worker import CalibreTask, STAT_FAIL, STAT_FINISH_SUCCESS, STAT_CANCELLED, STAT_ENDED
 from flask_babel import lazy_gettext as N_
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import selectinload
 
 # Import the Hardcover provider
 try:
@@ -114,10 +114,12 @@ class TaskAutoHardcoverID(CalibreTask):
                 start_idx = batch_num * self.batch_size
                 end_idx = min(start_idx + self.batch_size, total_books)
                 batch = book_ids[start_idx:end_idx]
+                books = self._get_books_for_batch(batch)
                 
-                self.log.info(f"Processing batch {batch_num + 1}/{batch_count} ({len(batch)} books)")
+                self.log.info(f"Processing batch {batch_num + 1}/{batch_count} ({len(books)} books)")
                 
-                for book_id in batch:
+                for book in books:
+                    book_id = book.id
                     # Check if cancelled
                     if self._cancel_requested():
                         self.log.info("Task cancelled by user")
@@ -132,7 +134,7 @@ class TaskAutoHardcoverID(CalibreTask):
                         return
                     
                     try:
-                        self._process_book(book_id)
+                        self._process_book(book)
                         self.books_processed += 1
                         
                         # Reset consecutive errors on success
@@ -195,25 +197,34 @@ class TaskAutoHardcoverID(CalibreTask):
 
         return [row[0] for row in rows if row[0] is not None]
 
-    def _process_book(self, book_id: int):
+    def _get_books_for_batch(self, book_ids: List[int]) -> List[db.Books]:
+        """
+        Load one processing batch with the relationships needed for matching.
+        selectinload keeps this bounded to a handful of SELECTs per batch
+        without the cartesian row multiplication caused by joinedload.
+        """
+        if not book_ids:
+            return []
+
+        books = (
+            self.calibre_db.session.query(db.Books)
+            .options(
+                selectinload(db.Books.authors),
+                selectinload(db.Books.identifiers),
+                selectinload(db.Books.series),
+                selectinload(db.Books.publishers),
+            )
+            .filter(db.Books.id.in_(book_ids))
+            .all()
+        )
+        books_by_id = {book.id: book for book in books}
+        return [books_by_id[book_id] for book_id in book_ids if book_id in books_by_id]
+
+    def _process_book(self, book: db.Books):
         """
         Process a single book: search Hardcover API, calculate confidence, apply or queue.
         """
-        book = (
-            self.calibre_db.session.query(db.Books)
-            .options(
-                joinedload(db.Books.authors),
-                joinedload(db.Books.identifiers),
-                joinedload(db.Books.series),
-                joinedload(db.Books.publishers),
-            )
-            .filter(db.Books.id == book_id)
-            .one_or_none()
-        )
-        if book is None:
-            self.log.warning("Skipping missing book %s during Hardcover auto-fetch", book_id)
-            return
-
+        book_id = book.id
         # Build search query from book metadata
         authors = [author.name for author in book.authors] if book.authors else []
         authors_csv = ", ".join(authors) if authors else ""

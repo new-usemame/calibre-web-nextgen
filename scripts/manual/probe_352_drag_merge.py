@@ -15,8 +15,7 @@ Chromium asserts:
   - title text is selectable
 
 Run:
-  CWN_TEST_PW=cwng-test-84 /Users/acoundou/.pyenv/versions/3.12.7/bin/python3 \
-    scripts/manual/probe_352_drag_merge.py
+  CWN_TEST_PW=cwng-test-84 python3 scripts/manual/probe_352_drag_merge.py
 """
 
 MEASURE_JS = r"""

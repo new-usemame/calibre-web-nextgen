@@ -360,6 +360,11 @@
       cover.setAttribute("draggable", "true");
       cover.addEventListener("dragstart", onDragStart);
       cover.addEventListener("dragend", onDragEnd);
+    } else if (typeof console !== "undefined" && console.warn) {
+      // Should be impossible — every .book.session in the grid templates
+      // renders a `.cover` child. Surface a warning if a future template
+      // refactor drops it, otherwise the card is silently a drop-only target.
+      console.warn("drag-drop-merge: .book.session card has no .cover child; drag source not wired", bookEl);
     }
     // Drop TARGET stays the whole card: drop the source cover onto any part
     // of the target card (cover or meta area) and the merge fires.

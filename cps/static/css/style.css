@@ -908,3 +908,10 @@ select.cwa-settings-select {
   white-space: nowrap;
   margin-left: 15px;
 }
+.series-section {
+    margin-bottom: 10px;
+}
+
+.series-section p {
+    margin-bottom: 5px;
+}

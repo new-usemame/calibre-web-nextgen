@@ -675,6 +675,15 @@ def get_seriesindex(book):
     return book.series_index if isinstance(book.series_index, float) else 1
 
 
+def _format_series_index(value, decimals=2):
+    if not value:
+        return str(value)
+    formatted = f'{value:.{decimals}f}'
+    if formatted.endswith('.' + '0' * decimals):
+        formatted = formatted.rstrip('0').rstrip('.')
+    return formatted
+
+
 def get_language(book):
     if not book.languages:
         return 'en'
@@ -760,7 +769,17 @@ def get_metadata(book):
     if cover_image_id != str(book_uuid):
         log.debug("Kobo Sync: cache-busting cover id for book %s: %s", book.id, cover_image_id)
 
-    subtitle = get_subtitle(book)
+    subtitle_val = get_subtitle(book)
+
+    series2_val = ""
+    if config.config_series2_column and db.series2_link_class is not None and book.series2:
+        link = book.series2[0]
+        series2_val = f"{link.value} [#{_format_series_index(link.extra)}]"
+
+    if config.config_kobo_series2_priority:
+        subtitle = series2_val or subtitle_val
+    else:
+        subtitle = subtitle_val or series2_val
 
     metadata = {
         "Categories": ["00000000-0000-0000-0000-000000000001", ],

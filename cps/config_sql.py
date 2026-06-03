@@ -143,6 +143,7 @@ class _Settings(_Base):
     config_kobo_subtitle_cc = Column(SmallInteger, default=0)
     config_kobo_subtitle_prefix = Column(String, default="")
     config_kobo_subtitle_suffix = Column(String, default="")
+    config_kobo_series2_priority = Column(Boolean, default=False)
 
     # Kobo cover aspect-ratio padding. Pads server-side so the device shows
     # full-screen artwork instead of letterboxing tall publisher covers.

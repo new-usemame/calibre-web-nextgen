@@ -261,6 +261,11 @@
           </select>
       </div>
       <div class="form-group" style="margin-left:10px;">
+        <input type="checkbox" id="config_kobo_series2_priority" name="config_kobo_series2_priority" {% if config.config_kobo_series2_priority %}checked{% endif %}>
+        <label for="config_kobo_series2_priority">{{_('Prioritize Second Series over Subtitle')}}</label>
+        <p class="settings-explanation">{{_('When syncing to Kobo, the subtitle field can be populated from either the Subtitle Custom Column above or the Second Series column. By default the Subtitle column wins when both have a value; check this to let Second Series override the Subtitle column instead. If the chosen source is empty, the other one is used as a fallback.')}}</p>
+      </div>
+      <div class="form-group" style="margin-left:10px;">
         <input type="checkbox" id="config_hardcover_sync" name="config_hardcover_sync"  {% if config.config_hardcover_sync %}checked{% endif %}>
         <label for="config_hardcover_sync">{{_('Sync Kobo read progress to Hardcover (Requires API key per user)')}}</label>
       </div>

@@ -276,7 +276,14 @@ function updateSeries2Label(sel) {
   document.getElementById('config_series2_slug').value = opt.getAttribute('data-label') || '';
   var group = document.getElementById('series2_icon_group');
   if (group) {
-    group.style.display = (sel.value === '0' || sel.value === '') ? 'none' : '';
+    var hide = (sel.value === '0' || sel.value === '');
+    group.style.display = hide ? 'none' : '';
+    if (!hide && typeof $.fn.selectpicker === 'function') {
+      var iconSel = $('#config_series2_icon');
+      if (!iconSel.parent().hasClass('bootstrap-select')) {
+        iconSel.selectpicker();
+      }
+    }
   }
 }
 (function() {

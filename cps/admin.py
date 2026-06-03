@@ -1011,7 +1011,7 @@ def update_view_configuration():
         flash(_("Invalid Second Series Column"), category="error")
         log.debug("Invalid Series2 column")
         return view_configuration()
-    _config_int(to_save, "config_series2_column")
+    reboot_required |= _config_int(to_save, "config_series2_column")
     _config_string(to_save, "config_series2_label")
     _config_string(to_save, "config_series2_slug")
     _config_string(to_save, "config_series2_icon")

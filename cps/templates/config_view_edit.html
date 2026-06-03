@@ -102,7 +102,7 @@
           </label>
         </div>
         {% set series2_icon = conf.config_series2_icon or 'glyphicon-bookmark' %}
-        <div id="series2_icon_group" {% if not conf.config_series2_column %}hidden{% endif %}>
+        <div id="series2_icon_group" style="{% if not conf.config_series2_column %}display:none;{% endif %}">
           <label for="config_series2_icon">{{_('Sidebar Icon')}}</label>
           <select name="config_series2_icon" id="config_series2_icon"
                   class="selectpicker" data-live-search="true" data-width="100%">
@@ -276,7 +276,7 @@ function updateSeries2Label(sel) {
   document.getElementById('config_series2_slug').value = opt.getAttribute('data-label') || '';
   var group = document.getElementById('series2_icon_group');
   if (group) {
-    group.hidden = (sel.value === '0' || sel.value === '');
+    group.style.display = (sel.value === '0' || sel.value === '') ? 'none' : '';
   }
 }
 (function() {

@@ -191,7 +191,7 @@
       <div class="form-group">
         <label for="config_series2_icon">{{_('Sidebar Icon')}}</label>
         <select name="config_series2_icon" id="config_series2_icon"
-                class="selectpicker" data-live-search="true" data-width="100%">
+                class="selectpicker" data-live-search="true">
           {% for icon_value, icon_label in series2Icons %}
           <option value="{{ icon_value }}"
                   data-content="<span class='glyphicon {{ icon_value }}'></span> {{ icon_label }}"

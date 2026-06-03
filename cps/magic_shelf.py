@@ -7,7 +7,7 @@
 
 from . import db, ub, logger
 from .cw_login import current_user
-from sqlalchemy import and_, or_
+from sqlalchemy import and_, or_, func
 from sqlalchemy.exc import SQLAlchemyError
 from datetime import datetime, timedelta, timezone
 

@@ -811,7 +811,22 @@ class CalibreDB:
                     ccdict['value'] = Column(String)
                 if row.datatype in ['float', 'int', 'bool', 'datetime', 'comments']:
                     ccdict['book'] = Column(Integer, ForeignKey('books.id'))
-                cc_classes[row.id] = type(str('custom_column_' + str(row.id)), (Base,), ccdict)
+                cc_class_name = str('custom_column_' + str(row.id))
+                # Reuse an already-mapped class if the mapper registry still
+                # holds it (happens after dispose() clears cc_classes + metadata
+                # but not SQLAlchemy's internal _class_registry). Creating a
+                # second type() with the same name in the same registry raises
+                # "Multiple classes found for path" on the next query.
+                try:
+                    reg = Base.registry._class_registry
+                    existing_ref = reg.get(cc_class_name)
+                    existing = existing_ref() if existing_ref is not None else None
+                except Exception:
+                    existing = None
+                if existing is not None:
+                    cc_classes[row.id] = existing
+                else:
+                    cc_classes[row.id] = type(cc_class_name, (Base,), ccdict)
 
         for cc_id in cc_ids:
             if cc_id[1] in ['bool', 'int', 'float', 'datetime', 'comments']:

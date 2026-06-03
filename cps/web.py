@@ -1343,13 +1343,20 @@ def create_magic_shelf():
         except:
             language_map[lang.lang_code] = lang.lang_code
 
-    return render_title_template('magic_shelf_edit.html', 
-                                 title=_("Create Magic Shelf"), 
+    custom_columns = magic_shelf.get_custom_columns_for_rules()
+    shelves = magic_shelf.get_shelves_for_rules(current_user.id)
+    identifiers = magic_shelf.get_identifiers_for_rules()
+
+    return render_title_template('magic_shelf_edit.html',
+                                 title=_("Create Magic Shelf"),
                                  page="magic_shelf_create",
                                  opds_expose_enabled=current_user.opds_only_shelves_sync,
                                  opds_expose_checked=False,
                                  allowed_icons=ALLOWED_ICONS,
-                                 languages=language_map)
+                                 languages=language_map,
+                                 custom_columns=custom_columns,
+                                 shelves=shelves,
+                                 identifiers=identifiers)
 
 
 @web.route("/magicshelf/<int:shelf_id>/edit", methods=["GET", "POST"])
@@ -1459,14 +1466,21 @@ def edit_magic_shelf(shelf_id):
         except:
             language_map[lang.lang_code] = lang.lang_code
 
-    return render_title_template('magic_shelf_edit.html', 
-                                 shelf=shelf, 
-                                 title=_("Edit Magic Shelf"), 
+    custom_columns = magic_shelf.get_custom_columns_for_rules()
+    shelves = magic_shelf.get_shelves_for_rules(shelf.user_id)
+    identifiers = magic_shelf.get_identifiers_for_rules()
+
+    return render_title_template('magic_shelf_edit.html',
+                                 shelf=shelf,
+                                 title=_("Edit Magic Shelf"),
                                  page="magic_shelf_edit",
                                  opds_expose_enabled=current_user.opds_only_shelves_sync,
                                  opds_expose_checked=opds_expose_checked,
                                  allowed_icons=ALLOWED_ICONS,
-                                 languages=language_map)
+                                 languages=language_map,
+                                 custom_columns=custom_columns,
+                                 shelves=shelves,
+                                 identifiers=identifiers)
 
 
 @web.route("/magicshelf/<int:shelf_id>/duplicate", methods=["POST"])

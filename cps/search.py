@@ -185,10 +185,14 @@ def adv_search_serie(q, include_series_inputs, exclude_series_inputs):
     return q
 
 def adv_search_shelf(q, include_shelf_inputs, exclude_shelf_inputs):
-    q = q.outerjoin(ub.BookShelf, db.Books.id == ub.BookShelf.book_id)\
-        .filter(or_(ub.BookShelf.shelf == None, ub.BookShelf.shelf.notin_(exclude_shelf_inputs)))
-    if len(include_shelf_inputs) > 0:
-        q = q.filter(ub.BookShelf.shelf.in_(include_shelf_inputs))
+    for shelf_id in include_shelf_inputs:
+        q = q.filter(db.Books.id.in_(
+            ub.session.query(ub.BookShelf.book_id).filter(ub.BookShelf.shelf == shelf_id)
+        ))
+    for shelf_id in exclude_shelf_inputs:
+        q = q.filter(~db.Books.id.in_(
+            ub.session.query(ub.BookShelf.book_id).filter(ub.BookShelf.shelf == shelf_id)
+        ))
     return q
 
 def extend_search_term(searchterm,

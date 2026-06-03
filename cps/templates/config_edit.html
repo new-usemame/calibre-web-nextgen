@@ -1,7 +1,10 @@
 {% extends parent_template|default("layout.html") %}
 {% block flash %}
-<div id="spinning_success" class="row-fluid text-center" style="display:none;">
-    <div class="alert alert-info"><img id="img-spinner" src="{{ url_for('static', filename='css/libs/images/loading-icon.gif') }}"/></div>
+{# Reboot feedback is handled via the RestartDialog modal in layout.html.
+   The hidden div below is NOT a spinner — it keeps the config_login_type
+   controlall source and the auth-switch-warning in the DOM but invisible
+   so section show/hide and the OAuth switch warning still function. #}
+<div style="display:none;">
         <select name="config_login_type" id="config_login_type" class="form-control" data-controlall="login-settings">
            <option value="0" {% if config.config_login_type == 0 %}selected{% endif %}>{{_('Use Standard Authentication')}}</option>
            {% if feature_support['ldap'] %}
@@ -11,11 +14,11 @@
            <option value="2" {% if config.config_login_type == 2 %}selected{% endif %}>{{_('Use OAuth')}}</option>
            {% endif %}
         </select>
-        
+
         <!-- Authentication switching warning -->
         {% if feature_support['oauth'] %}
         <div id="auth-switch-warning" class="alert alert-warning" style="display: none; margin-top: 10px;">
-          <strong>⚠️ Warning:</strong> 
+          <strong>⚠️ Warning:</strong>
           <p>Users created via OAuth authentication do not have passwords set. If you switch from OAuth to Standard Authentication, these users will be unable to log in until you manually set passwords for them.</p>
           <p>Before switching:</p>
           <ul>

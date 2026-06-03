@@ -2559,10 +2559,18 @@ def _configuration_update_helper():
         _configuration_result(_("Oops! Database Error: %(error)s.", error=e.orig))
 
     config.save()
+    response = _configuration_result(None, reboot_required, " ".join(filter(None, [unrar_warning, arch_warning])))
     if reboot_required:
-        web_server.stop(True)
-
-    return _configuration_result(None, reboot_required, " ".join(filter(None, [unrar_warning, arch_warning])))
+        # Schedule the restart AFTER the response has been returned to the
+        # browser. Calling web_server.stop() from inside the Gevent request
+        # greenlet before returning can prevent the response from being sent:
+        # close_connection=True (gevent_wsgi.py) means the pool is nearly
+        # empty, so wsgiserver.close() / pool.join() may resolve before the
+        # response is flushed, then os.execv() kills the connection and the
+        # $.post callback never fires → zero feedback.
+        import threading
+        threading.Timer(0.5, lambda: web_server.stop(True)).start()
+    return response
 
 
 def _configuration_result(error_flash=None, reboot=False, warning_flash=None):

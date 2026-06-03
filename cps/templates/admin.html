@@ -233,7 +233,7 @@
     <div class="btn btn-default" id="restart_database" data-toggle="modal" data-target="#StatusDialog">{{_('Reconnect Calibre Database')}}</div>
   </div>
   <div class="row form-group">
-    <div class="btn btn-default" id="admin_restart" data-toggle="modal" data-target="#RestartDialog">{{_('Restart')}}</div>
+    <div class="btn btn-default" id="admin_restart">{{_('Restart')}}</div>
     <div class="btn btn-default" id="admin_stop" data-toggle="modal" data-target="#ShutdownDialog">{{_('Shutdown')}}</div>
   </div>
 {% if config.schedule_metadata_backup %}
@@ -286,27 +286,7 @@
   </div>
 </div>
 
-<!-- Modal -->
-<div id="RestartDialog" class="modal fade" role="dialog">
-  <div class="modal-dialog modal-sm">
-    <!-- Modal content-->
-    <div class="modal-content">
-      <div class="modal-header bg-info">
-        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
-      </div>
-      <div class="modal-body text-center">
-        <p id="restart-confirm-text">{{_('Are you sure you want to restart?')}}</p>
-          <div id="restart-spinner-container" style="display:none; margin: 12px auto 8px;">
-            <div class="cwa-modal-spinner"></div>
-          </div>
-          <p id="restart-status-text" style="display:none;"></p>
-          <p></p>
-        <button type="button" class="btn btn-default" id="restart">{{_('OK')}}</button>
-        <button type="button" class="btn btn-default" id="restart-cancel" data-dismiss="modal">{{_('Cancel')}}</button>
-      </div>
-    </div>
-  </div>
-</div>
+{# RestartDialog moved to layout.html — available globally on every page #}
 <div id="ShutdownDialog" class="modal fade" role="dialog">
   <div class="modal-dialog modal-sm">
     <!-- Modal content-->

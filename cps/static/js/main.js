@@ -308,15 +308,6 @@ $(function() {
         });
     });
 
-    function restartReset() {
-        $("#restart-spinner-container").hide();
-        $("#restart-status-text").hide().text("");
-        $("#restart-confirm-text").show();
-        $("#restart").show();
-        $("#restart-cancel").show().text("Cancel");
-    }
-
-    $(document).on("hidden.bs.modal", "#RestartDialog", restartReset);
 
     function cleanUp() {
         clearInterval(updateTimerID);
@@ -622,61 +613,6 @@ $(function() {
         }
     });
 
-    $(document).on("click", "#restart", function() {
-        $("#restart").hide();
-        $("#restart-cancel").hide();
-        $("#restart-confirm-text").hide();
-        $("#restart-spinner-container").show();
-        $("#restart-status-text").show().text("Sending restart command…");
-
-        $.ajax({
-            method: "post",
-            contentType: "application/json; charset=utf-8",
-            dataType: "json",
-            url: getPath() + "/shutdown",
-            data: JSON.stringify({"parameter":0}),
-            success: function success() {
-                $("#restart-status-text").text("Server is restarting…");
-                var phase = "down";
-                var elapsed = 0;
-                var maxElapsed = 60;
-
-                var pollInterval = setInterval(function() {
-                    elapsed++;
-                    if (elapsed > maxElapsed) {
-                        clearInterval(pollInterval);
-                        $("#restart-spinner-container").hide();
-                        $("#restart-status-text").text("Restart timed out. The server may still be coming back up.");
-                        $("#restart-cancel").show().text("Close");
-                        return;
-                    }
-                    $.ajax({
-                        url: getPath() + "/admin/alive",
-                        timeout: 1500,
-                        success: function(d, statusText, xhr) {
-                            if (phase === "up" && xhr.status < 400) {
-                                clearInterval(pollInterval);
-                                window.location.reload();
-                            }
-                        },
-                        error: function() {
-                            if (phase === "down") {
-                                phase = "up";
-                                $("#restart-status-text").text("Waiting for server to come back up…");
-                            }
-                        }
-                    });
-                }, 1000);
-            },
-            error: function() {
-                $("#restart-spinner-container").hide();
-                $("#restart-status-text").text("Failed to send restart command.");
-                $("#restart").show();
-                $("#restart-cancel").show();
-                $("#restart-confirm-text").show();
-            }
-        });
-    });
     $(document).on("click", "#shutdown", function() {
         $.ajax({
             method:"post",
@@ -1170,33 +1106,158 @@ $(function() {
         });
     });
 
+    // Restart overlay helpers — dedicated overlay, never touched by partial-nav.
+    var _restartSpinRAF = null;
+
+    // Hard-reset: clear any stale inline display that might have been set by a
+    // previous session's JS (e.g. overlay left visible after a reload mid-test).
+    (function() {
+        var ov = document.getElementById("cwa-restart-overlay");
+        if (ov) ov.style.display = "none";
+        var sw = document.getElementById("cwa-restart-spinner-wrap");
+        if (sw) sw.style.display = "none";
+    })();
+
+    function showRestartOverlay(text) {
+        var ov = document.getElementById("cwa-restart-overlay");
+        if (ov) ov.style.display = "flex";
+        $("#cwa-restart-confirm").css("display", "none");
+        $("#cwa-restart-spinner-wrap").css("display", "flex");
+        $("#cwa-restart-status").text(text);
+        // Drive rotation via rAF — CSS keyframe animations on elements that
+        // start inside display:none parents refuse to play in this context.
+        var s = document.getElementById("cwa-restart-spinner");
+        if (s) {
+            s.style.transform = "";
+            var deg = 0, last = null;
+            function spin(ts) {
+                if (last !== null) deg = (deg + (ts - last) * 0.36) % 360;
+                last = ts;
+                s.style.transform = "rotate(" + deg + "deg)";
+                _restartSpinRAF = requestAnimationFrame(spin);
+            }
+            _restartSpinRAF = requestAnimationFrame(spin);
+        }
+    }
+    function hideRestartOverlay() {
+        if (_restartSpinRAF !== null) {
+            cancelAnimationFrame(_restartSpinRAF);
+            _restartSpinRAF = null;
+        }
+        var ov = document.getElementById("cwa-restart-overlay");
+        if (ov) ov.style.display = "none";
+        var sw = document.getElementById("cwa-restart-spinner-wrap");
+        if (sw) sw.style.display = "none";
+        // Reset confirm to CSS-default (block) without setting inline style
+        // so no stale display:block lingers on the element after hiding.
+        var cf = document.getElementById("cwa-restart-confirm");
+        if (cf) cf.style.display = "";
+    }
+
+    // Admin Restart button — show confirm UI in the overlay.
+    $(document).on("click", "#admin_restart", function() {
+        var ov = document.getElementById("cwa-restart-overlay");
+        if (ov) ov.style.display = "flex";
+        var cf = document.getElementById("cwa-restart-confirm");
+        if (cf) cf.style.display = "block";
+        var sw = document.getElementById("cwa-restart-spinner-wrap");
+        if (sw) sw.style.display = "none";
+    });
+    $(document).on("click", "#cwa-restart-cancel", function() {
+        hideRestartOverlay();
+    });
+    $(document).on("click", "#cwa-restart-ok", function() {
+        showRestartOverlay("Sending restart command…");
+        $.ajax({
+            method: "post",
+            contentType: "application/json; charset=utf-8",
+            dataType: "json",
+            url: getPath() + "/shutdown",
+            data: JSON.stringify({"parameter":0}),
+            success: function() {
+                $("#cwa-restart-status").text("Server is restarting…");
+                var phase = "down", elapsed = 0, maxElapsed = 60;
+                var pollInterval = setInterval(function() {
+                    elapsed++;
+                    if (elapsed > maxElapsed) {
+                        clearInterval(pollInterval);
+                        hideRestartOverlay();
+                        handle_response([{type: "warning", message: "Restart timed out — the server may still be coming back up."}]);
+                        return;
+                    }
+                    $.ajax({
+                        url: getPath() + "/admin/alive",
+                        timeout: 1500,
+                        success: function(d, statusText, xhr) {
+                            if (phase === "up" && xhr.status < 400) {
+                                clearInterval(pollInterval);
+                                hideRestartOverlay();
+                                window.location.reload();
+                            }
+                        },
+                        error: function() {
+                            if (phase === "down") {
+                                phase = "up";
+                                $("#cwa-restart-status").text("Waiting for server to come back up…");
+                            }
+                        }
+                    });
+                }, 1000);
+            },
+            error: function() {
+                hideRestartOverlay();
+                handle_response([{type: "danger", message: "Failed to send restart command."}]);
+            }
+        });
+    });
+
+    // Used by config_submit when data.reboot is true — the server is already
+    // restarting at this point (web_server.stop deferred via Timer in admin.py).
+    function beginRestartPolling(resultData) {
+        showRestartOverlay("Server is restarting…");
+
+        var phase = "down";
+        var elapsed = 0;
+        var maxElapsed = 60;
+        var pollInterval = setInterval(function() {
+            elapsed++;
+            if (elapsed > maxElapsed) {
+                clearInterval(pollInterval);
+                hideRestartOverlay();
+                handle_response([{type: "warning", message: "Restart timed out — the server may still be coming back up."}]);
+                return;
+            }
+            $.ajax({
+                url: getPath() + "/admin/alive",
+                timeout: 1500,
+                success: function(d, statusText, xhr) {
+                    if (phase === "up" && xhr.status < 400) {
+                        clearInterval(pollInterval);
+                        hideRestartOverlay();
+                        handle_response(resultData);
+                    }
+                },
+                error: function() {
+                    if (phase === "down") {
+                        phase = "up";
+                        $("#cwa-restart-status").text("Waiting for server to come back up…");
+                    }
+                }
+            });
+        }, 1000);
+    }
+
     $(document).on("click", "#config_submit", function(e) {
         e.preventDefault();
         e.stopPropagation();
         this.blur();
-        window.scrollTo({top: 0, behavior: 'smooth'});
         var request_path = "/admin/ajaxconfig";
         $("#flash_success").remove();
         $("#flash_danger").remove();
         $.post(getPath() + request_path, $(this).closest("form").serialize(), function(data) {
             $('#config_upload_formats').val(data.config_upload);
-            if(data.reboot) {
-                $("#spinning_success").show();
-                var rebootInterval = setInterval(function(){
-                    $.get({
-                        url:getPath() + "/admin/alive",
-                        success: function (d, statusText, xhr) {
-                            if (xhr.status < 400) {
-                                $("#spinning_success").hide();
-                                clearInterval(rebootInterval);
-                                if (data.result) {
-                                    handle_response(data.result);
-                                    data.result = "";
-                                }
-                            }
-                        },
-                    });
-                }, 1000);
+            if (data.reboot) {
+                beginRestartPolling(data.result);
             } else {
                 handle_response(data.result);
             }

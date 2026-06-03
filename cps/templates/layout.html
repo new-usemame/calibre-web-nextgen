@@ -141,6 +141,19 @@
   <body class="{{ page }} {{ bodyClass }}{% if g.current_theme == 1 %} blur{% endif %}{% if cwa_settings and cwa_settings.get('enable_mobile_blur') %} allow-mobile-blur{% endif %}{% if _cover_hide_shelf_badges %} cover-hide-shelf-badges{% endif %}{% if current_user.get_view_property('books', 'normalize_covers') == false %} covers-natural{% endif %}" data-text="{{_('Home')}}" data-textback="{{_('Back')}}" data-auto-load-more="{{ 'false' if current_user.is_authenticated and not current_user.auto_load_more else 'true' }}">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <div id="cwa-nav-overlay" aria-hidden="true"><div id="cwa-nav-spinner"></div></div>
+    {# Restart overlay — single element for confirm step AND spinner step.
+       Never touched by partial-nav.js (separate from #cwa-nav-overlay). #}
+    <div id="cwa-restart-overlay" style="display:none;">
+      <div id="cwa-restart-confirm">
+        <p>{{_('Are you sure you want to restart?')}}</p>
+        <button id="cwa-restart-ok" class="btn btn-default">{{_('OK')}}</button>
+        <button id="cwa-restart-cancel" class="btn btn-default">{{_('Cancel')}}</button>
+      </div>
+      <div id="cwa-restart-spinner-wrap" style="display:none;">
+        <div id="cwa-restart-spinner"></div>
+        <div id="cwa-restart-status"></div>
+      </div>
+    </div>
     <!-- Static navbar -->
     <div class="navbar navbar-default navbar-static-top" role="navigation">
       <div class="container-fluid">

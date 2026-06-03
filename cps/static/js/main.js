@@ -606,6 +606,22 @@ $(function() {
     window.cwaInit.infiniteScroll();
     window.cwaInit.loadMore();
 
+    // Page-jump dropdown: flip to dropup when there isn't enough space below
+    // the toggle to fit the menu (e.g. the bottom paginator near the viewport
+    // floor). Bootstrap 3 doesn't auto-flip, so we check on each open.
+    $(document).on("show.bs.dropdown", ".pagination .page-jump", function () {
+        var $li = $(this);
+        var $menu = $li.find(".page-jump-menu");
+        var toggleBottom = $li[0].getBoundingClientRect().bottom;
+        var menuHeight = $menu.outerHeight(true) || 200;
+        var spaceBelow = window.innerHeight - toggleBottom;
+        if (spaceBelow < menuHeight) {
+            $li.addClass("dropup");
+        } else {
+            $li.removeClass("dropup");
+        }
+    });
+
     $(document).on("click", "#restart", function() {
         $("#restart").hide();
         $("#restart-cancel").hide();

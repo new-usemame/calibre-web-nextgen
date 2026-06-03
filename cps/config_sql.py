@@ -132,6 +132,8 @@ class _Settings(_Base):
     config_login_type = Column(Integer, default=0)
 
     config_kobo_proxy = Column(Boolean, default=False)
+    config_kobo_pages_cc = Column(SmallInteger, default=0)
+    config_kobo_words_cc = Column(SmallInteger, default=0)
 
     # Kobo cover aspect-ratio padding. Pads server-side so the device shows
     # full-screen artwork instead of letterboxing tall publisher covers.
@@ -613,7 +615,7 @@ def autodetect_calibre_binaries():
             if all(values):
                 version = values[0].group(1)
                 log.debug("calibre version %s", version)
-                return element 
+                return element
     return ""
 
 

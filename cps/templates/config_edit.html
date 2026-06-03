@@ -169,6 +169,40 @@
   </div>
 
   <div class="settings-container">
+    <h4 class="settings-section-header">{{_('Second Series')}}</h4>
+    <div class="form-group">
+      <label for="config_series2_column">{{_('Second Series Column')}}</label>
+      <select name="config_series2_column" id="config_series2_column" class="form-control">
+        <option value="0" data-name="" {% if config.config_series2_column == 0 %}selected{% endif %}></option>
+        {% for series2Column in series2Columns %}
+        <option value="{{ series2Column.id }}" data-name="{{ series2Column.name }}" data-label="{{ series2Column.label }}" {% if series2Column.id == config.config_series2_column %}selected{% endif %}>{{ series2Column.name }}</option>
+        {% endfor %}
+      </select>
+      <input type="hidden" name="config_series2_label" id="config_series2_label" value="">
+      <input type="hidden" name="config_series2_slug" id="config_series2_slug" value="">
+      <p class="settings-explanation">{{_('Select a Calibre custom column of type "series" to display as a second series field. Changing this requires a server restart.')}}</p>
+    </div>
+    <div class="form-group">
+      <input type="checkbox" name="config_show_series2_on_book_list" id="config_show_series2_on_book_list" {% if config.config_show_series2_on_book_list %}checked{% endif %} style="accent-color: var(--color-secondary);">
+      <label for="config_show_series2_on_book_list">{{_('Show Second Series on book list pages')}}</label>
+    </div>
+    {% set series2_icon = config.config_series2_icon or 'glyphicon-bookmark' %}
+    <div id="series2_icon_group" style="{% if not config.config_series2_column %}display:none;{% endif %}">
+      <div class="form-group">
+        <label for="config_series2_icon">{{_('Sidebar Icon')}}</label>
+        <select name="config_series2_icon" id="config_series2_icon"
+                class="selectpicker" data-live-search="true" data-width="100%">
+          {% for icon_value, icon_label in series2Icons %}
+          <option value="{{ icon_value }}"
+                  data-content="<span class='glyphicon {{ icon_value }}'></span> {{ icon_label }}"
+                  {% if icon_value == series2_icon %}selected{% endif %}>{{ icon_label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <div class="settings-container">
     <h4 class="settings-section-header">{{_('Feature Configuration')}}</h4>
     <div class="form-group">
       <input type="checkbox" id="config_unicode_filename" name="config_unicode_filename" {% if config.config_unicode_filename %}checked{% endif %}>
@@ -720,6 +754,32 @@
 {% endblock %}
 
 {% block js %}
+<script src="{{ url_for('static', filename='js/libs/bootstrap-select.min.js') }}"></script>
+<script>
+function updateSeries2Label(sel) {
+  var opt = sel.options[sel.selectedIndex];
+  document.getElementById('config_series2_label').value = opt.getAttribute('data-name') || '';
+  document.getElementById('config_series2_slug').value = opt.getAttribute('data-label') || '';
+  var group = document.getElementById('series2_icon_group');
+  if (group) {
+    var hide = (sel.value === '0' || sel.value === '');
+    group.style.display = hide ? 'none' : '';
+    if (!hide && typeof $.fn.selectpicker === 'function') {
+      var iconSel = $('#config_series2_icon');
+      if (!iconSel.parent().hasClass('bootstrap-select')) {
+        iconSel.selectpicker();
+      }
+    }
+  }
+}
+(function() {
+  var sel = document.getElementById('config_series2_column');
+  if (sel) {
+    updateSeries2Label(sel);
+    sel.addEventListener('change', function() { updateSeries2Label(this); });
+  }
+})();
+</script>
 <script>
 $(document).ready(function() {
   // Check for authentication switching warning

@@ -649,10 +649,14 @@ def configuration():
         )
         .all()
     )
+    series2_columns = calibre_db.session.query(db.CustomColumns) \
+        .filter(and_(db.CustomColumns.datatype == 'series', db.CustomColumns.mark_for_delete == 0)).all()
     return render_title_template("config_edit.html",
                                  config=config,
                                  wordsPagesColumns=wordspages_columns,
                                  subtitleColumns=subtitle_columns,
+                                 series2Columns=series2_columns,
+                                 series2Icons=SERIES2_ICON_OPTIONS,
                                  provider=oauth_bb.oauthblueprints,
                                  feature_support=feature_support,
                                  title=_("Basic Configuration"), page="config")
@@ -689,15 +693,11 @@ def view_configuration():
         .filter(and_(db.CustomColumns.datatype == 'text', db.CustomColumns.mark_for_delete == 0)).all()
     subtitle_columns = calibre_db.session.query(db.CustomColumns) \
         .filter(and_(or_(db.CustomColumns.datatype == 'text', db.CustomColumns.datatype == 'comments'), db.CustomColumns.mark_for_delete == 0)).all()
-    series2_columns = calibre_db.session.query(db.CustomColumns) \
-        .filter(and_(db.CustomColumns.datatype == 'series', db.CustomColumns.mark_for_delete == 0)).all()
     languages = calibre_db.speaking_language()
     translations = get_available_locale()
     return render_title_template("config_view_edit.html", conf=config, readColumns=read_column,
                                  restrictColumns=restrict_columns,
                                  subtitleColumns=subtitle_columns,
-                                 series2Columns=series2_columns,
-                                 series2Icons=SERIES2_ICON_OPTIONS,
                                  languages=languages,
                                  translations=translations,
                                  title=_("UI Configuration"), page="uiconfig")
@@ -1016,7 +1016,6 @@ def update_view_configuration():
     _config_string(to_save, "config_series2_slug")
     _config_string(to_save, "config_series2_icon")
     _config_checkbox(to_save, "config_show_series2_on_book_list")
-
     if not check_valid_restricted_column(to_save.get("config_restricted_column", "0")):
         flash(_("Invalid Restricted Column"), category="error")
         log.debug("Invalid Restricted Column")

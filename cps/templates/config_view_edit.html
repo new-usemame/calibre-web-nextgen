@@ -87,7 +87,7 @@
 
       <div class="form-group">
         <label for="config_series2_column">{{_('Second Series Column')}}</label>
-        <select name="config_series2_column" id="config_series2_column" class="form-control" onchange="updateSeries2Label(this)">
+        <select name="config_series2_column" id="config_series2_column" class="form-control">
           <option value="0" data-name="" {% if conf.config_series2_column == 0 %}selected{% endif %}></option>
           {% for series2Column in series2Columns %}
           <option value="{{ series2Column.id }}" data-name="{{ series2Column.name }}" data-label="{{ series2Column.label }}" {% if series2Column.id == conf.config_series2_column %}selected{% endif %}>{{ series2Column.name }}</option>
@@ -281,7 +281,10 @@ function updateSeries2Label(sel) {
 }
 (function() {
   var sel = document.getElementById('config_series2_column');
-  if (sel) { updateSeries2Label(sel); }
+  if (sel) {
+    updateSeries2Label(sel);
+    sel.addEventListener('change', function() { updateSeries2Label(this); });
+  }
 })();
 </script>
 <script src="{{ url_for('static', filename='js/libs/bootstrap-table/bootstrap-table.min.js') }}"></script>

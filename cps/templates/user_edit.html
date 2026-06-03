@@ -286,6 +286,9 @@
         <input type="checkbox" id="auto_load_more" name="auto_load_more" {% if content.auto_load_more %}checked{% endif %} style="accent-color: var(--color-secondary);">
         <label for="auto_load_more">{{_('Automatically load more books while scrolling')}}</label>
         <p class="cwa-settings-tip">{{_('When enabled, the next page of books is loaded automatically as you scroll near the end of the list. When disabled, you can still click the Load More tile to load the next page.')}}</p>
+        <input type="checkbox" id="normalize_covers" name="normalize_covers" {% if normalize_covers %}checked{% endif %} style="accent-color: var(--color-secondary);">
+        <label for="normalize_covers">{{_('Normalize covers in books pages')}}</label>
+        <p class="cwa-settings-tip">{{_('When enabled, all book covers are scaled to a uniform 150 × 225 size by stretching one dimension. When disabled, covers keep their natural aspect ratio and are only constrained to a maximum width of 150 and maximum height of 225.')}}</p>
       </div>
     </div>
     {% else %}

@@ -659,24 +659,16 @@ def get_series(book):
 
 
 def get_subtitle(book):
-    # Backport of janeczku PR #3358 (@dotknott): surface a per-book
-    # Subtitle in Kobo sync metadata when the Calibre library has a
-    # custom column labeled "subtitle". The upstream patch had three
-    # null-handling bugs (.all()[0] IndexError when no column exists,
-    # unreachable else branch, TypeError on None custom_column attr);
-    # rewritten here for correct empty-result handling end-to-end.
-    col = (calibre_db.session.query(db.CustomColumns)
-                       .filter(db.CustomColumns.mark_for_delete == 0)
-                       .filter(db.CustomColumns.datatype.notin_(db.cc_exceptions))
-                       .filter(db.CustomColumns.label == 'subtitle')
-                       .first())
-    if col is None:
+    if not config.config_kobo_subtitle_cc:
         return ""
-    column_attr = getattr(book, 'custom_column_' + str(col.id), None)
-    if not column_attr:
+    subtitleColumn = getattr(book, f'custom_column_{config.config_kobo_subtitle_cc}')
+    if not len(subtitleColumn):
         return ""
-    value = getattr(column_attr[0], 'value', None)
-    return value or ""
+    return (
+        f"{config.config_kobo_subtitle_prefix or ''} "
+        f"{subtitleColumn[0].value} "
+        f"{config.config_kobo_subtitle_suffix or ''}"
+    ).strip()
 
 
 def get_seriesindex(book):
@@ -767,6 +759,9 @@ def get_metadata(book):
     cover_image_id = _get_cover_image_id(book)
     if cover_image_id != str(book_uuid):
         log.debug("Kobo Sync: cache-busting cover id for book %s: %s", book.id, cover_image_id)
+
+    subtitle = get_subtitle(book)
+
     metadata = {
         "Categories": ["00000000-0000-0000-0000-000000000001", ],
         # "Contributors": get_author(book),
@@ -789,7 +784,7 @@ def get_metadata(book):
         "Publisher": {"Imprint": "", "Name": get_publisher(book), },
         "RevisionId": book_uuid,
         "Title": book.title,
-        "Subtitle": get_subtitle(book),
+        "Subtitle": subtitle,
         "WorkId": book_uuid,
         "Series": {},
         "ISBN": book_isbn,

@@ -695,6 +695,123 @@ $(function() {
     });
 
 
+    $("#table_xchange").click(function() {
+        $.ajax({
+            method:"post",
+            contentType: "application/json; charset=utf-8",
+            dataType: "json",
+            url: window.location.pathname + "/../ajax/xchange",
+            data: JSON.stringify({"xchange":selections}),
+            success: function success() {
+                $("#books-table").bootstrapTable("refresh");
+                $("#books-table").bootstrapTable("uncheckAll");
+            }
+        });
+    });
+
+    var column = [];
+    $("#books-table > thead > tr > th").each(function() {
+        var element = {};
+        if ($(this).attr("data-edit")) {
+            element = {
+                editable: {
+                    mode: "inline",
+                    emptytext: "<span class='glyphicon glyphicon-plus'></span>",
+                    success: function (response, __) {
+                        if (!response.success) return response.msg;
+                        return {newValue: response.newValue};
+                    },
+                    params: function (params) {
+                        params.checkA = $('#autoupdate_authorsort').prop('checked');
+                        params.checkT = $('#autoupdate_titlesort').prop('checked');
+                        return params
+                    }
+                }
+            };
+            if ($(this).attr("data-editable-type") == "wysihtml5") {
+                //if (this.id == "comments") {
+                element.editable.display = shorten_html;
+            }
+            if ($(this).attr("data-field") === "rating_value") {
+                element.editable.display = function(value) {
+                    $(this).html(bookRatingFormatter(value));
+                };
+            }
+            var validateText = $(this).attr("data-edit-validate");
+            if (validateText) {
+                element.editable.validate = function (value) {
+                    if ($.trim(value) === "") return validateText;
+                };
+            }
+        }
+        column.push(element);
+    });
+    // $.fn.editable.defaults.display = comment_display;
+
+    $("#books-table").bootstrapTable({
+        sidePagination: "server",
+        pageList: "[10, 25, 50, 100]",
+        queryParams: queryParams,
+        pagination: true,
+        paginationLoop: false,
+        paginationDetailHAlign: "right",
+        paginationHAlign: "left",
+        idField: "id",
+        uniqueId: "id",
+        search: true,
+        showColumns: true,
+        searchAlign: "left",
+        showSearchButton : true,
+        searchOnEnterKey: true,
+    checkboxHeader: false,
+        maintainMetaData: true,
+    clickToSelect: true,
+        responseHandler: responseHandler,
+        columns: column,
+        formatNoMatches: function () {
+            return "";
+        },
+        // eslint-disable-next-line no-unused-vars
+        onEditableSave: function (field, row, oldvalue, $el) {
+            if ($.inArray(field, [ "title", "sort" ]) !== -1 && $('#autoupdate_titlesort').prop('checked')
+                || $.inArray(field, [ "authors", "author_sort" ]) !== -1 && $('#autoupdate_authorsort').prop('checked')) {
+                $.ajax({
+                    method:"get",
+                    dataType: "json",
+                    url: window.location.pathname + "/../ajax/sort_value/" + field + "/" + row.id,
+                    success: function success(data) {
+                        var key = Object.keys(data)[0];
+                        $("#books-table").bootstrapTable("updateCellByUniqueId", {
+                            id: row.id,
+                            field: key,
+                            value: data[key]
+                        });
+                    }
+                });
+            }
+        },
+        // eslint-disable-next-line no-unused-vars
+        onColumnSwitch: function (field, checked) {
+            var visible = $("#books-table").bootstrapTable("getVisibleColumns");
+            var hidden  = $("#books-table").bootstrapTable("getHiddenColumns");
+            var st = "";
+            visible.forEach(function(item) {
+                st += "\"" + item.field + "\":\"" + "true" + "\",";
+            });
+            hidden.forEach(function(item) {
+                st += "\"" + item.field + "\":\"" + "false" + "\",";
+            });
+            st = st.slice(0, -1);
+            $.ajax({
+                method:"post",
+                contentType: "application/json; charset=utf-8",
+                dataType: "json",
+                url: window.location.pathname + "/../ajax/table_settings",
+                data: "{" + st + "}",
+            });
+        },
+    });
+
     $("#domain_allow_submit").click(function(event) {
         event.preventDefault();
         $("#domain_add_allow").ajaxForm();
@@ -1132,6 +1249,19 @@ function ratingFormatter(value, row) {
         return "";
     }
     return (value/2);
+}
+
+function pubdateFormatter(value, row) {
+    if (!value || value.startsWith("0101-")) {
+        return "";
+    }
+    return value;
+}
+
+function bookRatingFormatter(value, row) {
+    var rating = parseInt(value, 10);
+    if (!rating) return "";
+    return "★".repeat(rating) + "☆".repeat(5 - rating);
 }
 
 

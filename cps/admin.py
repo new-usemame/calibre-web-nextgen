@@ -690,7 +690,7 @@ def view_configuration():
     read_column = calibre_db.session.query(db.CustomColumns) \
         .filter(and_(db.CustomColumns.datatype == 'bool', db.CustomColumns.mark_for_delete == 0)).all()
     restrict_columns = calibre_db.session.query(db.CustomColumns) \
-        .filter(and_(db.CustomColumns.datatype == 'text', db.CustomColumns.mark_for_delete == 0)).all()
+        .filter(and_(or_(db.CustomColumns.datatype == 'text', db.CustomColumns.datatype == 'enumeration'), db.CustomColumns.mark_for_delete == 0)).all()
     subtitle_columns = calibre_db.session.query(db.CustomColumns) \
         .filter(and_(or_(db.CustomColumns.datatype == 'text', db.CustomColumns.datatype == 'comments'), db.CustomColumns.mark_for_delete == 0)).all()
     all_cc_columns = calibre_db.session.query(db.CustomColumns) \
@@ -1452,7 +1452,7 @@ def check_valid_series2_column(column):
 def check_valid_restricted_column(column):
     if column != "0":
         if not calibre_db.session.query(db.CustomColumns).filter(db.CustomColumns.id == column) \
-          .filter(and_(db.CustomColumns.datatype == 'text', db.CustomColumns.mark_for_delete == 0)).all():
+          .filter(and_(or_(db.CustomColumns.datatype == 'text', db.CustomColumns.datatype == 'enumeration'), db.CustomColumns.mark_for_delete == 0)).all():
             return False
     return True
 
@@ -2596,6 +2596,7 @@ def _configuration_update_helper():
         _config_checkbox(to_save, "config_allow_reverse_proxy_header_login")
         _config_string(to_save, "config_reverse_proxy_login_header_name")
         _config_checkbox(to_save, "config_reverse_proxy_auto_create_users")
+        config.set_from_dictionary(to_save, "config_reverse_proxy_login_use_email", lambda y: y == "1", False)
 
         # Validate reverse proxy configuration
         if config.config_reverse_proxy_auto_create_users and not config.config_allow_reverse_proxy_header_login:
@@ -2789,6 +2790,7 @@ def _handle_new_user(to_save, content, languages, translations, kobo_support):
         # No default value for kobo sync shelf setting
         content.kobo_only_shelves_sync = to_save.get("kobo_only_shelves_sync", 0) == "on"
         content.opds_only_shelves_sync = to_save.get("opds_only_shelves_sync", 0) == "on"
+        content.kobo_sync_public_shelves = to_save.get("kobo_sync_public_shelves", 0) == "on"
         ub.session.add(content)
         ub.session.commit()
         flash(_("User '%(user)s' created", user=content.name), category="success")
@@ -2873,6 +2875,7 @@ def _handle_edit_user(to_save, content, languages, translations, kobo_support):
 
     old_state = content.kobo_only_shelves_sync
     content.kobo_only_shelves_sync = int(to_save.get("kobo_only_shelves_sync") == "on") or 0
+    content.kobo_sync_public_shelves = int(to_save.get("kobo_sync_public_shelves") == "on") or 0
     # 1 -> 0: nothing has to be done
     # 0 -> 1: all synced books have to be added to archived books, + currently synced shelfs
     # which don't have to be synced have to be removed (added to Shelf archive)

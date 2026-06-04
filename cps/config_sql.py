@@ -147,6 +147,7 @@ class _Settings(_Base):
     config_kobo_subtitle_prefix = Column(String, default="")
     config_kobo_subtitle_suffix = Column(String, default="")
     config_kobo_series2_priority = Column(Boolean, default=False)
+    config_kobo_strip_comment_newlines = Column(Boolean, default=False)
 
     # Kobo cover aspect-ratio padding. Pads server-side so the device shows
     # full-screen artwork instead of letterboxing tall publisher covers.
@@ -195,6 +196,7 @@ class _Settings(_Base):
     config_reverse_proxy_login_header_name = Column(String)
     config_allow_reverse_proxy_header_login = Column(Boolean, default=False)
     config_reverse_proxy_auto_create_users = Column(Boolean, default=False)
+    config_reverse_proxy_login_use_email = Column(Boolean, default=False)
     config_ldap_auto_create_users = Column(Boolean, default=True)
     config_oauth_redirect_host = Column(String, default='')
     config_disable_standard_login = Column(Boolean, default=False)

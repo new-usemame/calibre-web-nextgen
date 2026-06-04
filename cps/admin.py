@@ -1007,15 +1007,6 @@ def update_view_configuration():
         log.debug("Invalid Subtitle column")
         return view_configuration()
     _config_int(to_save, "config_subtitle_column")
-    if not check_valid_series2_column(to_save.get("config_series2_column", "0")):
-        flash(_("Invalid Second Series Column"), category="error")
-        log.debug("Invalid Series2 column")
-        return view_configuration()
-    reboot_required |= _config_int(to_save, "config_series2_column")
-    _config_string(to_save, "config_series2_label")
-    _config_string(to_save, "config_series2_slug")
-    _config_string(to_save, "config_series2_icon")
-    _config_checkbox(to_save, "config_show_series2_on_book_list")
     if not check_valid_restricted_column(to_save.get("config_restricted_column", "0")):
         flash(_("Invalid Restricted Column"), category="error")
         log.debug("Invalid Restricted Column")
@@ -2517,6 +2508,15 @@ def _configuration_update_helper():
         # auto-enable only fires on the off→on transition.
         if not prev_kobo_sync and bool(config.config_kobo_sync):
             config.config_kobo_cover_padding_enabled = 1
+
+        # Second series column — requires restart to reinitialise ORM classes
+        if not check_valid_series2_column(to_save.get("config_series2_column", "0")):
+            return _configuration_result(_('Invalid Second Series Column'))
+        reboot_required |= _config_int(to_save, "config_series2_column")
+        _config_string(to_save, "config_series2_label")
+        _config_string(to_save, "config_series2_slug")
+        _config_string(to_save, "config_series2_icon")
+        _config_checkbox(to_save, "config_show_series2_on_book_list")
 
         _config_int(to_save, "config_kobo_pages_cc")
         _config_int(to_save, "config_kobo_words_cc")

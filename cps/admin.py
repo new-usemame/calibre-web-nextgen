@@ -1048,7 +1048,7 @@ def update_view_configuration():
     log.debug("Calibre-Web NextGen configuration updated")
     before_request()
 
-    return view_configuration()
+    return redirect(url_for('admin.view_configuration'))
 
 
 @admi.route("/ajax/loaddialogtexts/<element_id>", methods=['POST'])

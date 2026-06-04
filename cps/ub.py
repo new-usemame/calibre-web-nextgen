@@ -878,6 +878,11 @@ class Annotation(Base):
     pdf_page = Column(Integer, nullable=True)         # 1-indexed PDF page number
     pdf_quad_json = Column(Text, nullable=True)       # JSON: [[x,y,w,h], ...] in PDF user-space coords
     comic_page = Column(Integer, nullable=True)       # 1-indexed comic page (CBR/CBZ)
+    # Phase 2 (KOReader bridge) — opaque per-device id of the row a device last
+    # wrote/saw for this annotation (e.g. the KoboReader.sqlite Bookmark.BookmarkID
+    # the plugin created). Lets the plugin dedup + suppress feedback loops without
+    # the server knowing the device kind. NULL until a device materializes the row.
+    device_origin_id = Column(String, nullable=True)
     # Lifecycle
     hidden = Column(Boolean, default=False, nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
@@ -1416,38 +1421,49 @@ def migrate_user_table(engine, _session):
         _run_ddl_with_retry(engine, "ALTER TABLE user ADD column 'preview_default_color' String")
 
 def migrate_oauth_provider_table(engine, _session):
-    try:
-        _session.query(exists().where(OAuthProvider.oauth_base_url)).scalar()
-        _session.commit()
-    except exc.OperationalError:  # Database is not compatible, some columns are missing
-        _safe_session_rollback(_session, "oauthProvider.base_urls")
-        _run_ddl_with_retry(
-            engine,
-            [
-                "ALTER TABLE oauthProvider ADD column 'oauth_base_url' String DEFAULT NULL",
-                "ALTER TABLE oauthProvider ADD column 'oauth_authorize_url' String DEFAULT NULL",
-                "ALTER TABLE oauthProvider ADD column 'oauth_token_url' String DEFAULT NULL",
-                "ALTER TABLE oauthProvider ADD column 'oauth_userinfo_url' String DEFAULT NULL",
-                "ALTER TABLE oauthProvider ADD column 'oauth_admin_group' String DEFAULT NULL",
-            ],
-        )
+    """Ensure every migration-managed column on oauthProvider exists.
 
-    # Add new OAuth enhancement fields
-    try:
-        _session.query(exists().where(OAuthProvider.metadata_url)).scalar()
-        _session.commit()
-    except exc.OperationalError:  # New columns are missing
-        _safe_session_rollback(_session, "oauthProvider.metadata_url")
-        _run_ddl_with_retry(
-            engine,
-            [
-                "ALTER TABLE oauthProvider ADD column 'metadata_url' String DEFAULT NULL",
-                "ALTER TABLE oauthProvider ADD column 'scope' String DEFAULT 'openid profile email'",
-                "ALTER TABLE oauthProvider ADD column 'username_mapper' String DEFAULT 'preferred_username'",
-                "ALTER TABLE oauthProvider ADD column 'email_mapper' String DEFAULT 'email'",
-                "ALTER TABLE oauthProvider ADD column 'login_button' String DEFAULT 'OpenID Connect'",
-            ],
-        )
+    Instances upgraded across several releases can reach a *partial* column
+    state — e.g. ``oauth_base_url`` present but ``oauth_authorize_url`` missing.
+    Introspect the live schema and add only the columns that are actually
+    missing, one ALTER per statement, so the migration repairs any partial
+    state and stays idempotent across restarts (fork #354).
+
+    The old probe-by-proxy form queried a single column as a stand-in for its
+    whole group, so a partially-migrated DB passed the probe and the missing
+    columns were never added — OAuth init then failed on the missing column
+    and ``/admin/config`` returned 500.
+    """
+    from sqlalchemy import inspect as sa_inspect
+    inspector = sa_inspect(engine)
+    if "oauthProvider" not in inspector.get_table_names():
+        return  # table is created fresh from the model with every column present
+    existing = {c["name"] for c in inspector.get_columns("oauthProvider")}
+    managed_columns = [
+        ("oauth_base_url", "String DEFAULT NULL"),
+        ("oauth_authorize_url", "String DEFAULT NULL"),
+        ("oauth_token_url", "String DEFAULT NULL"),
+        ("oauth_userinfo_url", "String DEFAULT NULL"),
+        ("oauth_admin_group", "String DEFAULT NULL"),
+        ("metadata_url", "String DEFAULT NULL"),
+        ("scope", "String DEFAULT 'openid profile email'"),
+        ("username_mapper", "String DEFAULT 'preferred_username'"),
+        ("email_mapper", "String DEFAULT 'email'"),
+        ("login_button", "String DEFAULT 'OpenID Connect'"),
+    ]
+    for col, coltype in managed_columns:
+        if col not in existing:
+            # One ALTER per call so a stray duplicate column can't roll back the
+            # rest, and tolerate "duplicate column name" per column: a concurrent
+            # boot (gunicorn pre-fork) or a column present-but-absent-from-snapshot
+            # can make ADD COLUMN raise it. Without swallowing it here the error
+            # propagates and aborts every remaining column for a full boot cycle
+            # (fork #354 / PR #355 hardening). Treat it as already-applied.
+            try:
+                _run_ddl_with_retry(engine, "ALTER TABLE oauthProvider ADD column '{}' {}".format(col, coltype))
+            except exc.OperationalError as e:
+                if "duplicate column name" not in str(e).lower():
+                    raise
 
 
 def migrate_config_table(engine, _session):
@@ -2198,6 +2214,42 @@ def migrate_annotation_polymorphic_position(engine, _session):
             )
 
 
+def migrate_annotation_device_origin(engine, _session):
+    """Phase 2 (KOReader bridge) — add the nullable ``device_origin_id`` column
+    to ``annotation``. Idempotent.
+
+    Same PRAGMA-guarded, per-statement try/except shape as
+    :func:`migrate_annotation_polymorphic_position` — query the live SQLite
+    catalog (NOT the SQLAlchemy inspector, whose reflection cache is stale
+    across the decouple migration's RENAME) so the existence check sees the
+    same view as the DDL. Nullable column, zero data risk.
+    """
+    with engine.begin() as conn:
+        rows = conn.execute(text(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='annotation'"
+        )).fetchall()
+        if not rows:
+            return
+        existing = {
+            row[1] for row in conn.execute(text(
+                "PRAGMA table_info(annotation)"
+            )).fetchall()
+        }
+        if "device_origin_id" in existing:
+            return
+        try:
+            conn.execute(text("ALTER TABLE annotation ADD COLUMN device_origin_id VARCHAR"))
+            log.info("[annotation-device-origin] added device_origin_id column")
+        except exc.OperationalError as e:
+            if "duplicate column" in str(e).lower():
+                log.info(
+                    "[annotation-device-origin] column already present despite "
+                    "PRAGMA check; treating as idempotent"
+                )
+            else:
+                raise
+
+
 def migrate_annotation_decouple_source_target(engine, _session):
     """Decouple annotation origin from sync target.
 
@@ -2280,6 +2332,7 @@ def migrate_Database(_session):
     migrate_kobo_annotation_sync_h1_columns(engine, _session)
     migrate_annotation_decouple_source_target(engine, _session)
     migrate_annotation_polymorphic_position(engine, _session)
+    migrate_annotation_device_origin(engine, _session)
     migrate_book_cover_preview_table(engine, _session)
 
     # Ensure progress syncing tables in app.db (user-related tables).

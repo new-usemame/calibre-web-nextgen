@@ -8,7 +8,7 @@ msgstr ""
 "Project-Id-Version: Calibre-Web NextGen\n"
 "Report-Msgid-Bugs-To: https://github.com/crocodilestick/Calibre-Web-"
 "Automated\n"
-"POT-Creation-Date: 2026-05-29 15:19+0000\n"
+"POT-Creation-Date: 2026-06-04 18:04+0000\n"
 "PO-Revision-Date: 2023-01-06 11:00+0000\n"
 "Last-Translator: Vegard Fladby <vegard.fladby@gmail.com>\n"
 "Language-Team: \n"
@@ -157,7 +157,7 @@ msgstr "Vis alt"
 msgid "Malformed request"
 msgstr "Feil utformet forespørsel"
 
-#: cps/admin.py:817 cps/admin.py:2899
+#: cps/admin.py:817 cps/admin.py:2901
 msgid "Guest Name can't be changed"
 msgstr "Gjestenavn kan ikke endres"
 
@@ -165,7 +165,7 @@ msgstr "Gjestenavn kan ikke endres"
 msgid "Guest can't have this role"
 msgstr "Gjesten kan ikke ha denne rollen"
 
-#: cps/admin.py:845 cps/admin.py:2723
+#: cps/admin.py:845 cps/admin.py:2725
 msgid "No admin user remaining, can't remove admin role"
 msgstr "Ingen administratorbruker igjen, kan ikke fjerne administratorrollen"
 
@@ -209,7 +209,7 @@ msgstr "Ugyldig lesekolonne"
 msgid "Invalid Restricted Column"
 msgstr "Ugyldig begrenset kolonne"
 
-#: cps/admin.py:952 cps/admin.py:2570
+#: cps/admin.py:952 cps/admin.py:2572
 msgid "Calibre-Web NextGen configuration updated"
 msgstr ""
 
@@ -408,8 +408,8 @@ msgstr "Rediger e-postserverinnstillinger"
 msgid "Success! Gmail Account Verified."
 msgstr ""
 
-#: cps/admin.py:1819 cps/admin.py:1822 cps/admin.py:2318 cps/admin.py:2554
-#: cps/admin.py:2670 cps/admin.py:2942 cps/editbooks.py:1078
+#: cps/admin.py:1819 cps/admin.py:1822 cps/admin.py:2318 cps/admin.py:2555
+#: cps/admin.py:2672 cps/admin.py:2944 cps/editbooks.py:1078
 #: cps/editbooks.py:1881 cps/shelf.py:93 cps/shelf.py:167 cps/shelf.py:228
 #: cps/shelf.py:278 cps/shelf.py:318 cps/shelf.py:398 cps/shelf.py:523
 #: cps/tasks/convert.py:145 cps/web.py:2915
@@ -454,7 +454,7 @@ msgstr "Ugyldig varighet for spesifisert oppgave"
 msgid "Scheduled tasks settings updated"
 msgstr "Innstillinger for planlagte oppgaver er oppdatert"
 
-#: cps/admin.py:1896 cps/admin.py:2040 cps/admin.py:2938 cps/web.py:2335
+#: cps/admin.py:1896 cps/admin.py:2040 cps/admin.py:2940 cps/web.py:2335
 #, fuzzy
 msgid "Oops! An unknown error occurred. Please try again later."
 msgstr "En ukjent feil oppstod. Prøv igjen senere."
@@ -468,7 +468,7 @@ msgstr "Innstillinger DB er ikke skrivbar"
 msgid "title"
 msgstr "Tittel"
 
-#: cps/admin.py:2025 cps/admin.py:2930
+#: cps/admin.py:2025 cps/admin.py:2932
 #, python-format
 msgid "Edit User %(nick)s"
 msgstr "Rediger bruker %(nick)s"
@@ -613,202 +613,202 @@ msgid ""
 "https://your-domain.com)"
 msgstr ""
 
-#: cps/admin.py:2537
+#: cps/admin.py:2538
 msgid "Password length has to be between 1 and 40"
 msgstr ""
 
-#: cps/admin.py:2597
+#: cps/admin.py:2599
 msgid "Database Settings updated"
 msgstr "Databaseinnstillinger oppdatert"
 
-#: cps/admin.py:2605
+#: cps/admin.py:2607
 msgid "Database Configuration"
 msgstr "Databasekonfigurasjon"
 
-#: cps/admin.py:2625 cps/web.py:2304
+#: cps/admin.py:2627 cps/web.py:2304
 #, fuzzy
 msgid "Oops! Please complete all fields."
 msgstr "Vennligst fyll ut alle feltene!"
 
-#: cps/admin.py:2634
+#: cps/admin.py:2636
 msgid "E-mail is not from valid domain"
 msgstr "E-post er ikke fra gyldig domene"
 
-#: cps/admin.py:2642
+#: cps/admin.py:2644
 msgid "Add new user"
 msgstr "Legg til ny bruker"
 
-#: cps/admin.py:2660
+#: cps/admin.py:2662
 #, python-format
 msgid "User '%(user)s' created"
 msgstr "Bruker '%(user)s' opprettet"
 
-#: cps/admin.py:2666
+#: cps/admin.py:2668
 #, fuzzy
 msgid "Oops! An account already exists for this Email. or name."
 msgstr "Fant en eksisterende konto for denne e-postadressen eller navnet."
 
-#: cps/admin.py:2696
+#: cps/admin.py:2698
 #, python-format
 msgid "User '%(nick)s' deleted"
 msgstr "Brukeren '%(nick)s' slettet"
 
-#: cps/admin.py:2699
+#: cps/admin.py:2701
 msgid "Can't delete Guest User"
 msgstr "Kan ikke slette gjestebruker"
 
-#: cps/admin.py:2702
+#: cps/admin.py:2704
 msgid "No admin user remaining, can't delete user"
 msgstr "Ingen administratorbruker igjen, kan ikke slette bruker"
 
-#: cps/admin.py:2893 cps/web.py:2639
+#: cps/admin.py:2895 cps/web.py:2639
 #, fuzzy
 msgid "Email can't be empty and has to be a valid Email"
 msgstr "E-postadresse kan ikke være tom og må være en gyldig e-post"
 
-#: cps/admin.py:2934
+#: cps/admin.py:2936
 #, python-format
 msgid "User '%(nick)s' updated"
 msgstr "Bruker '%(nick)s' oppdatert"
 
-#: cps/admin.py:2999
+#: cps/admin.py:3001
 #, python-format
 msgid ""
 "Connection successful! OIDC discovery endpoint is accessible.%(endpoints)s"
 msgstr ""
 
-#: cps/admin.py:3004
+#: cps/admin.py:3006
 msgid ""
 "Connection failed: OIDC discovery endpoint not found (404). Check if the "
 "base URL is correct."
 msgstr ""
 
-#: cps/admin.py:3006 cps/admin.py:3063
+#: cps/admin.py:3008 cps/admin.py:3065
 #, python-format
 msgid "Connection failed: Server returned status code %(code)s"
 msgstr ""
 
-#: cps/admin.py:3008
+#: cps/admin.py:3010
 msgid ""
 "Connection failed: Could not connect to server. Check the URL and network "
 "connectivity."
 msgstr ""
 
-#: cps/admin.py:3010
+#: cps/admin.py:3012
 msgid ""
 "Connection failed: Request timed out. The server may be slow or unreachable."
 msgstr ""
 
-#: cps/admin.py:3012
+#: cps/admin.py:3014
 msgid ""
 "Connection failed: Server returned invalid JSON. This may not be an OIDC "
 "endpoint."
 msgstr ""
 
-#: cps/admin.py:3015
+#: cps/admin.py:3017
 #, fuzzy, python-format
 msgid "Connection failed: %(error)s"
 msgstr "Tilkoblingsfeil"
 
-#: cps/admin.py:3041
+#: cps/admin.py:3043
 #, python-format
 msgid ""
 "Metadata is missing required OIDC fields: %(fields)s. This may not be a "
 "valid OIDC metadata endpoint."
 msgstr ""
 
-#: cps/admin.py:3052
+#: cps/admin.py:3054
 #, python-format
 msgid "Metadata URL is valid! Found %(count)s OAuth endpoints."
 msgstr ""
 
-#: cps/admin.py:3054
+#: cps/admin.py:3056
 #, fuzzy
 msgid " User info endpoint is available."
 msgstr "Ingen utgivelsesinformasjon tilgjengelig"
 
-#: cps/admin.py:3056
+#: cps/admin.py:3058
 msgid ""
 " Note: User info endpoint not found - this may cause authentication issues."
 msgstr ""
 
-#: cps/admin.py:3061
+#: cps/admin.py:3063
 msgid "Metadata URL not found (404). Please check the URL is correct."
 msgstr ""
 
-#: cps/admin.py:3065
+#: cps/admin.py:3067
 msgid ""
 "Connection failed: Could not connect to metadata URL. Check the URL and "
 "network connectivity."
 msgstr ""
 
-#: cps/admin.py:3067
+#: cps/admin.py:3069
 msgid "Connection failed: Request timed out."
 msgstr ""
 
-#: cps/admin.py:3069
+#: cps/admin.py:3071
 msgid "Connection failed: Invalid JSON in response."
 msgstr ""
 
-#: cps/admin.py:3072
+#: cps/admin.py:3074
 #, fuzzy
 msgid "An unknown error occurred."
 msgstr "En ukjent feil oppstod. Prøv igjen senere."
 
-#: cps/admin.py:3084
+#: cps/admin.py:3086
 #, fuzzy
 msgid "Restore already in progress."
 msgstr "Tilkoblingsfeil"
 
-#: cps/admin.py:3088
+#: cps/admin.py:3090
 msgid "Restore failed: Calibre library path is not configured."
 msgstr ""
 
-#: cps/admin.py:3093
+#: cps/admin.py:3095
 #, python-format
 msgid "Restore failed: metadata.db not found at %(path)s"
 msgstr ""
 
-#: cps/admin.py:3098
+#: cps/admin.py:3100
 #, python-format
 msgid "Restore failed: app.db not found at %(path)s"
 msgstr ""
 
-#: cps/admin.py:3170 cps/admin.py:3213
+#: cps/admin.py:3172 cps/admin.py:3215
 #, fuzzy, python-format
 msgid "Restore failed: %(err)s"
 msgstr "Tilkoblingsfeil"
 
-#: cps/admin.py:3190
+#: cps/admin.py:3192
 msgid "Restore completed but app.db cleanup failed. See logs for details."
 msgstr ""
 
-#: cps/admin.py:3209
+#: cps/admin.py:3211
 #, python-format
 msgid ""
 "Restore complete. Backups and restore log saved to %(dir)s. All book-linked "
 "data was reset."
 msgstr ""
 
-#: cps/annotations.py:69 cps/templates/annotations_import.html:4
+#: cps/annotations.py:70 cps/templates/annotations_import.html:4
 msgid "Import Kobo annotations"
 msgstr ""
 
-#: cps/annotations.py:87
+#: cps/annotations.py:88
 #, fuzzy
 msgid "No file uploaded."
 msgstr "Fil %(file)s lastet opp"
 
-#: cps/annotations.py:95 cps/annotations.py:117
+#: cps/annotations.py:96 cps/annotations.py:118
 #, python-format
 msgid "File exceeds %(max)d MB."
 msgstr ""
 
-#: cps/annotations.py:125
+#: cps/annotations.py:126
 msgid "Uploaded file is not a SQLite database."
 msgstr ""
 
-#: cps/annotations.py:523 cps/templates/annotations_view.html:4
+#: cps/annotations.py:524 cps/templates/annotations_view.html:4
 #, python-format
 msgid "Annotations: %(title)s"
 msgstr ""
@@ -1439,74 +1439,84 @@ msgstr ""
 "Tilbakeringingsdomene er ikke bekreftet. Følg fremgangsmåten for å bekrefte "
 "domenet i Googles utviklerkonsoll"
 
-#: cps/helper.py:118
+#: cps/helper.py:120
 #, python-format
 msgid "%(format)s format not found for book id: %(book)d"
 msgstr "%(format)s format ikke funnet for bok-ID: %(book)d"
 
-#: cps/helper.py:124 cps/tasks/convert.py:77
+#: cps/helper.py:126 cps/tasks/convert.py:77
 #, python-format
 msgid "%(format)s not found on Google Drive: %(fn)s"
 msgstr "%(format)s ikke funnet på Google Disk: %(fn)s"
 
-#: cps/helper.py:129
+#: cps/helper.py:131
 #, python-format
 msgid "%(format)s not found: %(fn)s"
 msgstr "%(format)s ikke funnet: %(fn)s"
 
-#: cps/helper.py:136 cps/helper.py:260 cps/templates/detail.html:528
+#: cps/helper.py:138 cps/helper.py:269 cps/templates/detail.html:528
 #: cps/templates/detail.html:532
 #, fuzzy
 msgid "Send to eReader"
 msgstr "Send til E-Reader"
 
-#: cps/helper.py:138 cps/helper.py:158 cps/helper.py:271
+#: cps/helper.py:140 cps/helper.py:167 cps/helper.py:280
 msgid "This Email has been sent via Calibre-Web NextGen."
 msgstr ""
 
-#: cps/helper.py:156
+#: cps/helper.py:155
+#, fuzzy, python-format
+msgid "Conversion timed out for book id: %(book)d"
+msgstr "%(format)s format ikke funnet for bok-ID: %(book)d"
+
+#: cps/helper.py:157
+#, fuzzy, python-format
+msgid "Conversion failed for book id: %(book)d"
+msgstr "%(format)s format ikke funnet for bok-ID: %(book)d"
+
+#: cps/helper.py:165
 msgid "Calibre-Web NextGen Test Email"
 msgstr ""
 
-#: cps/helper.py:157
+#: cps/helper.py:166
 #, fuzzy
 msgid "Test Email"
 msgstr "Test e-post"
 
-#: cps/helper.py:174
+#: cps/helper.py:183
 msgid "Get Started with Calibre-Web NextGen"
 msgstr ""
 
-#: cps/helper.py:179
+#: cps/helper.py:188
 #, fuzzy, python-format
 msgid "Registration Email for user: %(name)s"
 msgstr "Registrerings-e-post for bruker: %(name)s"
 
-#: cps/helper.py:190 cps/helper.py:196
+#: cps/helper.py:199 cps/helper.py:205
 #, fuzzy, python-format
 msgid "Convert %(orig)s to %(format)s and send to eReader"
 msgstr "Konverter %(orig)s til %(format)s og send til E-Reader"
 
-#: cps/helper.py:215 cps/helper.py:219 cps/helper.py:223
+#: cps/helper.py:224 cps/helper.py:228 cps/helper.py:232
 #, fuzzy, python-format
 msgid "Send %(format)s to eReader"
 msgstr "Send %(format)s til E-Reader"
 
-#: cps/helper.py:266
+#: cps/helper.py:275
 #, fuzzy, python-format
 msgid "%(book)s send to eReader"
 msgstr "%(book)s sendes til E-Reader"
 
-#: cps/helper.py:273
+#: cps/helper.py:282
 msgid "The requested file could not be read. Maybe wrong permissions?"
 msgstr "Den forespurte filen kunne ikke leses. Kanskje feil tillatelser?"
 
-#: cps/helper.py:418
+#: cps/helper.py:427
 #, python-brace-format
 msgid "Read status could not set: {}"
 msgstr "Lesestatus kunne ikke angis: {}"
 
-#: cps/helper.py:441
+#: cps/helper.py:450
 #, python-format
 msgid ""
 "Deleting bookfolder for book %(id)s failed, path has subfolders: %(path)s"
@@ -1514,12 +1524,12 @@ msgstr ""
 "Sletting av bokmappe for bok %(id)s mislyktes, banen har undermapper: "
 "%(path)s"
 
-#: cps/helper.py:453
+#: cps/helper.py:462
 #, python-format
 msgid "Deleting book %(id)s failed: %(message)s"
 msgstr "Sletting av bok %(id)s mislyktes: %(message)s"
 
-#: cps/helper.py:464
+#: cps/helper.py:473
 #, python-format
 msgid ""
 "Deleting book %(id)s from database only, book path in database not valid: "
@@ -1528,7 +1538,7 @@ msgstr ""
 "Sletter bok %(id)s kun fra databasen, bokbanen i databasen er ikke gyldig: "
 "%(path)s"
 
-#: cps/helper.py:554
+#: cps/helper.py:563
 #, python-format
 msgid ""
 "Rename author from: '%(src)s' to '%(dest)s' failed with error: %(error)s"
@@ -1536,62 +1546,62 @@ msgstr ""
 "Endre navn på forfatter fra: '%(src)s' til '%(dest)s' mislyktes med feil: "
 "%(error)s"
 
-#: cps/helper.py:623 cps/helper.py:632
+#: cps/helper.py:632 cps/helper.py:641
 #, python-format
 msgid "File %(file)s not found on Google Drive"
 msgstr "Fil %(file)s ikke funnet på Google Disk"
 
-#: cps/helper.py:722
+#: cps/helper.py:731
 #, python-format
 msgid "Rename title from: '%(src)s' to '%(dest)s' failed with error: %(error)s"
 msgstr ""
 "Endre navn på tittel fra: '%(src)s' til '%(dest)s' mislyktes med feil: "
 "%(error)s"
 
-#: cps/helper.py:761
+#: cps/helper.py:770
 #, python-format
 msgid "Book path %(path)s not found on Google Drive"
 msgstr "Finner ikke bokbane %(path)s på Google Disk"
 
-#: cps/helper.py:821
+#: cps/helper.py:830
 #, fuzzy
 msgid "Found an existing account for this Email address"
 msgstr "Fant en eksisterende konto for denne e-postadressen"
 
-#: cps/helper.py:829
+#: cps/helper.py:838
 msgid "This username is already taken"
 msgstr "Dette brukernavnet er allerede tatt"
 
-#: cps/helper.py:843
+#: cps/helper.py:852
 #, fuzzy
 msgid "Invalid Email address format"
 msgstr "Ugyldig format for e-postadresse"
 
-#: cps/helper.py:865
+#: cps/helper.py:874
 msgid "Password doesn't comply with password validation rules"
 msgstr ""
 
-#: cps/helper.py:1174
+#: cps/helper.py:1183
 msgid ""
 "Python module 'advocate' is not installed but is needed for cover uploads"
 msgstr ""
 "Python-modulen 'advocate' er ikke installert, men er nødvendig for "
 "omslagsopplastinger"
 
-#: cps/helper.py:1179 cps/helper.py:1187
+#: cps/helper.py:1188 cps/helper.py:1196
 #, python-format
 msgid "Cover image exceeds maximum size of %(size)s MB"
 msgstr ""
 
-#: cps/helper.py:1201
+#: cps/helper.py:1210
 msgid "Error Downloading Cover"
 msgstr "Feil ved nedlasting av cover"
 
-#: cps/helper.py:1204
+#: cps/helper.py:1213
 msgid "Cover Format Error"
 msgstr "Omslagsformatfeil"
 
-#: cps/helper.py:1207
+#: cps/helper.py:1216
 msgid ""
 "You are not allowed to access localhost or the local network for cover "
 "uploads"
@@ -1599,74 +1609,74 @@ msgstr ""
 "Du har ikke tilgang til localhost eller det lokale nettverket for "
 "coveropplastinger"
 
-#: cps/helper.py:1223
+#: cps/helper.py:1232
 msgid "Failed to create path for cover"
 msgstr "Kunne ikke opprette bane for dekning"
 
-#: cps/helper.py:1234 cps/helper.py:1247 cps/helper.py:1250
+#: cps/helper.py:1243 cps/helper.py:1256 cps/helper.py:1259
 msgid "Cover-file is not a valid image file, or could not be stored"
 msgstr "Cover-filen er ikke en gyldig bildefil, eller kunne ikke lagres"
 
-#: cps/helper.py:1267
+#: cps/helper.py:1276
 msgid "Only jpg/jpeg/png/webp/bmp files are supported as coverfile"
 msgstr "Bare jpg/jpeg/png/webp/bmp-filer støttes som coverfile"
 
-#: cps/helper.py:1283 cps/helper.py:1288
+#: cps/helper.py:1292 cps/helper.py:1297
 msgid "Invalid cover file content"
 msgstr "Ugyldig omslagsfilinnhold"
 
-#: cps/helper.py:1292
+#: cps/helper.py:1301
 msgid "Only jpg/jpeg files are supported as coverfile"
 msgstr "Bare jpg/jpeg-filer støttes som coverfile"
 
-#: cps/helper.py:1493 cps/helper.py:1735
+#: cps/helper.py:1502 cps/helper.py:1754
 msgid "Cover"
 msgstr "Dekke"
 
-#: cps/helper.py:1510
+#: cps/helper.py:1519
 msgid "UnRar binary file not found"
 msgstr "UnRar binær fil ikke funnet"
 
-#: cps/helper.py:1521
+#: cps/helper.py:1530
 msgid "Error executing UnRar"
 msgstr "Feil ved kjøring av UnRar"
 
-#: cps/helper.py:1527
+#: cps/helper.py:1536
 #, python-format
 msgid ""
 "Unsupported architecture detected: %(arch)s. Calibre-Web NextGen is "
 "optimized for x86_64 and aarch64."
 msgstr ""
 
-#: cps/helper.py:1536
+#: cps/helper.py:1545
 msgid "Could not find the specified directory"
 msgstr ""
 
-#: cps/helper.py:1539
+#: cps/helper.py:1548
 msgid "Please specify a directory, not a file"
 msgstr ""
 
-#: cps/helper.py:1553
+#: cps/helper.py:1562
 #, fuzzy
 msgid "Calibre binaries not viable"
 msgstr "DB er ikke skrivbar"
 
-#: cps/helper.py:1562
+#: cps/helper.py:1571
 #, python-format
 msgid "Missing calibre binaries: %(missing)s"
 msgstr ""
 
-#: cps/helper.py:1564
+#: cps/helper.py:1573
 #, fuzzy, python-format
 msgid "Missing executable permissions: %(missing)s"
 msgstr "Utførelsestillatelser mangler"
 
-#: cps/helper.py:1569
+#: cps/helper.py:1578
 #, fuzzy
 msgid "Error executing Calibre"
 msgstr "Feil ved kjøring av UnRar"
 
-#: cps/helper.py:1737 cps/templates/admin.html:241
+#: cps/helper.py:1756 cps/templates/admin.html:241
 msgid "Queue all books for metadata backup"
 msgstr "Sett alle bøker i kø for sikkerhetskopiering av metadata"
 
@@ -1676,7 +1686,7 @@ msgid ""
 "api_endpoint for kobo device"
 msgstr ""
 
-#: cps/kobo_auth.py:144
+#: cps/kobo_auth.py:107
 msgid "Kobo Setup"
 msgstr "Kobo oppsett"
 
@@ -3015,8 +3025,8 @@ msgstr ""
 #: cps/templates/book_edit.html:21 cps/templates/book_table.html:66
 #: cps/templates/book_table.html:145 cps/templates/book_table.html:194
 #: cps/templates/duplicates.html:718 cps/templates/modal_dialogs.html:63
-#: cps/templates/modal_dialogs.html:116 cps/templates/user_edit.html:333
-#: cps/templates/user_table.html:150
+#: cps/templates/modal_dialogs.html:116 cps/templates/read.html:138
+#: cps/templates/user_edit.html:333 cps/templates/user_table.html:150
 msgid "Delete"
 msgstr "Slett"
 
@@ -3450,10 +3460,10 @@ msgstr "OK"
 #: cps/templates/duplicates.html:746 cps/templates/layout.html:595
 #: cps/templates/layout.html:750 cps/templates/modal_dialogs.html:64
 #: cps/templates/modal_dialogs.html:99 cps/templates/modal_dialogs.html:117
-#: cps/templates/modal_dialogs.html:135 cps/templates/schedule_edit.html:46
-#: cps/templates/shelf_edit.html:34 cps/templates/tasks.html:94
-#: cps/templates/tasks.html:166 cps/templates/tasks.html:173
-#: cps/templates/user_edit.html:587
+#: cps/templates/modal_dialogs.html:135 cps/templates/read.html:137
+#: cps/templates/schedule_edit.html:46 cps/templates/shelf_edit.html:34
+#: cps/templates/tasks.html:94 cps/templates/tasks.html:166
+#: cps/templates/tasks.html:173 cps/templates/user_edit.html:587
 msgid "Cancel"
 msgstr "Avbryt"
 
@@ -3564,7 +3574,7 @@ msgstr ""
 msgid "Source: %(s)s"
 msgstr "Serie: %(serie)s"
 
-#: cps/templates/annotations_view.html:45
+#: cps/templates/annotations_view.html:45 cps/templates/read.html:142
 msgid "No annotations on this book yet."
 msgstr ""
 
@@ -3764,9 +3774,10 @@ msgstr "Hent metadata"
 
 #: cps/templates/book_edit.html:272 cps/templates/config_db.html:111
 #: cps/templates/config_edit.html:670 cps/templates/config_view_edit.html:220
-#: cps/templates/email_edit.html:65 cps/templates/schedule_edit.html:47
-#: cps/templates/shelf_edit.html:36 cps/templates/shelf_order.html:41
-#: cps/templates/shelf_reorder.html:38 cps/templates/user_edit.html:585
+#: cps/templates/email_edit.html:65 cps/templates/read.html:136
+#: cps/templates/schedule_edit.html:47 cps/templates/shelf_edit.html:36
+#: cps/templates/shelf_order.html:41 cps/templates/shelf_reorder.html:38
+#: cps/templates/user_edit.html:585
 msgid "Save"
 msgstr "Lagre"
 
@@ -7325,6 +7336,36 @@ msgstr "Ugyldig lesekolonne"
 #, fuzzy
 msgid "One column"
 msgstr "Ugyldig lesekolonne"
+
+#: cps/templates/read.html:139
+msgid "Note"
+msgstr ""
+
+#: cps/templates/read.html:140
+msgid "Add a note (optional)"
+msgstr ""
+
+#: cps/templates/read.html:141
+msgid "Select within a paragraph to highlight."
+msgstr ""
+
+#: cps/templates/read.html:144
+#, fuzzy
+msgid "Yellow"
+msgstr "Tillate"
+
+#: cps/templates/read.html:145
+#, fuzzy
+msgid "Red"
+msgstr "redusere"
+
+#: cps/templates/read.html:146
+msgid "Green"
+msgstr ""
+
+#: cps/templates/read.html:147
+msgid "Blue"
+msgstr ""
 
 #: cps/templates/readcbr.html:8
 msgid "Comic Reader"

@@ -32,7 +32,7 @@ from sqlalchemy.orm.attributes import flag_modified
 from sqlalchemy.exc import IntegrityError, OperationalError, InvalidRequestError
 from sqlalchemy.sql.expression import func, or_, text
 
-from . import constants, logger, helper, services, cli_param
+from . import constants, logger, helper, services, cli_param, apply_https_runtime_config
 from . import db, calibre_db, ub, web_server, config, updater_thread, gdriveutils, \
     kobo_sync_status, schedule
 from .web import _s2_key
@@ -2653,6 +2653,7 @@ def _configuration_update_helper():
         _config_checkbox(to_save, "config_disable_standard_login")
         _config_checkbox(to_save, "config_enable_oauth_group_admin_management")
         _config_checkbox(to_save, "config_check_extensions")
+        _config_checkbox(to_save, "config_use_https")
         _config_checkbox(to_save, "config_password_policy")
         _config_checkbox(to_save, "config_password_number")
         _config_checkbox(to_save, "config_password_lower")
@@ -2682,6 +2683,7 @@ def _configuration_update_helper():
         _configuration_result(_("Oops! Database Error: %(error)s.", error=e.orig))
 
     config.save()
+    apply_https_runtime_config()
     response = _configuration_result(None, reboot_required, " ".join(filter(None, [unrar_warning, arch_warning])))
     if reboot_required:
         # Schedule the restart AFTER the response has been returned to the

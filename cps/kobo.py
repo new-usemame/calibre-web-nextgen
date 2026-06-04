@@ -767,9 +767,13 @@ def get_metadata(book):
         if i.format_type() == "ISBN":
             book_isbn = i.val
     if config.config_kobo_pages_cc:
-        book_pages = getattr(book, "custom_column_"+str(config.config_kobo_pages_cc))[0].value
+        pages_col = getattr(book, "custom_column_" + str(config.config_kobo_pages_cc), None)
+        if pages_col:
+            book_pages = pages_col[0].value
     if config.config_kobo_words_cc:
-        book_words = getattr(book, "custom_column_"+str(config.config_kobo_words_cc))[0].value
+        words_col = getattr(book, "custom_column_" + str(config.config_kobo_words_cc), None)
+        if words_col:
+            book_words = words_col[0].value
     cover_image_id = _get_cover_image_id(book)
     if cover_image_id != str(book_uuid):
         log.debug("Kobo Sync: cache-busting cover id for book %s: %s", book.id, cover_image_id)
@@ -779,7 +783,7 @@ def get_metadata(book):
     series2_val = ""
     if config.config_series2_column and db.series2_link_class is not None and book.series2:
         link = book.series2[0]
-        series2_val = f"{link.value} [#{_format_series_index(link.extra)}]"
+        series2_val = f"{link.value} [{_format_series_index(link.extra)}]"
 
     if config.config_kobo_series2_priority:
         subtitle = series2_val or subtitle_val

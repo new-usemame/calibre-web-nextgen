@@ -107,57 +107,14 @@ def _register_sqlite_udfs(dbapi_connection, _connection_record):
 cc_exceptions = ['composite', 'series']
 cc_classes = {}
 
-# Set by setup_series2_classes(); used by web routes and templates
+# Set by setup_db_cc_classes() from the configured series2 column; used by
+# web routes and templates. The series2 column is an ordinary 'series' custom
+# column, so its classes are built by the single ORM builder (no separate
+# builder — that caused duplicate-class reconnect crashes).
 series2_cc_class = None
 series2_link_class = None
 
 Base = declarative_base()
-
-
-def setup_series2_classes(cc_id):
-    """Create ORM classes for the configured series2 custom column and attach
-    a Books.series2 relationship, mirroring setup_db_cc_classes for series type."""
-    global series2_cc_class, series2_link_class
-
-    if not cc_id:
-        return
-
-    cc_table_name = 'custom_column_' + str(cc_id)
-    link_table_name = 'books_custom_column_' + str(cc_id) + '_link'
-
-    # Build the value table class (custom_column_<id>)
-    if cc_table_name in Base.metadata.tables:
-        existing = cc_classes.get(cc_id)
-        if existing is None:
-            return
-        series2_cc_class = existing
-    else:
-        ccdict = {'__tablename__': cc_table_name,
-                  'id': Column(Integer, primary_key=True),
-                  'value': Column(String)}
-        series2_cc_class = type(str(cc_table_name), (Base,), ccdict)
-        cc_classes[cc_id] = series2_cc_class
-
-    # Build the link table class (books_custom_column_<id>_link)
-    if link_table_name in Base.metadata.tables:
-        return
-    dicttable = {
-        '__tablename__': link_table_name,
-        'id': Column(Integer, primary_key=True),
-        'book': Column(Integer, ForeignKey('books.id'), primary_key=True),
-        'map_value': Column('value', Integer,
-                            ForeignKey(cc_table_name + '.id'),
-                            primary_key=True),
-        'extra': Column(Float),
-        'asoc': relationship(cc_table_name, uselist=False),
-        'value': association_proxy('asoc', 'value'),
-    }
-    series2_link_class = type(str(link_table_name), (Base,), dicttable)
-
-    # Attach series2 relationship to Books, overriding the [] placeholder
-    setattr(Books, 'series2', relationship(series2_link_class))
-    log.debug("setup_series2_classes: cc_id=%s, cc_class=%s, link_class=%s",
-              cc_id, series2_cc_class, series2_link_class)
 
 books_authors_link = Table('books_authors_link', Base.metadata,
                            Column('book', Integer, ForeignKey('books.id'), primary_key=True),
@@ -532,7 +489,7 @@ class Books(Base):
     comments = relationship(Comments, backref='books', lazy='selectin')
     data = relationship(Data, backref='books', lazy='selectin')
     series = relationship(Series, secondary=books_series_link, backref='books', lazy='selectin')
-    series2 = []  # replaced by setup_series2_classes() when config_series2_column is set
+    series2 = []  # replaced by setup_db_cc_classes() when config_series2_column is set
     ratings = relationship(Ratings, secondary=books_ratings_link, backref='books', lazy='selectin')
     languages = relationship(Languages, secondary=books_languages_link, backref='books', lazy='selectin')
     publishers = relationship(Publishers, secondary=books_publishers_link, backref='books', lazy='selectin')
@@ -813,22 +770,7 @@ class CalibreDB:
                     ccdict['value'] = Column(String)
                 if row.datatype in ['float', 'int', 'bool', 'datetime', 'comments']:
                     ccdict['book'] = Column(Integer, ForeignKey('books.id'))
-                cc_class_name = str('custom_column_' + str(row.id))
-                # Reuse an already-mapped class if the mapper registry still
-                # holds it (happens after dispose() clears cc_classes + metadata
-                # but not SQLAlchemy's internal _class_registry). Creating a
-                # second type() with the same name in the same registry raises
-                # "Multiple classes found for path" on the next query.
-                try:
-                    reg = Base.registry._class_registry
-                    existing_ref = reg.get(cc_class_name)
-                    existing = existing_ref() if existing_ref is not None else None
-                except Exception:
-                    existing = None
-                if existing is not None:
-                    cc_classes[row.id] = existing
-                else:
-                    cc_classes[row.id] = type(cc_class_name, (Base,), ccdict)
+                cc_classes[row.id] = type(str('custom_column_' + str(row.id)), (Base,), ccdict)
 
         for cc_id in cc_ids:
             if cc_id[1] in ['bool', 'int', 'float', 'datetime', 'comments']:
@@ -850,10 +792,48 @@ class CalibreDB:
                                      secondary=books_custom_column_links[cc_id[0]],
                                      backref='books'))
 
-        # Set up series2 custom column if configured
+        # Second-series feature. The configured series2 column is a 'series'
+        # custom column, which the main loop above intentionally skips
+        # (cc_exceptions includes 'series'). Build its value + link classes
+        # here so it all lives in the single ORM builder — no separate builder.
+        #
+        # Critically, the link class's value relationship uses a DIRECT class
+        # reference (relationship(series2_cc_class), not the string
+        # 'custom_column_N'). A string target is resolved lazily through the
+        # registry, and on reconnect the freshly recreated class collides with
+        # the lingering old one ("Multiple classes found for path
+        # custom_column_N"). A direct reference is resolved immediately, so the
+        # rebuild is clean without any registry-reuse hacks. Changing
+        # config_series2_column requires a restart, so reading it at build time
+        # is sufficient.
+        global series2_cc_class, series2_link_class
+        series2_cc_class = None
+        series2_link_class = None
         series2_col_id = getattr(cls.config, 'config_series2_column', 0)
         if series2_col_id:
-            setup_series2_classes(series2_col_id)
+            s2_cc_table = 'custom_column_' + str(series2_col_id)
+            s2_link_table = 'books_custom_column_' + str(series2_col_id) + '_link'
+            series2_cc_class = type(str(s2_cc_table), (Base,), {
+                '__tablename__': s2_cc_table,
+                'id': Column(Integer, primary_key=True),
+                'value': Column(String),
+            })
+            cc_classes[series2_col_id] = series2_cc_class
+            series2_link_class = type(str(s2_link_table), (Base,), {
+                '__tablename__': s2_link_table,
+                'id': Column(Integer, primary_key=True),
+                'book': Column(Integer, ForeignKey('books.id'), primary_key=True),
+                'map_value': Column('value', Integer,
+                                    ForeignKey(s2_cc_table + '.id'), primary_key=True),
+                'extra': Column(Float),
+                'asoc': relationship(series2_cc_class, uselist=False),
+                'value': association_proxy('asoc', 'value'),
+            })
+            setattr(Books, 'series2', relationship(series2_link_class))
+        else:
+            # Not configured: restore the empty-list placeholder so templates
+            # doing entry.series2|length still work. dispose() cleared it.
+            setattr(Books, 'series2', [])
         return cc_classes
 
     @classmethod
@@ -1591,7 +1571,10 @@ class CalibreDB:
                             pass
 
             for attr in list(Books.__dict__.keys()):
-                if attr.startswith("custom_column_"):
+                # 'series2' is the second-series alias relationship onto the
+                # configured series column's link class; clear it alongside the
+                # custom_column_* relationships so the rebuild re-adds it fresh.
+                if attr.startswith("custom_column_") or attr == "series2":
                     setattr(Books, attr, None)
 
             for db_class in cc_classes.values():

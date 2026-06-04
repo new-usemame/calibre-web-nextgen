@@ -32,6 +32,7 @@
 {% endblock %}
 
 {% block header %}
+<link href="{{ url_for('static', filename='css/libs/bootstrap-select.min.css') }}" rel="stylesheet">
 <style>
 .settings-container .form-group {
     margin-bottom: 1.5rem;
@@ -89,6 +90,13 @@
 .col-sm-12 {
     text-align: center;
     padding: 20px 0;
+}
+
+/* Sidebar Icon picker: bootstrap-select auto-sizes the scroll area to the
+   viewport, which makes the menu overly tall (especially as a drop-up). Cap
+   it. Adjust this max-height to taste. */
+#series2_icon_group .bootstrap-select .dropdown-menu .inner {
+    max-height: 250px !important;
 }
 
 .btn {
@@ -191,7 +199,7 @@
       <div class="form-group">
         <label for="config_series2_icon">{{_('Sidebar Icon')}}</label>
         <select name="config_series2_icon" id="config_series2_icon"
-                class="selectpicker" data-live-search="true">
+                class="selectpicker" data-live-search="true" data-width="100%">
           {% for icon_value, icon_label in series2Icons %}
           <option value="{{ icon_value }}"
                   data-content="<span class='glyphicon {{ icon_value }}'></span> {{ icon_label }}"
@@ -766,7 +774,10 @@ function updateSeries2Label(sel) {
     group.style.display = hide ? 'none' : '';
     if (!hide && typeof $.fn.selectpicker === 'function') {
       var iconSel = $('#config_series2_icon');
-      if (!iconSel.parent().hasClass('bootstrap-select')) {
+      // Init exactly once, only while the group is visible (so bootstrap-select
+      // measures width correctly). `.data('selectpicker')` is the library's own
+      // instance marker — reliable even if the wrapper DOM looks malformed.
+      if (!iconSel.data('selectpicker')) {
         iconSel.selectpicker();
       }
     }

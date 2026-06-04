@@ -123,6 +123,14 @@ else:
 
 
 def _autodetect_subtitle_column():
+    """On first creation of the subtitle config columns, auto-detect a Calibre
+    custom column labeled "subtitle" and wire it up — both for the book-detail
+    subtitle (config_subtitle_column) and the Kobo sync Subtitle field
+    (config_kobo_subtitle_cc). This preserves the fork's original zero-config
+    behavior (janeczku #3358 / @dotknott) now that the Kobo subtitle source is
+    admin-configurable: existing libraries that used a "subtitle" column keep
+    working without anyone opening the settings page. Only fills columns that
+    are still unset so an admin's explicit choice is never overwritten."""
     try:
         matches = calibre_db.session.query(db.CustomColumns).filter(
             db.CustomColumns.label == "subtitle",
@@ -130,9 +138,16 @@ def _autodetect_subtitle_column():
             db.CustomColumns.datatype.in_(["text", "comments"])
         ).all()
         if len(matches) == 1:
-            config.config_subtitle_column = matches[0].id
-            config.save()
-            log.info("[autoconfig] Set subtitle column to '%s' (id=%d)", matches[0].name, matches[0].id)
+            changed = False
+            if not config.config_subtitle_column:
+                config.config_subtitle_column = matches[0].id
+                changed = True
+            if not config.config_kobo_subtitle_cc:
+                config.config_kobo_subtitle_cc = matches[0].id
+                changed = True
+            if changed:
+                config.save()
+                log.info("[autoconfig] Set subtitle column to '%s' (id=%d)", matches[0].name, matches[0].id)
     except Exception as e:
         log.warning("[autoconfig] Subtitle column autodetection failed: %s", e)
 

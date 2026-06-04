@@ -664,14 +664,24 @@ def get_series(book):
 
 
 def get_subtitle(book):
+    # Subtitle source is the admin-configured custom column
+    # (config_kobo_subtitle_cc). On first creation that column is auto-detected
+    # from a Calibre column labeled "subtitle" (see cps.__init__
+    # _autodetect_subtitle_column), preserving the fork's original zero-config
+    # behavior. Returns "" defensively at every fork — unconfigured, missing
+    # attribute (schema drift / lazy-load), no value, or a NULL cell — so a sync
+    # is never broken by a missing subtitle.
     if not config.config_kobo_subtitle_cc:
         return ""
-    subtitleColumn = getattr(book, f'custom_column_{config.config_kobo_subtitle_cc}')
-    if not len(subtitleColumn):
+    subtitleColumn = getattr(book, f'custom_column_{config.config_kobo_subtitle_cc}', None)
+    if not subtitleColumn:
+        return ""
+    value = subtitleColumn[0].value
+    if value is None:
         return ""
     return (
         f"{config.config_kobo_subtitle_prefix or ''} "
-        f"{subtitleColumn[0].value} "
+        f"{value} "
         f"{config.config_kobo_subtitle_suffix or ''}"
     ).strip()
 

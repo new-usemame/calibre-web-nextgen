@@ -690,7 +690,11 @@ def load_configuration(session, secret_key):
         session.add(_Settings())
         session.commit()
         return True
-    return 'config_subtitle_column' in new_columns
+    # Trigger subtitle-column autodetection when either subtitle config column
+    # is newly added — covers both a fresh install and an upgrade that adds the
+    # Kobo subtitle column after the book-detail one already existed.
+    return ('config_subtitle_column' in new_columns
+            or 'config_kobo_subtitle_cc' in new_columns)
 
 
 def get_flask_session_key(_session):

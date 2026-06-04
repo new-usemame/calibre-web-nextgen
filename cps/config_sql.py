@@ -77,6 +77,9 @@ class _Settings(_Base):
     config_series2_slug = Column(String, default='series2')
     config_series2_icon = Column(String, default='glyphicon-bookmark')
     config_show_series2_on_book_list = Column(Boolean, default=True)
+    config_cc_display_order = Column(String, default='')
+    config_cc_link_columns = Column(String, default='')
+    config_cc_hidden_columns = Column(String, default='')
     config_title_regex = Column(String,
                                 default=r'^(A|The|An|Der|Die|Das|Den|Ein|Eine'
                                         r'|Einen|Dem|Des|Einem|Eines|Le|La|Les|L\'|Un|Une)\s+')

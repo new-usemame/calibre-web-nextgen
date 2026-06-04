@@ -68,8 +68,13 @@ import sys
 sys.path.insert(1, '/app/calibre-web-automated/scripts/')
 from cwa_db import CWA_DB
 
-# Computed once at startup. Used for dynamic series2 URL routing.
-_s2_key = (config.config_series2_slug or config.config_series2_label or '').strip() or 'series2'
+# Computed once at startup. Used for dynamic series2 URL routing. Read via
+# getattr with defaults: this runs at module-import time, before config is
+# guaranteed to have loaded every column from storage (e.g. a settings row
+# written under an older schema, or the test harness importing the module
+# without a fully-populated config), so a bare attribute access could raise.
+_s2_key = ((getattr(config, 'config_series2_slug', '') or '')
+           or (getattr(config, 'config_series2_label', '') or '')).strip() or 'series2'
 
 feature_support = {
     'ldap': bool(services.ldap),
@@ -2864,7 +2869,7 @@ def change_profile(kobo_support, hardcover_support, local_oauth_check, oauth_sta
             current_user.kindle_mail = valid_email(to_save.get("kindle_mail"))
         if to_save.get("kindle_mail_subject", current_user.kindle_mail_subject) != current_user.kindle_mail_subject:
             current_user.kindle_mail_subject = strip_whitespaces(to_save.get("kindle_mail_subject", "")) or ""
-        if not (config.config_reverse_proxy_login_use_email and not current_user.role_admin()):
+        if not (getattr(config, 'config_reverse_proxy_login_use_email', False) and not current_user.role_admin()):
             new_email = valid_email(to_save.get("email", current_user.email))
             if not new_email:
                 raise Exception(_("Email can't be empty and has to be a valid Email"))

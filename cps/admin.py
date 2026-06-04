@@ -2540,6 +2540,7 @@ def _configuration_update_helper():
         _config_string(to_save, "config_kobo_subtitle_prefix")
         _config_string(to_save, "config_kobo_subtitle_suffix")
         _config_checkbox(to_save, "config_kobo_series2_priority")
+        _config_checkbox(to_save, "config_kobo_strip_comment_newlines")
 
         if "config_upload_formats" in to_save:
             to_save["config_upload_formats"] = ','.join(

@@ -1259,7 +1259,7 @@ function pubdateFormatter(value, row) {
 }
 
 function bookRatingFormatter(value, row) {
-    var rating = parseInt(value, 10);
+    var rating = Math.round(parseFloat(value));
     if (!rating) return "";
     return "★".repeat(rating) + "☆".repeat(5 - rating);
 }

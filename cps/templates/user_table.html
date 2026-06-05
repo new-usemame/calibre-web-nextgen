@@ -1,4 +1,4 @@
-{% extends "layout.html" %}
+{% extends parent_template|default("layout.html") %}
 {% macro user_table_row(parameter, edit_text, show_text, validate, elements=False) -%}
 <th data-field="{{ parameter }}" id="{{ parameter }}"
     data-name="{{ parameter }}"
@@ -151,6 +151,7 @@
             {{ user_checkbox_row("role", "edit_shelf_role", _('Edit Public Shelves'), visiblility, all_roles)}}
             {%  if kobo_support %}
             {{ user_single_checkbox_row("kobo_only_shelves_sync", _('Sync selected Shelves with Kobo'))}}
+            {{ user_single_checkbox_row("kobo_sync_public_shelves", _('Sync all public shelves with Kobo'))}}
             {%  endif %}
             {{ user_single_checkbox_row("opds_only_shelves_sync", _('Expose selected Shelves to OPDS'))}}
             {{ user_checkbox_row("sidebar_view", "detail_random", _('Show Random Books in Detail View'), visiblility, sidebar_settings)}}
@@ -173,7 +174,7 @@
       </thead>
     </table>
     <div class="errorlink">
-      <div class="btn btn-default" data-back="{{ url_for('admin.admin') }}" id="back">{{_('Back')}}</div>
+      <div class="btn btn-default" id="back">{{_('Back')}}</div>
     </div>
 {% endblock %}
 {% block modal %}

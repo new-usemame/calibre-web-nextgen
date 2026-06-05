@@ -2409,7 +2409,7 @@ msgstr "下載封面時出錯"
 
 #: cps/web.py:1058
 #, python-format
-msgid "Magic Shelf&nbsp&nbsp&nbsp—&nbsp&nbsp&nbsp%(icon)s %(name)s"
+msgid "Magic Shelf — %(icon)s %(name)s"
 msgstr ""
 
 #: cps/web.py:1218

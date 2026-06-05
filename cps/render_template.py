@@ -72,7 +72,7 @@ def get_sidebar_config(kwargs=None):
         content = 'conf' in kwargs
     sidebar = list()
     sidebar.append({"glyph": "glyphicon-book", "text": _('Books'), "link": 'web.index', "id": "new",
-                    "visibility": constants.SIDEBAR_RECENT, 'public': True, "page": "root",
+                    "visibility": constants.SIDEBAR_RECENT, 'public': True, "page": "root", "no_param": True,
                     "show_text": _('Show recent books'), "config_show":False})
     sidebar.append({"glyph": "glyphicon-fire", "text": _('Hot Books'), "link": 'web.books_list', "id": "hot",
                     "visibility": constants.SIDEBAR_HOT, 'public': True, "page": "hot",
@@ -107,6 +107,13 @@ def get_sidebar_config(kwargs=None):
     sidebar.append({"glyph": "glyphicon-bookmark", "text": _('Series'), "link": 'web.series_list', "id": "serie",
                     "visibility": constants.SIDEBAR_SERIES, 'public': True, "page": "series",
                     "show_text": _('Show Series Section'), "config_show": True})
+    if config.config_series2_column:
+        series2_label = config.config_series2_label or 'World'
+        series2_icon = config.config_series2_icon or 'glyphicon-bookmark'
+        sidebar.append({"glyph": series2_icon, "text": series2_label, "link": 'web.series2_list',
+                        "id": "serie2", "visibility": constants.SIDEBAR_SERIES, 'public': True,
+                        "page": "series2", "no_param": True,
+                        "show_text": _('Show %(label)s Section', label=series2_label), "config_show": True})
     sidebar.append({"glyph": "glyphicon-user", "text": _('Authors'), "link": 'web.author_list', "id": "author",
                     "visibility": constants.SIDEBAR_AUTHOR, 'public': True, "page": "author",
                     "show_text": _('Show Author Section'), "config_show": True})
@@ -120,10 +127,10 @@ def get_sidebar_config(kwargs=None):
                     "show_text": _('Show Language Section'), "config_show": True})
     sidebar.append({"glyph": "glyphicon-star-empty", "text": _('Ratings'), "link": 'web.ratings_list', "id": "rate",
                     "visibility": constants.SIDEBAR_RATING, 'public': True,
-                    "page": "rating", "show_text": _('Show Ratings Section'), "config_show": True})
+                    "page": "ratings", "show_text": _('Show Ratings Section'), "config_show": True})
     sidebar.append({"glyph": "glyphicon-file", "text": _('File formats'), "link": 'web.formats_list', "id": "format",
                     "visibility": constants.SIDEBAR_FORMAT, 'public': True,
-                    "page": "format", "show_text": _('Show File Formats Section'), "config_show": True})
+                    "page": "formats", "show_text": _('Show File Formats Section'), "config_show": True})
     sidebar.append(
         {"glyph": "glyphicon-trash", "text": _('Archived Books'), "link": 'web.books_list', "id": "archived",
          "visibility": constants.SIDEBAR_ARCHIVED, 'public': (not current_user.is_anonymous), "page": "archived",
@@ -131,7 +138,7 @@ def get_sidebar_config(kwargs=None):
     if not simple:
         sidebar.append(
             {"glyph": "glyphicon-th-list", "text": _('Books List'), "link": 'web.books_table', "id": "list",
-             "visibility": constants.SIDEBAR_LIST, 'public': (not current_user.is_anonymous), "page": "list",
+             "visibility": constants.SIDEBAR_LIST, 'public': (not current_user.is_anonymous), "page": "book_table",
              "show_text": _('Show Books List'), "config_show": content})
     if current_user.role_admin() or current_user.role_edit():
         sidebar.append(
@@ -384,6 +391,13 @@ def render_title_template(*args, **kwargs):
                     }
     except Exception as e:
         log.debug("[cwa-duplicates] Failed to build duplicate notification context: %s", str(e))
+    try:
+        from .spa import is_fragment_request
+        fragment = is_fragment_request()
+    except Exception:
+        fragment = False
+    kwargs['parent_template'] = 'fragment.html' if fragment else 'layout.html'
+    kwargs['spa_fragment'] = fragment
     try:
         return render_template(instance=config.config_calibre_web_title, sidebar=sidebar, simple=simple,
                        accept=config.config_upload_formats.split(','),

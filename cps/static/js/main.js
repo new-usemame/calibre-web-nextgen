@@ -192,24 +192,8 @@ $(document).ready(function() {
     }
 });
 
-$(".session").click(function() {
-    window.sessionStorage.setItem("back", window.location.pathname);
-    window.sessionStorage.setItem("search", window.location.search);
-});
-
 $("#back").click(function() {
-   var loc = sessionStorage.getItem("back");
-   var param = sessionStorage.getItem("search");
-   if (!loc) {
-       loc = $(this).data("back");
-   }
-   sessionStorage.removeItem("back");
-   sessionStorage.removeItem("search");
-   if (param === null) {
-       param = "";
-   }
-   window.location.href = loc + param;
-
+    history.back();
 });
 
 function confirmDialog(id, dialogid, dataValue, yesFn, noFn) {
@@ -236,7 +220,7 @@ function confirmDialog(id, dialogid, dataValue, yesFn, noFn) {
     $confirm.modal('show');
 }
 
-$("#delete_confirm").click(function(event) {
+$(document).on("click", "#delete_confirm", function(event) {
     //get data-id attribute of the clicked element
     var deleteId = $(this).data("delete-id");
     var bookFormat = $(this).data("delete-format");
@@ -324,10 +308,6 @@ $(function() {
         });
     });
 
-    function restartTimer() {
-        $("#spinner").addClass("hidden");
-        $("#RestartDialog").modal("hide");
-    }
 
     function cleanUp() {
         clearInterval(updateTimerID);
@@ -411,37 +391,41 @@ $(function() {
         });
     }
 
-    let selectedLayoutMode;
+    window.cwaInit = window.cwaInit || {};
 
-    if ($("body").hasClass("blur")) {
-        selectedLayoutMode = "fitRowsCentered";
-    } else {
-        selectedLayoutMode = "fitRows";
-    }
-
-    $(".discover .row").filter(function() {
-        return $(this).find(".book").length > 0;
-    }).isotope({
-        // options
-        itemSelector : ".book",
-        layoutMode : selectedLayoutMode
-    });
+    window.cwaInit.isotope = function () {
+        var selectedLayoutMode = $("body").hasClass("blur") ? "fitRowsCentered" : "fitRows";
+        $(".discover .row").filter(function () {
+            return $(this).find(".book").length > 0;
+        }).each(function () {
+            var $row = $(this);
+            if ($row.data("isotope")) {
+                $row.isotope("reloadItems").isotope("layout");
+            } else {
+                $row.isotope({ itemSelector: ".book", layoutMode: selectedLayoutMode });
+            }
+            // Covers load after layout runs; without this the grid is laid out
+            // against collapsed image heights and only corrects on a later
+            // relayout (e.g. SPA nav). Relayout as each cover finishes loading.
+            if ($.fn.imagesLoaded) {
+                $row.imagesLoaded().progress(function () {
+                    $row.isotope("layout");
+                });
+            }
+        });
+    };
 
     // Re-layout isotope once the web font (Open Sans) finishes loading.
-    // isotope absolutely-positions each .book card based on its measured
-    // height at layout time. On a cold-cache load (typically mobile
-    // Safari over a network), isotope runs at document-ready BEFORE the
-    // web font arrives, so it measures titles with the fallback font's
-    // metrics. When Open Sans swaps in, multi-line titles reflow to a
-    // different height but the absolute card positions are already
-    // fixed — leaving book titles overlapping the cover above them.
-    // Phones never fire window.resize, so it never self-corrects.
-    // Re-running isotope("layout") after document.fonts.ready remeasures
-    // with the real font. Guarded for browsers without the Font Loading
-    // API (degrade to the existing resize-only behavior). window.load is
-    // a belt-and-suspenders pass for any late-settling layout.
+    // On a cold-cache load (typically mobile Safari over a network) isotope
+    // runs at document-ready BEFORE the web font arrives, measuring titles
+    // with the fallback font's metrics. When Open Sans swaps in, multi-line
+    // titles reflow but the absolute card positions are already fixed —
+    // leaving titles overlapping the cover above. Re-running isotope("layout")
+    // after document.fonts.ready remeasures with the real font (guarded for
+    // browsers without the Font Loading API). window.load is a belt-and-
+    // suspenders pass for any late-settling layout. Registered once.
     function relayoutDiscoverIsotope() {
-        $(".discover .row").filter(function() {
+        $(".discover .row").filter(function () {
             return !!$(this).data("isotope");
         }).isotope("layout");
     }
@@ -450,26 +434,24 @@ $(function() {
     }
     $(window).on("load", relayoutDiscoverIsotope);
 
-    // Only initialize Infinite Scroll if pagination is NOT present
-    if ($(".load-more").length && $(".next").length && $(".pagination").length === 0) {
-        var $loadMore = $(".load-more .row").infiniteScroll({
+    window.cwaInit.infiniteScroll = function () {
+        // Only initialize Infinite Scroll if pagination is NOT present
+        if (!($(".load-more").length && $(".next").length && $(".pagination").length === 0)) return;
+        var $target = $(".load-more .row");
+        if (!$target.length || $target.data("infiniteScroll")) return;
+
+        var $loadMore = $target.infiniteScroll({
             debug: false,
-            // selector for the paged navigation (it will be hidden)
-            path : ".next",
-            // selector for the NEXT link (to page 2)
-            append : ".load-more .book"
-            //animate      : true, # ToDo: Reenable function
-            //extraScrollPx: 300
+            path: ".next",
+            append: ".load-more .book"
         });
-        $loadMore.on( "append.infiniteScroll", function( event, response, path, data ) {
+        $loadMore.on("append.infiniteScroll", function (event, response, path, data) {
             $(".pagination").addClass("hidden").html(() => $(response).find(".pagination").html());
             if ($("body").hasClass("blur")) {
-                $(" a:not(.dropdown-toggle) ")
-                  .removeAttr("data-toggle");
+                $(" a:not(.dropdown-toggle) ").removeAttr("data-toggle");
             }
-            $(".load-more .row").isotope( "appended", $(data), null );
+            $(".load-more .row").isotope("appended", $(data), null);
 
-            // Disable infinite scroll if no .next link exists (last page)
             if (!$(response).find(".next").length) {
                 $loadMore.infiniteScroll('destroy');
             }
@@ -477,32 +459,161 @@ $(function() {
 
         // fix for infinite scroll on CaliBlur Theme (#981)
         if ($("body").hasClass("blur")) {
-            $(".col-sm-10").bind("scroll", function () {
-                if (
-                    $(this).scrollTop() + $(this).innerHeight() >=
-                    $(this)[0].scrollHeight
-                ) {
+            $(".col-sm-10").off("scroll.cwaInfinite").on("scroll.cwaInfinite", function () {
+                if ($(this).scrollTop() + $(this).innerHeight() >= $(this)[0].scrollHeight) {
                     $loadMore.infiniteScroll("loadNextPage");
                     window.history.replaceState({}, null, $loadMore.infiniteScroll("getAbsolutePath"));
                 }
             });
         }
+    };
+
+    // Load-more handler for the .load-more-tile at the end of a books
+    // grid. Triggered by click on the tile or by the tile scrolling into
+    // view (IntersectionObserver). Click is the fallback for keyboard
+    // nav / browsers without IntersectionObserver.
+    window.cwaInit.loadMore = function () {
+        // Paginators (top + fork-#256 bottom) render visible on initial load so
+        // users can still jump to a page. They are NOT touched here so they
+        // stay visible until the user actually loads more — loadMoreFromTile
+        // hides them at that point, since page numbers are confusing once
+        // results are being appended inline.
+
+        // Direct (not delegated) binding so this runs before
+        // partial-nav.js's document-level click listener; preventDefault
+        // then stops partial-nav from SPA-navigating to the link.
+        $(".load-more-tile .load-more-link").each(function () {
+            var $link = $(this);
+            if ($link.data("cwaLoadMoreBound")) return;
+            $link.data("cwaLoadMoreBound", true);
+            $link.on("click", handleLoadMoreClick);
+        });
+
+        // Auto-fire when the tile enters viewport. Observer is
+        // disconnected after firing once; a fresh one gets attached
+        // to the replacement tile via the recursive cwaInit.loadMore
+        // call after the fetch lands. Gated by per-user opt-out
+        // (default on); click still works either way.
+        var autoLoadMore = document.body.getAttribute("data-auto-load-more") !== "false";
+        if (autoLoadMore && "IntersectionObserver" in window) {
+            $(".load-more-tile").each(function () {
+                var tileEl = this;
+                if (tileEl.__cwaLoadMoreObserver) return;
+                var observer = new IntersectionObserver(function (entries) {
+                    for (var i = 0; i < entries.length; i++) {
+                        if (!entries[i].isIntersecting) continue;
+                        observer.disconnect();
+                        tileEl.__cwaLoadMoreObserver = null;
+                        loadMoreFromTile($(tileEl));
+                        return;
+                    }
+                }, { rootMargin: "-50px" });
+                tileEl.__cwaLoadMoreObserver = observer;
+                observer.observe(tileEl);
+            });
+        }
+    };
+
+    function handleLoadMoreClick(e) {
+        e.preventDefault();
+        loadMoreFromTile($(this).closest(".load-more-tile"));
     }
 
-    $("#restart").click(function() {
-        $.ajax({
-            method:"post",
-            contentType: "application/json; charset=utf-8",
-            dataType: "json",
-            url: getPath() + "/shutdown",
-            data: JSON.stringify({"parameter":0}),
-            success: function success() {
-                $("#spinner").show();
-                setTimeout(restartTimer, 3000);
+    function loadMoreFromTile($tile) {
+        if (!$tile.length || $tile.hasClass("is-loading")) return;
+        var url = $tile.find(".load-more-link").first().attr("href");
+        if (!url) return;
+
+        // Disconnect the observer if a click beat it so we don't double-fire.
+        var tileEl = $tile[0];
+        if (tileEl.__cwaLoadMoreObserver) {
+            tileEl.__cwaLoadMoreObserver.disconnect();
+            tileEl.__cwaLoadMoreObserver = null;
+        }
+
+        $tile.addClass("is-loading");
+
+        // User committed to load-more: remove the fork-#256 bottom paginator.
+        // Page numbers are confusing once results are appended inline; the top
+        // paginator stays hidden (cwaInit.loadMore already hides it on init).
+        $(".pagination-bottom").remove();
+
+        fetch(url, {
+            credentials: "same-origin",
+            headers: {
+                "X-CWA-Fragment": "1",
+                "X-Requested-With": "XMLHttpRequest",
+                "Accept": "text/html"
             }
+        }).then(function (res) {
+            if (!res.ok) throw new Error("HTTP " + res.status);
+            return res.text();
+        }).then(function (html) {
+            var doc = new DOMParser().parseFromString(html, "text/html");
+            // New books from the next page, including a fresh load-more
+            // tile at the end if more pages remain.
+            var $newBooks = $(doc).find(".discover.load-more > .row > .book");
+            if (!$newBooks.length) {
+                $tile.remove();
+                return;
+            }
+
+            // Insert before the old tile (before() handles cross-doc
+            // adoption from the DOMParser doc), then remove the old.
+            var $row = $tile.parent();
+            var oldTileEl = $tile[0];
+            $tile.before($newBooks);
+            $tile.remove();
+
+            // Re-bind the click handler to the freshly-inserted tile.
+            window.cwaInit.loadMore();
+
+            // Splice the stale tile out of Isotope's items array
+            // manually: isotope("remove") is async and doesn't
+            // re-layout, leaving the slot blank; isotope("reloadItems")
+            // wipes visible items entirely. No imagesLoaded re-layout
+            // either — .book has CSS-fixed dimensions so layout is
+            // correct before covers load, and adding a new .progress
+            // listener over $row on each click stacks them.
+            var iso = $row.data("isotope");
+            if (iso) {
+                $row.isotope("appended", $newBooks);
+                for (var ii = 0; ii < iso.items.length; ii++) {
+                    if (iso.items[ii].element === oldTileEl) {
+                        iso.items.splice(ii, 1);
+                        break;
+                    }
+                }
+                $row.isotope("layout");
+            }
+        }).catch(function (err) {
+            console.error("[cwa-load-more] failed to load", url, err);
+        }).then(function () {
+            $tile.removeClass("is-loading");
         });
+    }
+
+    window.cwaInit.isotope();
+    window.cwaInit.infiniteScroll();
+    window.cwaInit.loadMore();
+
+    // Page-jump dropdown: flip to dropup when there isn't enough space below
+    // the toggle to fit the menu (e.g. the bottom paginator near the viewport
+    // floor). Bootstrap 3 doesn't auto-flip, so we check on each open.
+    $(document).on("show.bs.dropdown", ".pagination .page-jump", function () {
+        var $li = $(this);
+        var $menu = $li.find(".page-jump-menu");
+        var toggleBottom = $li[0].getBoundingClientRect().bottom;
+        var menuHeight = $menu.outerHeight(true) || 200;
+        var spaceBelow = window.innerHeight - toggleBottom;
+        if (spaceBelow < menuHeight) {
+            $li.addClass("dropup");
+        } else {
+            $li.removeClass("dropup");
+        }
     });
-    $("#shutdown").click(function() {
+
+    $(document).on("click", "#shutdown", function() {
         $.ajax({
             method:"post",
             contentType: "application/json; charset=utf-8",
@@ -514,7 +625,7 @@ $(function() {
             }
         });
     });
-    $("#check_for_update").click(function() {
+    $(document).on("click", "#check_for_update", function() {
         var $this = $(this);
         var buttonText = $this.html();
         $this.html("...");
@@ -560,7 +671,7 @@ $(function() {
             }
         });
     });
-    $("#admin_refresh_cover_cache").click(function() {
+    $(document).on("click", "#admin_refresh_cover_cache", function() {
         confirmDialog("admin_refresh_cover_cache", "GeneralChangeModal", 0, function () {
             // Show loading state
             $("#admin_refresh_cover_cache").prop('disabled', true).text('Starting...');
@@ -711,7 +822,7 @@ $(function() {
         }, 600000);
     }
 
-    $("#restart_database").click(function() {
+    $(document).on("click", "#restart_database", function() {
         $("#DialogHeader").addClass("hidden");
         $("#DialogFinished").addClass("hidden");
         $("#DialogContent").html("");
@@ -729,7 +840,7 @@ $(function() {
             }
         });
     });
-    $("#metadata_backup").click(function() {
+    $(document).on("click", "#metadata_backup", function() {
         $("#DialogHeader").addClass("hidden");
         $("#DialogFinished").addClass("hidden");
         $("#DialogContent").html("");
@@ -746,7 +857,7 @@ $(function() {
             }
         });
     });
-    $("#hardcover_auto_fetch").click(function() {
+    $(document).on("click", "#hardcover_auto_fetch", function() {
         $("#DialogHeader").addClass("hidden");
         $("#DialogFinished").addClass("hidden");
         $("#DialogContent").html("");
@@ -772,7 +883,7 @@ $(function() {
             }
         });
     });
-    $("#perform_update").click(function() {
+    $(document).on("click", "#perform_update", function() {
         $("#DialogHeader").removeClass("hidden");
         $("#spinner2").show();
         $.ajax({
@@ -788,36 +899,18 @@ $(function() {
         });
     });
 
-    // Init all data control handlers to default
-    $("input[data-control]").trigger("change");
-    $("select[data-control]").trigger("change");
-    $("select[data-controlall]").trigger("change");
+    // Init all data control handlers to default (also re-runs on each SPA swap).
+    window.cwaInit.dataControls = function() {
+        $("input[data-control]").trigger("change");
+        $("select[data-control]").trigger("change");
+        $("select[data-controlall]").trigger("change");
+    };
+    window.cwaInit.dataControls();
 
-    $("#bookDetailsModal")
-        .on("show.bs.modal", function(e) {
-            $("#flash_danger").remove();
-            $("#flash_success").remove();
-            var $modalBody = $(this).find(".modal-body");
-
-            // Prevent static assets from loading multiple times
-            var useCache = function(options) {
-                options.async = true;
-                options.cache = true;
-            };
-            preFilters.add(useCache);
-
-            $.get(e.relatedTarget.href).done(function(content) {
-                $modalBody.html(content);
-                preFilters.remove(useCache);
-                $("#back").remove();
-            });
-        })
-        .on("hidden.bs.modal", function() {
-            $(this).find(".modal-body").html("...");
-        });
-
-    $("#modal_kobo_token")
-        .on("show.bs.modal", function(e) {
+    // Delegated binding so the handler still fires when #modal_kobo_token
+    // is injected into the DOM via an SPA fragment swap (user_edit.html).
+    $(document)
+        .on("show.bs.modal", "#modal_kobo_token", function(e) {
             $(e.relatedTarget).one('focus', function(e){$(this).blur();});
             var $modalBody = $(this).find(".modal-body");
 
@@ -833,14 +926,14 @@ $(function() {
                 preFilters.remove(useCache);
             });
         })
-        .on("hidden.bs.modal", function() {
+        .on("hidden.bs.modal", "#modal_kobo_token", function() {
             $(this).find(".modal-body").html("...");
             $("#config_delete_kobo_token").show();
             $("#kobo_full_sync").show();
             $("#kobo_resend_book_block").show();
         });
 
-    $("#config_delete_kobo_token").click(function() {
+    $(document).on("click", "#config_delete_kobo_token", function() {
         confirmDialog(
             $(this).attr('id'),
             "GeneralDeleteModal",
@@ -857,7 +950,7 @@ $(function() {
         );
     });
 
-    $("#toggle_order_shelf").click(function() {
+    $(document).on("click", "#toggle_order_shelf", function() {
         $("#toggle_order_shelf").toggleClass("dummy");
         $("#new").toggleClass("disabled");
         $("#old").toggleClass("disabled");
@@ -883,7 +976,7 @@ $(function() {
         });
     });
 
-    $("#btndeluser").click(function() {
+    $(document).on("click", "#btndeluser", function() {
         confirmDialog(
             $(this).attr('id'),
             "GeneralDeleteModal",
@@ -899,7 +992,7 @@ $(function() {
         );
     });
 
-    $("#kobo_full_sync").click(function() {
+    $(document).on("click", "#kobo_full_sync", function() {
         confirmDialog(
            "btnfullsync",
             "GeneralDeleteModal",
@@ -960,7 +1053,7 @@ $(function() {
         });
     });
 
-    $("#user_submit").click(function() {
+    $(document).on("click", "#user_submit", function() {
         this.closest("form").submit();
     });
 
@@ -974,17 +1067,17 @@ $(function() {
         }
     }
 
-    $('.collapse').on('shown.bs.collapse', function(){
+    $(document).on('shown.bs.collapse', '.collapse', function(){
         $(this).parent().find(".glyphicon-plus").removeClass("glyphicon-plus").addClass("glyphicon-minus");
-    }).on('hidden.bs.collapse', function(){
-    $(this).parent().find(".glyphicon-minus").removeClass("glyphicon-minus").addClass("glyphicon-plus");
+    }).on('hidden.bs.collapse', '.collapse', function(){
+        $(this).parent().find(".glyphicon-minus").removeClass("glyphicon-minus").addClass("glyphicon-plus");
     });
 
     function changeDbSettings() {
         $("#db_submit").closest('form').submit();
     }
 
-    $("#db_submit").click(function(e) {
+    $(document).on("click", "#db_submit", function(e) {
         e.preventDefault();
         e.stopPropagation();
         this.blur();
@@ -1013,52 +1106,179 @@ $(function() {
         });
     });
 
-    $("#config_submit").click(function(e) {
+    // Restart overlay helpers — dedicated overlay, never touched by partial-nav.
+    var _restartSpinRAF = null;
+
+    // Hard-reset: clear any stale inline display that might have been set by a
+    // previous session's JS (e.g. overlay left visible after a reload mid-test).
+    (function() {
+        var ov = document.getElementById("cwa-restart-overlay");
+        if (ov) ov.style.display = "none";
+        var sw = document.getElementById("cwa-restart-spinner-wrap");
+        if (sw) sw.style.display = "none";
+    })();
+
+    function showRestartOverlay(text) {
+        var ov = document.getElementById("cwa-restart-overlay");
+        if (ov) ov.style.display = "flex";
+        $("#cwa-restart-confirm").css("display", "none");
+        $("#cwa-restart-spinner-wrap").css("display", "flex");
+        $("#cwa-restart-status").text(text);
+        // Drive rotation via rAF — CSS keyframe animations on elements that
+        // start inside display:none parents refuse to play in this context.
+        var s = document.getElementById("cwa-restart-spinner");
+        if (s) {
+            s.style.transform = "";
+            var deg = 0, last = null;
+            function spin(ts) {
+                if (last !== null) deg = (deg + (ts - last) * 0.36) % 360;
+                last = ts;
+                s.style.transform = "rotate(" + deg + "deg)";
+                _restartSpinRAF = requestAnimationFrame(spin);
+            }
+            _restartSpinRAF = requestAnimationFrame(spin);
+        }
+    }
+    function hideRestartOverlay() {
+        if (_restartSpinRAF !== null) {
+            cancelAnimationFrame(_restartSpinRAF);
+            _restartSpinRAF = null;
+        }
+        var ov = document.getElementById("cwa-restart-overlay");
+        if (ov) ov.style.display = "none";
+        var sw = document.getElementById("cwa-restart-spinner-wrap");
+        if (sw) sw.style.display = "none";
+        // Reset confirm to CSS-default (block) without setting inline style
+        // so no stale display:block lingers on the element after hiding.
+        var cf = document.getElementById("cwa-restart-confirm");
+        if (cf) cf.style.display = "";
+    }
+
+    // Admin Restart button — show confirm UI in the overlay.
+    $(document).on("click", "#admin_restart", function() {
+        var ov = document.getElementById("cwa-restart-overlay");
+        if (ov) ov.style.display = "flex";
+        var cf = document.getElementById("cwa-restart-confirm");
+        if (cf) cf.style.display = "block";
+        var sw = document.getElementById("cwa-restart-spinner-wrap");
+        if (sw) sw.style.display = "none";
+    });
+    $(document).on("click", "#cwa-restart-cancel", function() {
+        hideRestartOverlay();
+    });
+    $(document).on("click", "#cwa-restart-ok", function() {
+        showRestartOverlay("Sending restart command…");
+        $.ajax({
+            method: "post",
+            contentType: "application/json; charset=utf-8",
+            dataType: "json",
+            url: getPath() + "/shutdown",
+            data: JSON.stringify({"parameter":0}),
+            success: function() {
+                $("#cwa-restart-status").text("Server is restarting…");
+                var phase = "down", elapsed = 0, maxElapsed = 60;
+                var pollInterval = setInterval(function() {
+                    elapsed++;
+                    if (elapsed > maxElapsed) {
+                        clearInterval(pollInterval);
+                        hideRestartOverlay();
+                        handle_response([{type: "warning", message: "Restart timed out — the server may still be coming back up."}]);
+                        return;
+                    }
+                    $.ajax({
+                        url: getPath() + "/admin/alive",
+                        timeout: 1500,
+                        success: function(d, statusText, xhr) {
+                            if (phase === "up" && xhr.status < 400) {
+                                clearInterval(pollInterval);
+                                hideRestartOverlay();
+                                window.location.reload();
+                            }
+                        },
+                        error: function() {
+                            if (phase === "down") {
+                                phase = "up";
+                                $("#cwa-restart-status").text("Waiting for server to come back up…");
+                            }
+                        }
+                    });
+                }, 1000);
+            },
+            error: function() {
+                hideRestartOverlay();
+                handle_response([{type: "danger", message: "Failed to send restart command."}]);
+            }
+        });
+    });
+
+    // Used by config_submit when data.reboot is true — the server is already
+    // restarting at this point (web_server.stop deferred via Timer in admin.py).
+    function beginRestartPolling(resultData) {
+        showRestartOverlay("Server is restarting…");
+
+        var phase = "down";
+        var elapsed = 0;
+        var maxElapsed = 60;
+        var pollInterval = setInterval(function() {
+            elapsed++;
+            if (elapsed > maxElapsed) {
+                clearInterval(pollInterval);
+                hideRestartOverlay();
+                handle_response([{type: "warning", message: "Restart timed out — the server may still be coming back up."}]);
+                return;
+            }
+            $.ajax({
+                url: getPath() + "/admin/alive",
+                timeout: 1500,
+                success: function(d, statusText, xhr) {
+                    if (phase === "up" && xhr.status < 400) {
+                        clearInterval(pollInterval);
+                        hideRestartOverlay();
+                        handle_response(resultData);
+                    }
+                },
+                error: function() {
+                    if (phase === "down") {
+                        phase = "up";
+                        $("#cwa-restart-status").text("Waiting for server to come back up…");
+                    }
+                }
+            });
+        }, 1000);
+    }
+
+    $(document).on("click", "#config_submit", function(e) {
         e.preventDefault();
         e.stopPropagation();
         this.blur();
-        window.scrollTo({top: 0, behavior: 'smooth'});
         var request_path = "/admin/ajaxconfig";
         $("#flash_success").remove();
         $("#flash_danger").remove();
         $.post(getPath() + request_path, $(this).closest("form").serialize(), function(data) {
             $('#config_upload_formats').val(data.config_upload);
-            if(data.reboot) {
-                $("#spinning_success").show();
-                var rebootInterval = setInterval(function(){
-                    $.get({
-                        url:getPath() + "/admin/alive",
-                        success: function (d, statusText, xhr) {
-                            if (xhr.status < 400) {
-                                $("#spinning_success").hide();
-                                clearInterval(rebootInterval);
-                                if (data.result) {
-                                    handle_response(data.result);
-                                    data.result = "";
-                                }
-                            }
-                        },
-                    });
-                }, 1000);
+            if (data.reboot) {
+                beginRestartPolling(data.result);
             } else {
                 handle_response(data.result);
             }
         });
     });
 
-    $("#delete_shelf").click(function(event) {
+    // Delegate so the binding survives SPA fragment swaps — the button
+    // doesn't exist when main.js's DOMContentLoaded handler first runs.
+    $(document).on("click", "#delete_shelf", function(event) {
+        var btn = this;
         confirmDialog(
-            $(this).attr('id'),
+            btn.id,
             "GeneralDeleteModal",
-            $(this).data('value'),
+            $(btn).data('value'),
             function(value){
-                postButton(event, $("#delete_shelf").data("action"));
+                postButton(event, $(btn).data("action"));
             }
         );
-
     });
 
-    $("#fileModal").on("show.bs.modal", function(e) {
+    $(document).on("show.bs.modal", "#fileModal", function(e) {
         var target = $(e.relatedTarget);
         var path = $("#" + target.data("link"))[0].value;
         var folder = target.data("folderonly");
@@ -1071,7 +1291,7 @@ $(function() {
         fillFileTable(path,"dir", folder, filter);
     });
 
-    $("#file_confirm").click(function() {
+    $(document).on("click", "#file_confirm", function() {
         $("#" + $(this).data("link"))[0].value = $("#element_selected").text()
     });
 
@@ -1097,7 +1317,7 @@ $(function() {
         }).isotope("layout");
     });
 
-    $("#import_ldap_users").click(function() {
+    $(document).on("click", "#import_ldap_users", function() {
         $("#DialogHeader").addClass("hidden");
         $("#DialogFinished").addClass("hidden");
         $("#DialogContent").html("");
@@ -1115,7 +1335,7 @@ $(function() {
         });
     });
 
-    $(".author-expand").click(function() {
+    $(document).on("click", ".author-expand", function() {
         $(this).parent().find("a.author-name").slice($(this).data("authors-max")).toggle();
         $(this).parent().find("span.author-hidden-divider").toggle();
         $(this).html() === $(this).data("collapse-caption") ? $(this).html("(...)") : $(this).html($(this).data("collapse-caption"));
@@ -1124,8 +1344,10 @@ $(function() {
         }).isotope("layout");
     });
 
-    $(".update-view").click(function(e) {
+    $(document).on("click", ".update-view", function(e) {
         var view = $(this).data("view");
+        var page = $(this).data("page") || "series";
+        var target = $(this).data("target") || "series_view";
         e.preventDefault();
         e.stopPropagation();
         $.ajax({
@@ -1133,7 +1355,7 @@ $(function() {
             contentType: "application/json; charset=utf-8",
             dataType: "json",
             url: getPath() + "/ajax/view",
-            data: "{\"series\": {\"series_view\": \""+ view +"\"}}",
+            data: "{\"" + page + "\": {\"" + target + "\": \""+ view +"\"}}",
             success: function success() {
                 location.reload();
             }

@@ -6,8 +6,9 @@
 
 import json
 from datetime import datetime
+from urllib.parse import quote_plus
 
-from flask import Blueprint, request, redirect, url_for, flash
+from flask import Blueprint, request, redirect, flash
 from flask import session as flask_session
 from .cw_login import current_user
 from flask_babel import format_date
@@ -45,7 +46,10 @@ def simple_search():
                 )
             except Exception as e:
                 log.debug(f"Failed to log search activity: {e}")
-        return redirect(url_for('web.books_list', data="search", sort_param='stored', query=term.strip()))
+        # Hardcoded path: url_for() collapses sort_param='stored' into the
+        # books_list catch-all default and yields '/search', which re-enters
+        # this handler (redirect loop).
+        return redirect('/search/stored/?query=' + quote_plus(term.strip()))
     else:
         return render_title_template('search.html',
                                      searchterm="",
@@ -58,12 +62,35 @@ def simple_search():
 @login_required_if_no_ano
 def advanced_search():
     values = dict(request.form)
-    params = ['include_tag', 'exclude_tag', 'include_serie', 'exclude_serie', 'include_shelf', 'exclude_shelf',
-              'include_language', 'exclude_language', 'include_extension', 'exclude_extension']
+    params = ['include_tag', 'exclude_tag', 'include_serie', 'exclude_serie', 'include_serie2', 'exclude_serie2',
+              'include_shelf', 'exclude_shelf', 'include_language', 'exclude_language',
+              'include_extension', 'exclude_extension']
     for param in params:
         values[param] = list(request.form.getlist(param))
     flask_session['query'] = json.dumps(values)
-    return redirect(url_for('web.books_list', data="advsearch", sort_param='stored', query=""))
+    return redirect('/advsearch/stored/')
+
+
+@search.route("/cc", methods=['GET'])
+@login_required_if_no_ano
+def cc_search():
+    cc_id = request.args.get('column', '')
+    cc_val = request.args.get('value', '')
+    term = {
+        'authors': '', 'title': '', 'publisher': '',
+        'publishstart': '', 'publishend': '',
+        'ratinghigh': '', 'ratinglow': '',
+        'comments': '', 'read_status': 'Any',
+        'include_tag': [], 'exclude_tag': [],
+        'include_serie': [], 'exclude_serie': [],
+        'include_serie2': [], 'exclude_serie2': [],
+        'include_shelf': [], 'exclude_shelf': [],
+        'include_language': [], 'exclude_language': [],
+        'include_extension': [], 'exclude_extension': [],
+    }
+    if cc_id:
+        term['custom_column_' + cc_id] = cc_val
+    return render_adv_search_results(term, order=([db.Books.timestamp.desc()], 'new'))
 
 
 @search.route("/advsearch", methods=['GET'])
@@ -76,6 +103,8 @@ def advanced_search_form():
 
 def adv_search_custom_columns(cc, term, q):
     for c in cc:
+        if c.datatype == "composite":
+            continue
         if c.datatype == "datetime":
             custom_start = term.get('custom_column_' + str(c.id) + '_start')
             custom_end = term.get('custom_column_' + str(c.id) + '_end')
@@ -180,11 +209,27 @@ def adv_search_serie(q, include_series_inputs, exclude_series_inputs):
         q = q.filter(not_(db.Books.series.any(db.Series.id == serie)))
     return q
 
+
+
+def adv_search_serie2(q, include_inputs, exclude_inputs):
+    if db.series2_link_class is None:
+        return q
+    for serie2 in include_inputs:
+        q = q.filter(db.Books.series2.any(db.series2_link_class.map_value == serie2))
+    for serie2 in exclude_inputs:
+        q = q.filter(not_(db.Books.series2.any(db.series2_link_class.map_value == serie2)))
+    return q
+
+
 def adv_search_shelf(q, include_shelf_inputs, exclude_shelf_inputs):
-    q = q.outerjoin(ub.BookShelf, db.Books.id == ub.BookShelf.book_id)\
-        .filter(or_(ub.BookShelf.shelf == None, ub.BookShelf.shelf.notin_(exclude_shelf_inputs)))
-    if len(include_shelf_inputs) > 0:
-        q = q.filter(ub.BookShelf.shelf.in_(include_shelf_inputs))
+    for shelf_id in include_shelf_inputs:
+        q = q.filter(db.Books.id.in_(
+            ub.session.query(ub.BookShelf.book_id).filter(ub.BookShelf.shelf == shelf_id)
+        ))
+    for shelf_id in exclude_shelf_inputs:
+        q = q.filter(~db.Books.id.in_(
+            ub.session.query(ub.BookShelf.book_id).filter(ub.BookShelf.shelf == shelf_id)
+        ))
     return q
 
 def extend_search_term(searchterm,
@@ -254,7 +299,7 @@ def render_adv_search_results(term, offset=None, order=None, limit=None):
 
     # parse multi selects to a complete dict
     tags = dict()
-    elements = ['tag', 'serie', 'shelf', 'language', 'extension']
+    elements = ['tag', 'serie', 'serie2', 'shelf', 'language', 'extension']
     for element in elements:
         tags['include_' + element] = term.get('include_' + element)
         tags['exclude_' + element] = term.get('exclude_' + element)
@@ -336,6 +381,7 @@ def render_adv_search_results(term, offset=None, order=None, limit=None):
             q = q.filter(db.Books.publishers.any(func.lower(db.Publishers.name).ilike("%" + publisher + "%")))
         q = adv_search_tag(q, tags['include_tag'], tags['exclude_tag'])
         q = adv_search_serie(q, tags['include_serie'], tags['exclude_serie'])
+        q = adv_search_serie2(q, tags['include_serie2'], tags['exclude_serie2'])
         q = adv_search_shelf(q, tags['include_shelf'], tags['exclude_shelf'])
         q = adv_search_extension(q, tags['include_extension'], tags['exclude_extension'])
         q = adv_search_language(q, tags['include_language'], tags['exclude_language'])
@@ -351,7 +397,11 @@ def render_adv_search_results(term, offset=None, order=None, limit=None):
             log.debug_or_exception(ex)
             flash(_("Error on search for custom columns, please restart Calibre-Web"), category="error")
 
-    q = q.order_by(*sort)
+    # Collapse duplicate rows produced by the series/shelf outerjoins (a book in
+    # multiple series or on multiple shelves yields one row per link). Without this,
+    # the SQL LIMIT below counts duplicate rows, so a full page of 60 rows collapses
+    # to fewer distinct books after the ORM dedupes by primary key.
+    q = q.group_by(db.Books.id).order_by(*sort)
     flask_session['query'] = json.dumps(term)
 
     # Perform a count query for pagination, which is much faster than fetching all results.
@@ -380,7 +430,7 @@ def render_adv_search_results(term, offset=None, order=None, limit=None):
                                  entries=entries,
                                  result_count=result_count,
                                  title=_("Advanced Search"), page="advsearch",
-                                 order=order[1])
+                                 order=order[1] if order else None)
 
 
 def render_prepare_search_form(cc):
@@ -410,8 +460,19 @@ def render_prepare_search_form(cc):
         languages = calibre_db.speaking_language()
     else:
         languages = None
+    series2 = []
+    if config.config_series2_column and db.series2_cc_class is not None and db.series2_link_class is not None:
+        series2 = (calibre_db.session.query(db.series2_cc_class)
+                   .join(db.series2_link_class, db.series2_link_class.map_value == db.series2_cc_class.id)
+                   .join(db.Books, db.Books.id == db.series2_link_class.book)
+                   .filter(calibre_db.common_filters())
+                   .group_by(db.series2_link_class.map_value)
+                   .order_by(db.series2_cc_class.value)
+                   .all())
     return render_title_template('search_form.html', tags=tags, languages=languages, extensions=extensions,
-                                 series=series,shelves=shelves, title=_("Advanced Search"), cc=cc, page="advsearch")
+                                 series=series, series2=series2,
+                                 series2_label=config.config_series2_label or _("Series"),
+                                 shelves=shelves, title=_("Advanced Search"), cc=cc, page="advsearch")
 
 
 def render_search_results(term, offset=None, order=None, limit=None):
@@ -435,7 +496,7 @@ def render_search_results(term, offset=None, order=None, limit=None):
                                  adv_searchterm=term,
                                  entries=entries,
                                  result_count=result_count,
-                                 title=_("Search"),
+                                 title=(_("Search") + ": " + term) if term else _("Search"),
                                  page="search",
                                  order=order[1])
 

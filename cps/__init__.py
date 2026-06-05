@@ -80,8 +80,16 @@ app.config.update(
     REMEMBER_COOKIE_SAMESITE='Strict',
     WTF_CSRF_SSL_STRICT=False,
     SESSION_COOKIE_NAME=os.environ.get('COOKIE_PREFIX', "") + "session",
-    REMEMBER_COOKIE_NAME=os.environ.get('COOKIE_PREFIX', "") + "remember_token"
+    REMEMBER_COOKIE_NAME=os.environ.get('COOKIE_PREFIX', "") + "remember_token",
+    TEMPLATES_AUTO_RELOAD=os.environ.get('DEVELOP_ON', 'False').lower() == 'true',
 )
+
+# The books_list catch-all ('/<data>') defaults sort_param='stored', so Werkzeug
+# otherwise 308-redirects any explicit '/<data>/stored/' back to the bare
+# '/<data>'. That turns the search PRG redirect (/search -> /search/stored/)
+# into an infinite loop and bounces /advsearch/stored/ back to the form. Keep
+# both URL forms serving content instead of canonicalising.
+app.url_map.redirect_defaults = False
 
 # Fix for running behind reverse proxy (e.g. nginx, apache, caddy, ...)
 # Without it, url_for will generate http:// urls even if https:// is used
@@ -114,6 +122,36 @@ else:
     limiter = None
 
 
+def _autodetect_subtitle_column():
+    """On first creation of the subtitle config columns, auto-detect a Calibre
+    custom column labeled "subtitle" and wire it up — both for the book-detail
+    subtitle (config_subtitle_column) and the Kobo sync Subtitle field
+    (config_kobo_subtitle_cc). This preserves the fork's original zero-config
+    behavior (janeczku #3358 / @dotknott) now that the Kobo subtitle source is
+    admin-configurable: existing libraries that used a "subtitle" column keep
+    working without anyone opening the settings page. Only fills columns that
+    are still unset so an admin's explicit choice is never overwritten."""
+    try:
+        matches = calibre_db.session.query(db.CustomColumns).filter(
+            db.CustomColumns.label == "subtitle",
+            db.CustomColumns.mark_for_delete == 0,
+            db.CustomColumns.datatype.in_(["text", "comments"])
+        ).all()
+        if len(matches) == 1:
+            changed = False
+            if not config.config_subtitle_column:
+                config.config_subtitle_column = matches[0].id
+                changed = True
+            if not config.config_kobo_subtitle_cc:
+                config.config_kobo_subtitle_cc = matches[0].id
+                changed = True
+            if changed:
+                config.save()
+                log.info("[autoconfig] Set subtitle column to '%s' (id=%d)", matches[0].name, matches[0].id)
+    except Exception as e:
+        log.warning("[autoconfig] Subtitle column autodetection failed: %s", e)
+
+
 def apply_https_runtime_config():
     """Refresh cookie security flags from the current saved config."""
     if config.config_login_type == constants.LOGIN_OAUTH or getattr(config, 'config_use_https', False):
@@ -135,7 +173,7 @@ def create_app():
     # pylint: disable=no-member
     encrypt_key, error = config_sql.get_encryption_key(os.path.dirname(cli_param.settings_path))
 
-    config_sql.load_configuration(ub.session, encrypt_key)
+    needs_subtitle_autodetect = config_sql.load_configuration(ub.session, encrypt_key)
     config.init_config(ub.session, encrypt_key, cli_param)
 
     # Intelligent Security Configuration
@@ -171,6 +209,9 @@ def create_app():
     from .calibre_init import init_calibre_db_from_config
     init_calibre_db_from_config(config, cli_param.settings_path)
     calibre_db.init_db()
+
+    if needs_subtitle_autodetect and calibre_db.session is not None:
+        _autodetect_subtitle_column()
 
     updater_thread.init_updater(config, web_server)
     # Perform dry run of updater and exit afterward

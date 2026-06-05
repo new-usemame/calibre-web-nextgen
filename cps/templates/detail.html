@@ -1,4 +1,4 @@
-{% extends is_xhr|yesno("fragment.html", "layout.html") %}
+{% extends parent_template|default("layout.html") %}
 {% block header %}
     <meta property="og:type" content="book" />
     <meta property="og:title" content="{{ entry.title|truncate(35) }}" />
@@ -662,7 +662,12 @@
                             </div>
                         </div>
 
-                        <h2 id="title">{{ entry.title }}</h2>
+                         <div class="booktitle">
+                            <h2 id="title">{{ entry.title }}</h2>
+                            {% if entry['custom_column_' ~ subtitle_cc]|length > 0 %}
+                                <h3 id="subtitle">{{ (entry['custom_column_' ~ subtitle_cc] | first).value }}</h3>
+                            {% endif %}
+                        </div>
                         <p class="author">
                             {% for author in entry.ordered_authors %}
                                 <a href="{{ url_for('web.books_list',  data='author', sort_param='stored', book_id=author.id ) }}">{{ author.name.replace('|',',') }}</a>
@@ -695,8 +700,15 @@
                                 </p>
                             {% endif %}
                         </div>
-                        {% if entry.series|length > 0 %}
-                            <p id="book_of">{{ _("Book %(index)s of %(range)s", index=entry.series_index|formatfloat(2), range=(url_for('web.books_list', data='series', sort_param='stored', book_id=entry.series[0].id)|escapedlink(entry.series[0].name))|safe) }}</p>
+                        {% if entry.series|length > 0 or entry.series2|length > 0 %}
+                            <div class="series-section">
+                                {% if entry.series|length > 0 %}
+                                    <p class="series-entry">{{_('Series')}}: <a href="{{ url_for('web.books_list', data='series', sort_param='stored', book_id=entry.series[0].id) }}">{{ entry.series[0].name }}</a>, {{_('Book')}} {{ entry.series_index|formatfloat(2) }}</p>
+                                {% endif %}
+                                {% if entry.series2|length > 0 %}
+                                    <p class="series2-entry">{{ g.config_series2_label}}: <a href="{{ url_for('web.books_list', data=g.series2_key, sort_param='stored', book_id=entry.series2[0].map_value) }}">{{ entry.series2[0].value }}</a>, {{_('Book')}} {{ entry.series2[0].extra|formatfloat(2) }}</p>
+                                {% endif %}
+                            </div>
                         {% endif %}
 
                         <div class="book-metadata">
@@ -839,23 +851,37 @@
                             {% endif %}
                             {% if cc|length > 0 %}
                                 {% for c in cc %}
-                                    {% if entry['custom_column_' ~ c.id]|length > 0 %}
-                                        <div class="real_custom_columns meta-chip">
-                                            <span class="meta-label">{{ c.name }}:</span>
-                                            <span class="meta-value">
-                                                {% for column in entry['custom_column_' ~ c.id] %}
-                                                    {% if c.datatype == 'rating' %}
-                                                        {{ (column.value / 2)|formatfloat }}
-                                                    {% else %}
-                                                        {% if c.datatype == 'bool' %}
-                                                            {% if column.value == true %}
-                                                                <span class="glyphicon glyphicon-ok"></span>
-                                                            {% else %}
-                                                                <span class="glyphicon glyphicon-remove"></span>
-                                                            {% endif %}
+                                    {% if c.id != subtitle_cc %}
+                                        {% if c.datatype == 'composite' %}
+                                            {% set cval = composite_vals.get(c.id) %}
+                                            {% if cval and cval.value %}
+                                                <div class="real_custom_columns meta-chip">
+                                                    <span class="meta-label">{{ c.name }}:</span>
+                                                    <span class="meta-value">
+                                                        {% if cval.contains_html %}
+                                                            {{ cval.value|safe }}
                                                         {% else %}
-                                                            {% if c.datatype == 'float' %}
-                                                                {{ column.value|formatfloat(2) }}
+                                                            {{ cval.value }}
+                                                        {% endif %}
+                                                    </span>
+                                                </div>
+                                            {% endif %}
+                                        {% elif entry['custom_column_' ~ c.id]|length > 0 %}
+                                            <div class="real_custom_columns meta-chip">
+                                                <span class="meta-label">{{ c.name }}:</span>
+                                                <span class="meta-value">
+                                                    {% for column in entry['custom_column_' ~ c.id] %}
+                                                        {% if c.datatype == 'rating' %}
+                                                            {{ (column.value / 2)|formatfloat }}
+                                                        {% else %}
+                                                            {% if c.datatype == 'bool' %}
+                                                                {% if column.value == true %}
+                                                                    <span class="glyphicon glyphicon-ok"></span>
+                                                                {% else %}
+                                                                    <span class="glyphicon glyphicon-remove"></span>
+                                                                {% endif %}
+                                                            {% elif c.datatype == 'float' or c.datatype == 'int' %}
+                                                                {{ column.value|format_cc_number(c.display) }}
                                                             {% elif c.datatype == 'datetime' %}
                                                                 {{ column.value|formatdate }}
                                                             {% elif c.datatype == 'comments' %}
@@ -863,15 +889,17 @@
                                                             {% elif c.datatype == 'series' %}
                                                                 {{ '%s [%s]' % (column.value, column.extra|formatfloat(2)) }}
                                                             {% elif c.datatype == 'text' %}
-                                                                {{ column.value.strip() }}{% if not loop.last %}, {% endif %}
+                                                                {% if c.id in cc_link_cols %}<a href="{{ url_for('search.cc_search', column=c.id, value=column.value.strip()) }}">{{ column.value.strip() }}</a>{% else %}{{ column.value.strip() }}{% endif %}{% if not loop.last %}, {% endif %}
+                                                            {% elif c.datatype == 'enumeration' %}
+                                                                {% if c.id in cc_link_cols %}<a href="{{ url_for('search.cc_search', column=c.id, value=column.value) }}">{{ column.value }}</a>{% else %}{{ column.value }}{% endif %}
                                                             {% else %}
                                                                 {{ column.value }}
                                                             {% endif %}
                                                         {% endif %}
-                                                    {% endif %}
-                                                {% endfor %}
-                                            </span>
-                                        </div>
+                                                    {% endfor %}
+                                                </span>
+                                            </div>
+                                        {% endif %}
                                     {% endif %}
                                 {% endfor %}
                             {% endif %}

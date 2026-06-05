@@ -107,6 +107,13 @@ def _register_sqlite_udfs(dbapi_connection, _connection_record):
 cc_exceptions = ['composite', 'series']
 cc_classes = {}
 
+# Set by setup_db_cc_classes() from the configured series2 column; used by
+# web routes and templates. The series2 column is an ordinary 'series' custom
+# column, so its classes are built by the single ORM builder (no separate
+# builder — that caused duplicate-class reconnect crashes).
+series2_cc_class = None
+series2_link_class = None
+
 Base = declarative_base()
 
 books_authors_link = Table('books_authors_link', Base.metadata,
@@ -482,6 +489,7 @@ class Books(Base):
     comments = relationship(Comments, backref='books', lazy='selectin')
     data = relationship(Data, backref='books', lazy='selectin')
     series = relationship(Series, secondary=books_series_link, backref='books', lazy='selectin')
+    series2 = []  # replaced by setup_db_cc_classes() when config_series2_column is set
     ratings = relationship(Ratings, secondary=books_ratings_link, backref='books', lazy='selectin')
     languages = relationship(Languages, secondary=books_languages_link, backref='books', lazy='selectin')
     publishers = relationship(Publishers, secondary=books_publishers_link, backref='books', lazy='selectin')
@@ -596,6 +604,8 @@ class AlchemyEncoder(json.JSONEncoder):
                 try:
                     if isinstance(data, str):
                         data = data.replace("'", "\'")
+                    elif isinstance(data, datetime):
+                        data = data.strftime('%Y-%m-%d')
                     elif isinstance(data, InstrumentedList):
                         el = list()
                         # ele = None
@@ -782,6 +792,48 @@ class CalibreDB:
                                      secondary=books_custom_column_links[cc_id[0]],
                                      backref='books'))
 
+        # Second-series feature. The configured series2 column is a 'series'
+        # custom column, which the main loop above intentionally skips
+        # (cc_exceptions includes 'series'). Build its value + link classes
+        # here so it all lives in the single ORM builder — no separate builder.
+        #
+        # Critically, the link class's value relationship uses a DIRECT class
+        # reference (relationship(series2_cc_class), not the string
+        # 'custom_column_N'). A string target is resolved lazily through the
+        # registry, and on reconnect the freshly recreated class collides with
+        # the lingering old one ("Multiple classes found for path
+        # custom_column_N"). A direct reference is resolved immediately, so the
+        # rebuild is clean without any registry-reuse hacks. Changing
+        # config_series2_column requires a restart, so reading it at build time
+        # is sufficient.
+        global series2_cc_class, series2_link_class
+        series2_cc_class = None
+        series2_link_class = None
+        series2_col_id = getattr(cls.config, 'config_series2_column', 0)
+        if series2_col_id:
+            s2_cc_table = 'custom_column_' + str(series2_col_id)
+            s2_link_table = 'books_custom_column_' + str(series2_col_id) + '_link'
+            series2_cc_class = type(str(s2_cc_table), (Base,), {
+                '__tablename__': s2_cc_table,
+                'id': Column(Integer, primary_key=True),
+                'value': Column(String),
+            })
+            cc_classes[series2_col_id] = series2_cc_class
+            series2_link_class = type(str(s2_link_table), (Base,), {
+                '__tablename__': s2_link_table,
+                'id': Column(Integer, primary_key=True),
+                'book': Column(Integer, ForeignKey('books.id'), primary_key=True),
+                'map_value': Column('value', Integer,
+                                    ForeignKey(s2_cc_table + '.id'), primary_key=True),
+                'extra': Column(Float),
+                'asoc': relationship(series2_cc_class, uselist=False),
+                'value': association_proxy('asoc', 'value'),
+            })
+            setattr(Books, 'series2', relationship(series2_link_class))
+        else:
+            # Not configured: restore the empty-list placeholder so templates
+            # doing entry.series2|length still work. dispose() cleared it.
+            setattr(Books, 'series2', [])
         return cc_classes
 
     @classmethod
@@ -1382,7 +1434,7 @@ class CalibreDB:
                              Books.publishers.any(func.lower(Publishers.name).ilike("%" + term + "%")),
                              func.lower(Books.title).ilike("%" + term + "%")]
         for c in cc:
-            if c.datatype not in ["datetime", "rating", "bool", "int", "float"]:
+            if c.datatype not in ["datetime", "rating", "bool", "int", "float", "composite"]:
                 filter_expression.append(
                     getattr(Books,
                             'custom_column_' + str(c.id)).any(
@@ -1391,20 +1443,35 @@ class CalibreDB:
         query = query.options(joinedload(Books.data))
         return query.filter(self.common_filters(True)).filter(or_(*filter_expression))
 
-    def get_cc_columns(self, config, filter_config_custom_read=False):
+    def get_cc_columns(self, config, filter_config_custom_read=False, filter_hidden=True):
         self.ensure_session()
-        tmp_cc = self.session.query(CustomColumns).filter(CustomColumns.datatype.notin_(cc_exceptions)).all()
+        tmp_cc = self.session.query(CustomColumns).filter(CustomColumns.datatype != 'series').all()
         cc = []
         r = None
         if config.config_columns_to_ignore:
             r = re.compile(config.config_columns_to_ignore)
+        hidden_ids = set()
+        if filter_hidden and config.config_cc_hidden_columns:
+            hidden_ids = set(int(x) for x in config.config_cc_hidden_columns.split(',') if x.strip())
 
         for col in tmp_cc:
             if filter_config_custom_read and config.config_read_column and config.config_read_column == col.id:
                 continue
             if r and r.match(col.name):
                 continue
+            if col.id in hidden_ids:
+                continue
             cc.append(col)
+
+        if config.config_cc_display_order:
+            try:
+                order_ids = [int(x) for x in config.config_cc_display_order.split(',') if x.strip()]
+                id_to_col = {col.id: col for col in cc}
+                ordered = [id_to_col[i] for i in order_ids if i in id_to_col]
+                remaining = [col for col in cc if col.id not in set(order_ids)]
+                cc = ordered + remaining
+            except (ValueError, AttributeError):
+                pass
 
         return cc
 
@@ -1504,7 +1571,10 @@ class CalibreDB:
                             pass
 
             for attr in list(Books.__dict__.keys()):
-                if attr.startswith("custom_column_"):
+                # 'series2' is the second-series alias relationship onto the
+                # configured series column's link class; clear it alongside the
+                # custom_column_* relationships so the rebuild re-adds it fresh.
+                if attr.startswith("custom_column_") or attr == "series2":
                     setattr(Books, attr, None)
 
             for db_class in cc_classes.values():

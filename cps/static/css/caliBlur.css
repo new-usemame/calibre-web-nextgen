@@ -166,7 +166,11 @@ a, button {
     to {
         width: 0;
         height: 0;
-        overflow: hidden
+        padding: 0;
+        border: 0;
+        margin: 0;
+        visibility: hidden;
+        overflow: hidden;
     }
 }
 
@@ -174,7 +178,11 @@ a, button {
     to {
         width: 0;
         height: 0;
-        visibility: hidden
+        padding: 0;
+        border: 0;
+        margin: 0;
+        visibility: hidden;
+        overflow: hidden;
     }
 }
 
@@ -2191,53 +2199,57 @@ body > div.container-fluid > div > div.col-sm-10 > div.discover > div.container 
     -o-transition: background-color .2s, color .2s
 }
 
-body.catlist > div.container-fluid > div.row-fluid > div.col-sm-10:before {
-    content: "\E067";
-    font-family: Glyphicons Regular, serif;
-    font-style: normal;
-    font-weight: 400;
-    line-height: 1;
-    font-size: 6vw;
-    position: fixed;
-    left: 240px;
-    top: 180px;
-    width: calc(20% - 55px);
-    text-align: center
-}
-
-@media screen and (max-width: 992px) {
-  body.catlist > div.container-fluid > div.row-fluid > div.col-sm-10:before {
-      top: 180px;
-  }
-}
-
-
-body.authorlist > div.container-fluid > div.row-fluid > div.col-sm-10:before, body.langlist > div.container-fluid > div > div.col-sm-10:before {
+body.catlist > div.container-fluid > div > div.col-sm-10:before,
+body.authorlist > div.container-fluid > div > div.col-sm-10:before,
+body.langlist > div.container-fluid > div > div.col-sm-10:before,
+body.publisherlist > div.container-fluid > div > div.col-sm-10:before,
+body.ratingslist > div.container-fluid > div > div.col-sm-10:before,
+body.formatslist > div.container-fluid > div > div.col-sm-10:before {
     font-family: 'Glyphicons Halflings', serif;
     font-style: normal;
     font-weight: 400;
     line-height: 1;
     font-size: 6vw;
-    left: 240px;
+    position: fixed;
+    left: var(--sidebar-width, 240px);
     top: 180px;
-    width: calc(20% - 55px);
-    text-align: center;
-    position: fixed
+    width: var(--list-glyph-width, calc(20vw - 48px));
+    text-align: center
 }
 
-body.authorlist > div.container-fluid > div.row-fluid > div.col-sm-10:before {
+body.catlist > div.container-fluid > div > div.col-sm-10:before {
+    content: "\e067"
+}
+
+body.authorlist > div.container-fluid > div > div.col-sm-10:before {
     content: "\e008";
-    top: 240px;
-}
-
-@media screen and (max-width: 992px) {
-  body.authorlist > div.container-fluid > div.row-fluid > div.col-sm-10:before {
-    top: 180px;
-  }
 }
 
 body.langlist > div.container-fluid > div > div.col-sm-10:before {
     content: "\e034"
+}
+
+body.publisherlist > div.container-fluid > div > div.col-sm-10:before {
+    content: "\e241"
+}
+
+body.ratingslist > div.container-fluid > div > div.col-sm-10:before {
+    content: "\e007"
+}
+
+body.formatslist > div.container-fluid > div > div.col-sm-10:before {
+    content: "\e022"
+}
+
+@media screen and (max-width: 768px) {
+    body.catlist > div.container-fluid > div > div.col-sm-10:before,
+    body.authorlist > div.container-fluid > div > div.col-sm-10:before,
+    body.langlist > div.container-fluid > div > div.col-sm-10:before,
+    body.publisherlist > div.container-fluid > div > div.col-sm-10:before,
+    body.ratingslist > div.container-fluid > div > div.col-sm-10:before,
+    body.formatslist > div.container-fluid > div > div.col-sm-10:before {
+        display: none
+    }
 }
 
 body.authorlist > div.container-fluid > div > div.col-sm-10 > div.container:before, body.catlist > div.container-fluid > div > div.col-sm-10 > div.container:before, body.langlist > div.container-fluid > div > div.col-sm-10 > div.container:before, body.me > div.container-fluid > div > div.col-sm-10 > div.discover:before, body.serieslist > div.container-fluid > div > div.col-sm-10 > div.container:before {
@@ -3624,7 +3636,7 @@ body.shelf > div.container-fluid > div > div.col-sm-10 > div.discover > h2 {
     -webkit-margin-after: 0 !important;
     position: fixed !important;
     top: 60px !important;
-    left: 240px !important;
+    left: 240px;
     text-align: left !important;
     overflow: hidden;
     -o-text-overflow: ellipsis;
@@ -5576,6 +5588,10 @@ body.editbook > div.container-fluid > div.row-fluid > div.col-sm-10 > div.col-sm
     color: #fff !important
 }
 
+#main-nav + #scnd-nav .create-shelf.active a {
+    color: var(--color-primary) !important
+}
+
 #main-nav + #scnd-nav:after {
     width: 100%;
     height: 60px;
@@ -7465,6 +7481,12 @@ body.edituser.admin > div.container-fluid > div.row-fluid > div.col-sm-10 > div.
         width: 225px
     }
 
+    #main-nav + #scnd-nav .nav-head.shelf-section-header {
+        display: flex !important;
+        align-items: center;
+        width: 225px;
+    }
+
     .shelforder #sortTrue > div:before {
         opacity: 1;
         pointer-events: auto;
@@ -7696,78 +7718,6 @@ body.edituser.admin > div.container-fluid > div.row-fluid > div.col-sm-10 > div.
     max-width: 150px;
     overflow: hidden;
     text-overflow: ellipsis
-}
-
-body.publisherlist > div.container-fluid > div > div.col-sm-10:before {
-    content: "\e241";
-    font-family: 'Glyphicons Halflings', serif;
-    font-style: normal;
-    font-weight: 400;
-    line-height: 1;
-    font-size: 6vw;
-    position: fixed;
-    left: 240px;
-    top: 180px;
-    width: calc(20% - 55px);
-    text-align: center
-}
-
-@media screen and (max-width: 992px) {
-  body.publisherlist > div.container-fluid > div > div.col-sm-10:before {
-      top: 180px;
-  }
-}
-
-body.ratingslist > div.container-fluid > div > div.col-sm-10:before {
-    content: "\e007";
-    font-family: 'Glyphicons Halflings', serif;
-    font-style: normal;
-    font-weight: 400;
-    line-height: 1;
-    font-size: 6vw;
-    position: fixed;
-    left: 240px;
-    top: 180px;
-    width: calc(20% - 55px);
-    text-align: center
-}
-
-@media screen and (max-width: 992px) {
-  body.ratingslist > div.container-fluid > div > div.col-sm-10:before {
-      top: 180px;
-  }
-}
-
-@media screen and (max-width: 768px) {
-  body.ratingslist > div.container-fluid > div > div.col-sm-10:before {
-      display: none;
-  }
-}
-
-body.formatslist > div.container-fluid > div > div.col-sm-10:before {
-    content: "\e022";
-    font-family: 'Glyphicons Halflings', serif;
-    font-style: normal;
-    font-weight: 400;
-    line-height: 1;
-    font-size: 6vw;
-    position: fixed;
-    left: 240px;
-    top: 180px;
-    width: calc(20% - 55px);
-    text-align: center
-}
-
-@media screen and (max-width: 992px) {
-  body.formatslist > div.container-fluid > div > div.col-sm-10:before {
-      top: 180px;
-  }
-}
-
-@media screen and (max-width: 768px) {
-  body.formatslist > div.container-fluid > div > div.col-sm-10:before {
-      display: none;
-  }
 }
 
 body.publisherlist > div.container-fluid > div > div.col-sm-10 > div.container:before {
@@ -8696,6 +8646,14 @@ button.close {
     pointer-events: none; /* Allow hover to pass through when not visible */
 }
 
+/* When no send button is present, reposition the two remaining buttons to 1/3 and 2/3 */
+.book-cover-link:not(:has(.send-ereader-btn)) .read-toggle-btn {
+    left: calc(33.33% - 17.5px);
+}
+.book-cover-link:not(:has(.send-ereader-btn)) .edit-metadata-btn {
+    left: calc(66.67% - 17.5px);
+}
+
 .edit-metadata-btn .glyphicon {
     font-size: 14px;
     color: #fff;
@@ -8845,4 +8803,34 @@ body > div.container-fluid > div > div.col-sm-10 > div.pagination.pagination-bot
     display: inline-block;
     margin: 0 2px;
     vertical-align: middle;
+}
+
+/* ---- caliBlur: shelf section collapse & list page overrides ---- */
+#main-nav + #scnd-nav li.nav-head.shelf-section-header > a {
+    color: hsla(0, 0%, 100%, .3);
+    padding: 0 !important;
+    height: auto !important;
+    line-height: inherit;
+    font-size: inherit;
+    text-overflow: ellipsis;
+    overflow: hidden;
+}
+
+#main-nav + #scnd-nav li.nav-head.shelf-section-header.active > a {
+    color: var(--color-primary);
+}
+
+#main-nav + #scnd-nav li.nav-head.shelf-section-header > a:hover {
+    background: none !important;
+    color: hsla(0, 0%, 100%, .6);
+    text-decoration: underline;
+}
+
+.shelf-list-item a {
+    color: hsla(0, 0%, 100%, .7);
+}
+
+.shelf-list-item a:hover {
+    color: hsla(0, 0%, 100%, .95);
+    background: hsla(0, 0%, 100%, .08) !important;
 }

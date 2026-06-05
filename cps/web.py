@@ -5,11 +5,13 @@
 # See CONTRIBUTORS for full list of authors.
 
 import os
+import re
 import json
 import mimetypes
 import chardet  # dependency of requests
 import copy
 import importlib
+from collections import namedtuple
 import re
 import zipfile
 import xml.etree.ElementTree as ET
@@ -25,6 +27,7 @@ from flask_limiter import RateLimitExceeded
 from flask_limiter.util import get_remote_address
 from sqlalchemy.exc import IntegrityError, InvalidRequestError, OperationalError
 from sqlalchemy.sql.expression import text, func, false, not_, and_, or_
+from sqlalchemy import cast, Float, Integer
 from sqlalchemy.orm.attributes import flag_modified
 from sqlalchemy.sql.functions import coalesce
 from werkzeug.datastructures import Headers
@@ -53,6 +56,7 @@ from .services.worker import WorkerThread
 from .tasks_status import render_task_status
 from .usermanagement import user_login_required
 from .string_helper import strip_whitespaces
+from .template_formatter import evaluate_composite_template
 
 # CWA Imports
 import shutil
@@ -63,6 +67,14 @@ import time
 import sys
 sys.path.insert(1, '/app/calibre-web-automated/scripts/')
 from cwa_db import CWA_DB
+
+# Computed once at startup. Used for dynamic series2 URL routing. Read via
+# getattr with defaults: this runs at module-import time, before config is
+# guaranteed to have loaded every column from storage (e.g. a settings row
+# written under an older schema, or the test harness importing the module
+# without a fully-populated config), so a bare attribute access could raise.
+_s2_key = ((getattr(config, 'config_series2_slug', '') or '')
+           or (getattr(config, 'config_series2_label', '') or '')).strip() or 'series2'
 
 feature_support = {
     'ldap': bool(services.ldap),
@@ -498,6 +510,8 @@ def render_books_list(data, sort_param, book_id, page):
         return render_publisher_books(page, book_id, order)
     elif data == "series":
         return render_series_books(page, book_id, order)
+    elif data in (_s2_key, "series2"):
+        return render_series2_books(page, book_id, order)
     elif data == "ratings":
         return render_ratings_books(page, book_id, order)
     elif data == "formats":
@@ -729,6 +743,24 @@ def render_publisher_books(page, book_id, order):
                                  title=_("Publisher: %(name)s", name=publisher),
                                  page="publisher",
                                  order=order[1])
+
+
+def render_series2_books(page, book_id, order):
+    if db.series2_link_class is None or db.series2_cc_class is None:
+        abort(404)
+    series2_entry = calibre_db.session.query(db.series2_cc_class).filter(
+        db.series2_cc_class.id == book_id).first()
+    if series2_entry:
+        entries, random, pagination = calibre_db.fill_indexpage(
+            page, 0, db.Books,
+            db.Books.series2.any(db.series2_link_class.map_value == book_id),
+            [order[0][0]], True, config.config_read_column)
+        label = config.config_series2_label or 'World'
+        title = label + ": " + series2_entry.value
+    else:
+        abort(404)
+    return render_title_template('index.html', random=random, pagination=pagination, entries=entries,
+                                 id=book_id, title=title, page="series2", order=order[1])
 
 
 def render_series_books(page, book_id, order):
@@ -973,6 +1005,12 @@ def render_hidden_books(page, sort_param):
                                  title=name, page=page_name, order=sort_param[1])
 
 
+@web.route("/magicshelves")
+@login_required_if_no_ano
+def magic_shelf_list():
+    return render_title_template('magic_shelf_list.html', title=_("Magic Shelves"), page="magicshelflist")
+
+
 @web.route("/magicshelf/<int:shelf_id>", defaults={"sort_param": "stored", 'page': 1})
 @web.route("/magicshelf/<int:shelf_id>/<sort_param>", defaults={'page': 1})
 @web.route("/magicshelf/<int:shelf_id>/<sort_param>/<int:page>")
@@ -1055,7 +1093,7 @@ def render_magic_shelf(shelf_id, sort_param, page):
     return render_title_template('index.html', 
                                  entries=entries, 
                                  pagination=pagination,
-                                 title=_("Magic Shelf&nbsp&nbsp&nbsp—&nbsp&nbsp&nbsp%(icon)s %(name)s", icon=shelf.icon, name=shelf.name), 
+                                 title=_("Magic Shelf — %(icon)s %(name)s", icon=shelf.icon, name=shelf.name), 
                                  page="magicshelf",
                                  shelf=shelf,
                                  is_hidden_shelf=is_hidden,
@@ -1188,8 +1226,9 @@ def index(page):
     return render_books_list("newest", sort_param, 1, page)
 
 
-@web.route('/<data>/<sort_param>', defaults={'page': 1, 'book_id': 1})
-@web.route('/<data>/<sort_param>/', defaults={'page': 1, 'book_id': 1})
+@web.route('/<data>', defaults={'sort_param': 'stored', 'page': 1, 'book_id': 0})
+@web.route('/<data>/<sort_param>', defaults={'page': 1, 'book_id': 0})
+@web.route('/<data>/<sort_param>/', defaults={'page': 1, 'book_id': 0})
 @web.route('/<data>/<sort_param>/<book_id>', defaults={'page': 1})
 @web.route('/<data>/<sort_param>/<book_id>/<int:page>')
 @login_required_if_no_ano
@@ -1336,13 +1375,20 @@ def create_magic_shelf():
         except:
             language_map[lang.lang_code] = lang.lang_code
 
-    return render_title_template('magic_shelf_edit.html', 
-                                 title=_("Create Magic Shelf"), 
+    custom_columns = magic_shelf.get_custom_columns_for_rules()
+    shelves = magic_shelf.get_shelves_for_rules(current_user.id)
+    identifiers = magic_shelf.get_identifiers_for_rules()
+
+    return render_title_template('magic_shelf_edit.html',
+                                 title=_("Create Magic Shelf"),
                                  page="magic_shelf_create",
                                  opds_expose_enabled=current_user.opds_only_shelves_sync,
                                  opds_expose_checked=False,
                                  allowed_icons=ALLOWED_ICONS,
-                                 languages=language_map)
+                                 languages=language_map,
+                                 custom_columns=custom_columns,
+                                 shelves=shelves,
+                                 identifiers=identifiers)
 
 
 @web.route("/magicshelf/<int:shelf_id>/edit", methods=["GET", "POST"])
@@ -1452,14 +1498,21 @@ def edit_magic_shelf(shelf_id):
         except:
             language_map[lang.lang_code] = lang.lang_code
 
-    return render_title_template('magic_shelf_edit.html', 
-                                 shelf=shelf, 
-                                 title=_("Edit Magic Shelf"), 
+    custom_columns = magic_shelf.get_custom_columns_for_rules()
+    shelves = magic_shelf.get_shelves_for_rules(shelf.user_id)
+    identifiers = magic_shelf.get_identifiers_for_rules()
+
+    return render_title_template('magic_shelf_edit.html',
+                                 shelf=shelf,
+                                 title=_("Edit Magic Shelf"),
                                  page="magic_shelf_edit",
                                  opds_expose_enabled=current_user.opds_only_shelves_sync,
                                  opds_expose_checked=opds_expose_checked,
                                  allowed_icons=ALLOWED_ICONS,
-                                 languages=language_map)
+                                 languages=language_map,
+                                 custom_columns=custom_columns,
+                                 shelves=shelves,
+                                 identifiers=identifiers)
 
 
 @web.route("/magicshelf/<int:shelf_id>/duplicate", methods=["POST"])
@@ -1663,7 +1716,7 @@ def list_books():
     elif sort_param == "languages":
         order = [db.Languages.lang_code.asc()] if order == "asc" else [db.Languages.lang_code.desc()]
         join = db.books_languages_link, db.Books.id == db.books_languages_link.c.book, db.Languages
-    elif order and sort_param in ["sort", "title", "authors_sort", "series_index"]:
+    elif order and sort_param in ["sort", "title", "authors_sort", "series_index", "timestamp", "pubdate"]:
         order = [text(sort_param + " " + order)]
     elif not state:
         order = [db.Books.timestamp.desc()]
@@ -1701,6 +1754,7 @@ def list_books():
         val = entry[0]
         val.is_archived = entry[1] is True
         val.read_status = entry[2] == ub.ReadBook.STATUS_FINISHED
+        val.rating_value = round(val.ratings[0].rating / 2, 1) if val.ratings else 0
         for lang_index in range(0, len(val.languages)):
             val.languages[lang_index].language_name = isoLanguages.get_language_name(get_locale(), val.languages[
                 lang_index].lang_code)
@@ -1812,6 +1866,133 @@ def publisher_list():
         abort(404)
 
 
+def _get_normalize_covers(user):
+    """User preference for normalizing book-cover sizes; defaults to True when unset."""
+    value = user.get_view_property('books', 'normalize_covers')
+    return True if value is None else bool(value)
+
+
+
+_SeriesEntry = namedtuple('_SeriesEntry', ['book', 'count', 'series'])
+
+SERIES_COVER_STRATEGIES = [
+    ('last',               'Last in series'),
+    ('first',              'First in series'),
+    ('first_unread',       'First unread in series'),
+    ('first_unread_whole', 'First unread whole number in series'),
+    ('first_whole',        'First whole number in series'),
+    ('last_whole',         'Last whole number in series'),
+]
+_VALID_COVER_STRATEGIES = {k for k, _ in SERIES_COVER_STRATEGIES}
+
+
+def _build_series_grid_entries(order, strategy, user_id):
+    """
+    Return a list of _SeriesEntry(book, count, series) for the series grid view.
+
+    Runs two queries:
+      1. All (Series, count) visible to the current user — for ordering and badge counts.
+      2. One cover Book per series chosen according to *strategy*.
+
+    Falls back to any available book for series where the strategy filter
+    yields no candidates (e.g. 'first_unread' when every book is finished).
+    """
+    if strategy not in _VALID_COVER_STRATEGIES:
+        strategy = 'last'
+
+    visible = calibre_db.common_filters()
+    s_idx_f = cast(db.Books.series_index, Float)    # numeric series_index
+    s_idx_i = cast(db.Books.series_index, Integer)
+
+    # ── Step 1: ordered series list + counts ────────────────────────────────
+    count_subq = (calibre_db.session.query(
+        db.books_series_link.c.series.label('sid'),
+        func.count(db.Books.id).label('cnt'),
+    ).join(db.Books, db.Books.id == db.books_series_link.c.book)
+     .filter(visible)
+     .group_by(db.books_series_link.c.series)
+     .subquery('series_counts'))
+
+    series_rows = (calibre_db.session.query(db.Series, count_subq.c.cnt)
+                   .join(count_subq, db.Series.id == count_subq.c.sid)
+                   .order_by(order)
+                   .all())
+
+    # ── Step 2: cover book per series ───────────────────────────────────────
+    # Extra filters for this strategy
+    cover_filters = [visible]
+
+    if strategy in ('first_unread', 'first_unread_whole'):
+        finished = (calibre_db.session.query(ub.ReadBook.book_id)
+                    .filter(ub.ReadBook.user_id == user_id,
+                            ub.ReadBook.read_status == ub.ReadBook.STATUS_FINISHED)
+                    .subquery())
+        cover_filters.append(~db.Books.id.in_(finished))
+
+    # Whole-number series_index >= 1 (excludes 0 and fractional parts)
+    whole_number = and_(s_idx_i == s_idx_f, s_idx_f >= 1.0)
+    if strategy in ('first_whole', 'last_whole', 'first_unread_whole'):
+        cover_filters.append(whole_number)
+
+    use_max = strategy in ('last', 'last_whole')
+    agg = func.max(s_idx_f) if use_max else func.min(s_idx_f)
+
+    def _cover_query(extra_filters, agg_fn):
+        target = (calibre_db.session.query(
+            db.books_series_link.c.series.label('sid'),
+            agg_fn.label('target_idx'),
+        ).join(db.Books, db.Books.id == db.books_series_link.c.book)
+         .filter(*extra_filters)
+         .group_by(db.books_series_link.c.series)
+         .subquery('cover_targets'))
+
+        return (calibre_db.session.query(db.Books, target.c.sid)
+                .join(db.books_series_link, db.Books.id == db.books_series_link.c.book)
+                .join(target, and_(target.c.sid == db.books_series_link.c.series,
+                                   s_idx_f == target.c.target_idx))
+                .filter(visible)
+                .group_by(target.c.sid)   # resolve ties: keep one book per series
+                .all())
+
+    cover_map = {row.sid: row[0] for row in _cover_query(cover_filters, agg)}
+
+    # Fallback: series with no strategy-matching book (e.g. all books finished).
+    # first_unread -> first; first_unread_whole -> first_whole; others -> any book.
+    missing = [s.id for s, _ in series_rows if s.id not in cover_map]
+    if missing:
+        if strategy == 'first_unread':
+            fb_filters = [visible, db.books_series_link.c.series.in_(missing)]
+            for row in _cover_query(fb_filters, func.min(s_idx_f)):
+                cover_map.setdefault(row.sid, row[0])
+        elif strategy == 'first_unread_whole':
+            fb_filters = [visible, whole_number, db.books_series_link.c.series.in_(missing)]
+            for row in _cover_query(fb_filters, func.min(s_idx_f)):
+                cover_map.setdefault(row.sid, row[0])
+
+        # Final safety net: any book (max ID) for series still without a cover
+        still_missing = [s.id for s, _ in series_rows if s.id not in cover_map]
+        if still_missing:
+            fb_target = (calibre_db.session.query(
+                db.books_series_link.c.series.label('sid'),
+                func.max(db.Books.id).label('target_id'),
+            ).join(db.Books, db.Books.id == db.books_series_link.c.book)
+             .filter(visible, db.books_series_link.c.series.in_(still_missing))
+             .group_by(db.books_series_link.c.series)
+             .subquery('fb_targets'))
+
+            for row in (calibre_db.session.query(db.Books, fb_target.c.sid)
+                        .join(fb_target, db.Books.id == fb_target.c.target_id)
+                        .filter(visible)
+                        .all()):
+                cover_map.setdefault(row.sid, row[0])
+
+    return [
+        _SeriesEntry(book=cover_map[s.id], count=cnt, series=s)
+        for s, cnt in series_rows
+        if s.id in cover_map
+    ]
+
+
 @web.route("/series")
 @login_required_if_no_ano
 def series_list():
@@ -1843,18 +2024,72 @@ def series_list():
                                          page="serieslist",
                                          data="series", order=order_no)
         else:
-            entries = (calibre_db.session.query(db.Books, func.count('books_series_link').label('count'),
-                                                func.max(db.Books.series_index), db.Books.id)
-                       .join(db.books_series_link).join(db.Series).filter(calibre_db.common_filters())
-                       .group_by(text('books_series_link.series'))
-                       .having(or_(func.max(db.Books.series_index), db.Books.series_index==""))
-                       .order_by(order)
-                       .all())
+            cover_strategy = current_user.get_view_property('series', 'cover_strategy') or 'last'
+            entries = _build_series_grid_entries(order, cover_strategy, current_user.id)
             return render_title_template('grid.html', entries=entries, folder='web.books_list', charlist=char_list,
                                          title=_("Series"), page="serieslist", data="series", bodyClass="grid-view",
                                          order=order_no)
     else:
         abort(404)
+
+
+@web.route("/{}".format(_s2_key))
+@login_required_if_no_ano
+def series2_list():
+    if not config.config_series2_column or db.series2_link_class is None or db.series2_cc_class is None:
+        abort(404)
+    if current_user.check_visibility(constants.SIDEBAR_SERIES):
+        if current_user.get_view_property('series2', 'dir') == 'desc':
+            order = db.series2_cc_class.value.desc()
+            order_no = 0
+        else:
+            order = db.series2_cc_class.value.asc()
+            order_no = 1
+        label = config.config_series2_label or 'World'
+        if current_user.get_view_property('series2', 'series2_view') == 'list':
+            entries_raw = (calibre_db.session.query(db.series2_cc_class,
+                                                    func.count(db.series2_link_class.book).label('count'))
+                           .join(db.series2_link_class, db.series2_link_class.map_value == db.series2_cc_class.id)
+                           .join(db.Books, db.Books.id == db.series2_link_class.book)
+                           .filter(calibre_db.common_filters())
+                           .group_by(db.series2_link_class.map_value)
+                           .order_by(order)
+                           .all())
+            entries = [[db.Category(row[0].value, row[0].id), row[1]] for row in entries_raw]
+            return render_title_template('list.html',
+                                         entries=entries,
+                                         folder='web.books_list',
+                                         charlist=[],
+                                         title=label,
+                                         page="series2list",
+                                         data=_s2_key, order=order_no)
+        else:
+            entries = (calibre_db.session.query(
+                db.Books,
+                func.count(db.series2_link_class.book).label('count'),
+                func.max(db.series2_link_class.extra),
+                db.series2_cc_class.id.label('s2_id'),
+                db.series2_cc_class.value.label('s2_name')
+            )
+                .join(db.series2_link_class, db.series2_link_class.book == db.Books.id)
+                .join(db.series2_cc_class, db.series2_cc_class.id == db.series2_link_class.map_value)
+                .filter(calibre_db.common_filters())
+                .group_by(db.series2_link_class.map_value)
+                .order_by(order)
+                .all())
+            return render_title_template('grid2.html',
+                                         entries=entries,
+                                         folder='web.books_list',
+                                         charlist=[],
+                                         title=label,
+                                         page="series2list",
+                                         data=_s2_key, bodyClass="grid-view", order=order_no)
+    else:
+        abort(404)
+
+
+if _s2_key != 'series2':
+    web.add_url_rule('/series2', view_func=series2_list)
 
 
 @web.route("/ratings")
@@ -2634,11 +2869,12 @@ def change_profile(kobo_support, hardcover_support, local_oauth_check, oauth_sta
             current_user.kindle_mail = valid_email(to_save.get("kindle_mail"))
         if to_save.get("kindle_mail_subject", current_user.kindle_mail_subject) != current_user.kindle_mail_subject:
             current_user.kindle_mail_subject = strip_whitespaces(to_save.get("kindle_mail_subject", "")) or ""
-        new_email = valid_email(to_save.get("email", current_user.email))
-        if not new_email:
-            raise Exception(_("Email can't be empty and has to be a valid Email"))
-        if new_email != current_user.email:
-            current_user.email = check_email(new_email)
+        if not (getattr(config, 'config_reverse_proxy_login_use_email', False) and not current_user.role_admin()):
+            new_email = valid_email(to_save.get("email", current_user.email))
+            if not new_email:
+                raise Exception(_("Email can't be empty and has to be a valid Email"))
+            if new_email != current_user.email:
+                current_user.email = check_email(new_email)
         if current_user.role_admin():
             if to_save.get("name", current_user.name) != current_user.name:
                 # Query username, if not existing, change
@@ -2651,6 +2887,7 @@ def change_profile(kobo_support, hardcover_support, local_oauth_check, oauth_sta
         # 0 -> 1: all synced books have to be added to archived books, + currently synced shelfs which
         # don't have to be synced have to be removed (added to Shelf archive)
         current_user.kobo_only_shelves_sync = int(to_save.get("kobo_only_shelves_sync") == "on") or 0
+        current_user.kobo_sync_public_shelves = int(to_save.get("kobo_sync_public_shelves") == "on") or 0
         if old_state == 0 and current_user.kobo_only_shelves_sync == 1:
             kobo_sync_status.update_on_sync_shelfs(current_user.id)
         current_user.opds_only_shelves_sync = int(to_save.get("opds_only_shelves_sync") == "on") or 0
@@ -2659,6 +2896,7 @@ def change_profile(kobo_support, hardcover_support, local_oauth_check, oauth_sta
         current_user.auto_send_enabled = to_save.get("auto_send_enabled") == "on"
         current_user.auto_metadata_fetch = to_save.get("auto_metadata_fetch") == "on"
         current_user.allow_additional_ereader_emails = to_save.get("allow_additional_ereader_emails") == "on"
+        current_user.auto_load_more = to_save.get("auto_load_more") == "on"
         
         # Handle hidden magic shelf templates and custom shelves
         from . import magic_shelf
@@ -2758,6 +2996,19 @@ def change_profile(kobo_support, hardcover_support, local_oauth_check, oauth_sta
                 if not current_user.view_settings['opds']:
                     current_user.view_settings.pop('opds', None)
                 flag_modified(current_user, "view_settings")
+
+        # Normalize covers in books pages (checkbox: absent = unchecked = False)
+        if current_user.view_settings is None:
+            current_user.view_settings = {}
+        current_user.view_settings.setdefault('books', {})['normalize_covers'] = (
+            to_save.get("normalize_covers") == "on"
+        )
+        # Series cover strategy
+        series_cover_strategy = to_save.get("series_cover_strategy", "last")
+        if series_cover_strategy not in _VALID_COVER_STRATEGIES:
+            series_cover_strategy = "last"
+        current_user.view_settings.setdefault('series', {})['cover_strategy'] = series_cover_strategy
+        flag_modified(current_user, "view_settings")
 
         # Magic shelf order settings
         magic_shelf_order_raw = to_save.get("magic_shelf_order", "").strip()
@@ -2880,6 +3131,9 @@ def change_profile(kobo_support, hardcover_support, local_oauth_check, oauth_sta
                                      magic_shelf_order_string=magic_shelf_order_string,
                                      magic_shelf_order_labels=magic_shelf_order_labels,
                                      magic_shelf_order_mode=magic_shelf_order_mode,
+                                     normalize_covers=_get_normalize_covers(current_user),
+                                     cover_strategy=current_user.get_view_property('series', 'cover_strategy') or 'last',
+                                     cover_strategies=SERIES_COVER_STRATEGIES,
                                      title=_(f"{current_user.name.capitalize()}'s Profile", name=current_user.name),
                                      page="me",
                                      kobo_support=kobo_support,
@@ -3004,6 +3258,9 @@ def profile():
                                  languages=languages,
                                  content=current_user,
                                  config=config,
+                                 normalize_covers=_get_normalize_covers(current_user),
+                                 cover_strategy=current_user.get_view_property('series', 'cover_strategy') or 'last',
+                                 cover_strategies=SERIES_COVER_STRATEGIES,
                                  kobo_support=kobo_support,
                                  hardcover_support=hardcover_support,
                                  system_shelf_templates=system_shelf_templates,
@@ -3298,6 +3555,25 @@ def show_book(book_id):
             entry.languages[lang_index].language_name = isoLanguages.get_language_name(get_locale(), entry.languages[
                 lang_index].lang_code)
         cc = calibre_db.get_cc_columns(config, filter_config_custom_read=True)
+        log.debug("show_book %d: cc columns=%r", book_id,
+                  [(c.id, c.label, c.datatype) for c in cc])
+        cc_link_cols = set(int(x) for x in (config.config_cc_link_columns or '').split(',') if x.strip())
+        # Pass all columns (including hidden) to composite evaluation so that
+        # templates referencing hidden columns still resolve correctly.
+        all_cc_for_composite = calibre_db.get_cc_columns(config, filter_config_custom_read=True, filter_hidden=False)
+        composite_vals = {}
+        for col in cc:
+            if col.datatype == 'composite':
+                try:
+                    display = col.get_display_dict()
+                    template = display.get('composite_template', '')
+                    contains_html = display.get('contains_html', False)
+                    composite_vals[col.id] = {
+                        'value': evaluate_composite_template(template, entry, all_cc_for_composite, column_name=col.name),
+                        'contains_html': contains_html,
+                    }
+                except Exception as ex:
+                    log.warning("Failed to set up composite column %r (id=%s): %s", col.name, col.id, ex)
         book_in_shelves = []
         shelves = ub.session.query(ub.BookShelf).filter(ub.BookShelf.book_id == book_id).all()
         for sh in shelves:
@@ -3327,6 +3603,9 @@ def show_book(book_id):
         for media_format in entry.data:
             if media_format.format.lower() in constants.EXTENSIONS_AUDIO:
                 entry.audio_entries.append(media_format.format.lower())
+
+        log.debug("series2: link_class=%s, cc_class=%s, entry.series2=%r",
+                  db.series2_link_class, db.series2_cc_class, entry.series2)
 
         kosync_progress = None
         kosync_progress_timestamp = None
@@ -3371,6 +3650,9 @@ def show_book(book_id):
         return render_title_template('detail.html',
                                      entry=entry,
                                      cc=cc,
+                                     subtitle_cc=config.config_subtitle_column,
+                                     cc_link_cols=cc_link_cols,
+                                     composite_vals=composite_vals,
                                      is_xhr=request.headers.get('X-Requested-With') == 'XMLHttpRequest',
                                      title=entry.title,
                                      books_shelfs=book_in_shelves,

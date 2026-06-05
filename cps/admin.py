@@ -35,6 +35,7 @@ from sqlalchemy.sql.expression import func, or_, text
 from . import constants, logger, helper, services, cli_param, apply_https_runtime_config
 from . import db, calibre_db, ub, web_server, config, updater_thread, gdriveutils, \
     kobo_sync_status, schedule
+from .web import _s2_key
 from .helper import check_valid_domain, send_test_mail, reset_password, generate_password_hash, check_email, \
     valid_email, check_username
 from .embed_helper import get_calibre_binarypath
@@ -47,6 +48,56 @@ from . import debug_info
 from .string_helper import strip_whitespaces
 
 log = logger.create()
+
+_SERIES2_ICON_NAMES = [
+    'adjust', 'alert', 'align-center', 'align-justify', 'align-left', 'align-right',
+    'apple', 'arrow-down', 'arrow-left', 'arrow-right', 'arrow-up', 'asterisk',
+    'baby-formula', 'backward', 'ban-circle', 'barcode', 'bed', 'bell', 'bishop',
+    'bitcoin', 'blackboard', 'bold', 'book', 'bookmark', 'briefcase', 'btc',
+    'bullhorn', 'calendar', 'camera', 'cd', 'certificate', 'check', 'chevron-down',
+    'chevron-left', 'chevron-right', 'chevron-up', 'circle-arrow-down',
+    'circle-arrow-left', 'circle-arrow-right', 'circle-arrow-up', 'cloud',
+    'cloud-download', 'cloud-upload', 'cog', 'collapse-down', 'collapse-up',
+    'comment', 'compressed', 'console', 'copy', 'copyright-mark', 'credit-card',
+    'cutlery', 'dashboard', 'download', 'download-alt', 'duplicate', 'earphone',
+    'edit', 'education', 'eject', 'envelope', 'equalizer', 'erase', 'eur', 'euro',
+    'exclamation-sign', 'expand', 'export', 'eye-close', 'eye-open', 'facetime-video',
+    'fast-backward', 'fast-forward', 'file', 'film', 'filter', 'fire', 'flag',
+    'flash', 'floppy-disk', 'floppy-open', 'floppy-remove', 'floppy-save',
+    'floppy-saved', 'folder-close', 'folder-open', 'font', 'forward', 'fullscreen',
+    'gbp', 'gift', 'glass', 'globe', 'grain', 'hand-down', 'hand-left', 'hand-right',
+    'hand-up', 'hdd', 'hd-video', 'header', 'headphones', 'heart', 'heart-empty',
+    'home', 'hourglass', 'ice-lolly', 'ice-lolly-tasted', 'import', 'inbox',
+    'indent-left', 'indent-right', 'info-sign', 'italic', 'jpy', 'king', 'knight',
+    'lamp', 'leaf', 'level-up', 'link', 'list', 'list-alt', 'lock', 'log-in',
+    'log-out', 'magnet', 'map-marker', 'menu-down', 'menu-hamburger', 'menu-left',
+    'menu-right', 'menu-up', 'minus', 'minus-sign', 'modal-window', 'move', 'music',
+    'new-window', 'object-align-bottom', 'object-align-horizontal', 'object-align-left',
+    'object-align-right', 'object-align-top', 'object-align-vertical', 'off', 'oil',
+    'ok', 'ok-circle', 'ok-sign', 'open', 'open-file', 'option-horizontal',
+    'option-vertical', 'paperclip', 'paste', 'pause', 'pawn', 'pencil', 'phone',
+    'phone-alt', 'picture', 'piggy-bank', 'plane', 'play', 'play-circle', 'plus',
+    'plus-sign', 'print', 'pushpin', 'qrcode', 'queen', 'question-sign', 'random',
+    'record', 'refresh', 'registration-mark', 'remove', 'remove-circle', 'remove-sign',
+    'repeat', 'resize-full', 'resize-horizontal', 'resize-small', 'resize-vertical',
+    'retweet', 'road', 'rub', 'ruble', 'save', 'saved', 'save-file', 'scale',
+    'scissors', 'screenshot', 'sd-video', 'search', 'send', 'share', 'share-alt',
+    'shopping-cart', 'signal', 'sort', 'sort-by-alphabet', 'sort-by-alphabet-alt',
+    'sort-by-attributes', 'sort-by-attributes-alt', 'sort-by-order', 'sort-by-order-alt',
+    'sound-5-1', 'sound-6-1', 'sound-7-1', 'sound-dolby', 'sound-stereo', 'star',
+    'star-empty', 'stats', 'step-backward', 'step-forward', 'stop', 'subscript',
+    'subtitles', 'sunglasses', 'superscript', 'tag', 'tags', 'tasks', 'tent',
+    'text-background', 'text-color', 'text-height', 'text-size', 'text-width', 'th',
+    'th-large', 'th-list', 'thumbs-down', 'thumbs-up', 'time', 'tint', 'tower',
+    'transfer', 'trash', 'tree-conifer', 'tree-deciduous', 'triangle-bottom',
+    'triangle-left', 'triangle-right', 'triangle-top', 'unchecked', 'upload', 'usd',
+    'user', 'volume-down', 'volume-off', 'volume-up', 'warning-sign', 'wrench', 'xbt',
+    'yen', 'zoom-in', 'zoom-out',
+]
+SERIES2_ICON_OPTIONS = [
+    ('glyphicon-' + n, ' '.join(w.capitalize() for w in n.split('-')))
+    for n in _SERIES2_ICON_NAMES
+]
 
 feature_support = {
     'ldap': bool(services.ldap),
@@ -153,6 +204,9 @@ def before_request():
         g.current_theme = getattr(config, 'config_theme', 1)
     g.current_theme = 1
     g.config_authors_max = config.config_authors_max
+    g.config_show_series2_on_book_list = config.config_show_series2_on_book_list
+    g.config_series2_label = config.config_series2_label
+    g.series2_key = _s2_key
     if '/static/' not in request.path and not config.db_configured and \
         request.endpoint not in ('admin.ajax_db_config',
                                  'admin.simulatedbchange',
@@ -470,6 +524,7 @@ def reconnect():
         abort(404)
 
 
+
 @admi.route("/ajax/updateThumbnails", methods=['POST'])
 @user_login_required
 @admin_required
@@ -583,8 +638,25 @@ def db_configuration():
 @user_login_required
 @admin_required
 def configuration():
+    wordspages_columns = calibre_db.session.query(db.CustomColumns) \
+        .filter(and_(db.CustomColumns.datatype == 'int', db.CustomColumns.mark_for_delete == 0)).all()
+    subtitle_columns = (
+        calibre_db.session
+        .query(db.CustomColumns)
+        .filter(
+            db.CustomColumns.datatype.notin_(db.cc_exceptions),
+            db.CustomColumns.mark_for_delete == 0
+        )
+        .all()
+    )
+    series2_columns = calibre_db.session.query(db.CustomColumns) \
+        .filter(and_(db.CustomColumns.datatype == 'series', db.CustomColumns.mark_for_delete == 0)).all()
     return render_title_template("config_edit.html",
                                  config=config,
+                                 wordsPagesColumns=wordspages_columns,
+                                 subtitleColumns=subtitle_columns,
+                                 series2Columns=series2_columns,
+                                 series2Icons=SERIES2_ICON_OPTIONS,
                                  provider=oauth_bb.oauthblueprints,
                                  feature_support=feature_support,
                                  title=_("Basic Configuration"), page="config")
@@ -618,11 +690,26 @@ def view_configuration():
     read_column = calibre_db.session.query(db.CustomColumns) \
         .filter(and_(db.CustomColumns.datatype == 'bool', db.CustomColumns.mark_for_delete == 0)).all()
     restrict_columns = calibre_db.session.query(db.CustomColumns) \
-        .filter(and_(db.CustomColumns.datatype == 'text', db.CustomColumns.mark_for_delete == 0)).all()
+        .filter(and_(or_(db.CustomColumns.datatype == 'text', db.CustomColumns.datatype == 'enumeration'), db.CustomColumns.mark_for_delete == 0)).all()
+    subtitle_columns = calibre_db.session.query(db.CustomColumns) \
+        .filter(and_(or_(db.CustomColumns.datatype == 'text', db.CustomColumns.datatype == 'comments'), db.CustomColumns.mark_for_delete == 0)).all()
+    all_cc_columns = calibre_db.session.query(db.CustomColumns) \
+        .filter(and_(db.CustomColumns.datatype != 'series', db.CustomColumns.mark_for_delete == 0)).all()
+    if config.config_cc_display_order:
+        try:
+            order_ids = [int(x) for x in config.config_cc_display_order.split(',') if x.strip()]
+            id_map = {col.id: col for col in all_cc_columns}
+            ordered = [id_map[i] for i in order_ids if i in id_map]
+            remaining = [col for col in all_cc_columns if col.id not in set(order_ids)]
+            all_cc_columns = ordered + remaining
+        except (ValueError, AttributeError):
+            pass
     languages = calibre_db.speaking_language()
     translations = get_available_locale()
     return render_title_template("config_view_edit.html", conf=config, readColumns=read_column,
                                  restrictColumns=restrict_columns,
+                                 subtitleColumns=subtitle_columns,
+                                 allColumns=all_cc_columns,
                                  languages=languages,
                                  translations=translations,
                                  title=_("UI Configuration"), page="uiconfig")
@@ -915,6 +1002,7 @@ def update_view_configuration():
 
     _config_string(to_save, "config_calibre_web_title")
     _config_string(to_save, "config_columns_to_ignore")
+    _config_string(to_save, "config_cc_display_order")
     if _config_string(to_save, "config_title_regex"):
         # title_sort UDF reads ``CalibreDB.config.config_title_regex`` at
         # call time via closure in ``_register_sqlite_udfs``; updating the
@@ -927,6 +1015,11 @@ def update_view_configuration():
         return view_configuration()
     _config_int(to_save, "config_read_column")
 
+    if not check_valid_subtitle_column(to_save.get("config_subtitle_column", "0")):
+        flash(_("Invalid Subtitle Column"), category="error")
+        log.debug("Invalid Subtitle column")
+        return view_configuration()
+    _config_int(to_save, "config_subtitle_column")
     if not check_valid_restricted_column(to_save.get("config_restricted_column", "0")):
         flash(_("Invalid Restricted Column"), category="error")
         log.debug("Invalid Restricted Column")
@@ -945,6 +1038,8 @@ def update_view_configuration():
     config.config_default_role &= ~constants.ROLE_ANONYMOUS
 
     config.config_default_show = sum(int(k[5:]) for k in to_save if k.startswith('show_') and not k.startswith('show_magic_shelf_') and not k.startswith('show_custom_shelf_'))
+    config.config_cc_link_columns = ','.join(k[8:] for k in to_save if k.startswith('cc_link_'))
+    config.config_cc_hidden_columns = ','.join(k[8:] for k in to_save if k.startswith('cc_hide_'))
     if "Show_detail_random" in to_save:
         config.config_default_show |= constants.DETAIL_RANDOM
 
@@ -953,7 +1048,7 @@ def update_view_configuration():
     log.debug("Calibre-Web NextGen configuration updated")
     before_request()
 
-    return view_configuration()
+    return redirect(url_for('admin.view_configuration'))
 
 
 @admi.route("/ajax/loaddialogtexts/<element_id>", methods=['POST'])
@@ -1338,10 +1433,26 @@ def check_valid_read_column(column):
     return True
 
 
+def check_valid_subtitle_column(column):
+    if column != "0":
+        if not calibre_db.session.query(db.CustomColumns).filter(db.CustomColumns.id == column) \
+          .filter(and_(or_(db.CustomColumns.datatype == 'text', db.CustomColumns.datatype == 'comments'), db.CustomColumns.mark_for_delete == 0)).all():
+            return False
+    return True
+
+
+def check_valid_series2_column(column):
+    if column != "0":
+        if not calibre_db.session.query(db.CustomColumns).filter(db.CustomColumns.id == column) \
+          .filter(and_(db.CustomColumns.datatype == 'series', db.CustomColumns.mark_for_delete == 0)).all():
+            return False
+    return True
+
+
 def check_valid_restricted_column(column):
     if column != "0":
         if not calibre_db.session.query(db.CustomColumns).filter(db.CustomColumns.id == column) \
-          .filter(and_(db.CustomColumns.datatype == 'text', db.CustomColumns.mark_for_delete == 0)).all():
+          .filter(and_(or_(db.CustomColumns.datatype == 'text', db.CustomColumns.datatype == 'enumeration'), db.CustomColumns.mark_for_delete == 0)).all():
             return False
     return True
 
@@ -2413,7 +2524,23 @@ def _configuration_update_helper():
         if not prev_kobo_sync and bool(config.config_kobo_sync):
             config.config_kobo_cover_padding_enabled = 1
 
+        # Second series column — requires restart to reinitialise ORM classes
+        if not check_valid_series2_column(to_save.get("config_series2_column", "0")):
+            return _configuration_result(_('Invalid Second Series Column'))
+        reboot_required |= _config_int(to_save, "config_series2_column")
+        _config_string(to_save, "config_series2_label")
+        _config_string(to_save, "config_series2_slug")
+        _config_string(to_save, "config_series2_icon")
+        _config_checkbox(to_save, "config_show_series2_on_book_list")
+
+        _config_int(to_save, "config_kobo_pages_cc")
+        _config_int(to_save, "config_kobo_words_cc")
         _config_checkbox_int(to_save, "config_hardcover_sync")
+        _config_int(to_save, "config_kobo_subtitle_cc")
+        _config_string(to_save, "config_kobo_subtitle_prefix")
+        _config_string(to_save, "config_kobo_subtitle_suffix")
+        _config_checkbox(to_save, "config_kobo_series2_priority")
+        _config_checkbox(to_save, "config_kobo_strip_comment_newlines")
 
         if "config_upload_formats" in to_save:
             to_save["config_upload_formats"] = ','.join(
@@ -2470,6 +2597,7 @@ def _configuration_update_helper():
         _config_checkbox(to_save, "config_allow_reverse_proxy_header_login")
         _config_string(to_save, "config_reverse_proxy_login_header_name")
         _config_checkbox(to_save, "config_reverse_proxy_auto_create_users")
+        config.set_from_dictionary(to_save, "config_reverse_proxy_login_use_email", lambda y: y == "1", False)
 
         # Validate reverse proxy configuration
         if config.config_reverse_proxy_auto_create_users and not config.config_allow_reverse_proxy_header_login:
@@ -2556,10 +2684,18 @@ def _configuration_update_helper():
 
     config.save()
     apply_https_runtime_config()
+    response = _configuration_result(None, reboot_required, " ".join(filter(None, [unrar_warning, arch_warning])))
     if reboot_required:
-        web_server.stop(True)
-
-    return _configuration_result(None, reboot_required, " ".join(filter(None, [unrar_warning, arch_warning])))
+        # Schedule the restart AFTER the response has been returned to the
+        # browser. Calling web_server.stop() from inside the Gevent request
+        # greenlet before returning can prevent the response from being sent:
+        # close_connection=True (gevent_wsgi.py) means the pool is nearly
+        # empty, so wsgiserver.close() / pool.join() may resolve before the
+        # response is flushed, then os.execv() kills the connection and the
+        # $.post callback never fires → zero feedback.
+        import threading
+        threading.Timer(0.5, lambda: web_server.stop(True)).start()
+    return response
 
 
 def _configuration_result(error_flash=None, reboot=False, warning_flash=None):
@@ -2657,6 +2793,7 @@ def _handle_new_user(to_save, content, languages, translations, kobo_support):
         # No default value for kobo sync shelf setting
         content.kobo_only_shelves_sync = to_save.get("kobo_only_shelves_sync", 0) == "on"
         content.opds_only_shelves_sync = to_save.get("opds_only_shelves_sync", 0) == "on"
+        content.kobo_sync_public_shelves = to_save.get("kobo_sync_public_shelves", 0) == "on"
         ub.session.add(content)
         ub.session.commit()
         flash(_("User '%(user)s' created", user=content.name), category="success")
@@ -2741,6 +2878,7 @@ def _handle_edit_user(to_save, content, languages, translations, kobo_support):
 
     old_state = content.kobo_only_shelves_sync
     content.kobo_only_shelves_sync = int(to_save.get("kobo_only_shelves_sync") == "on") or 0
+    content.kobo_sync_public_shelves = int(to_save.get("kobo_sync_public_shelves") == "on") or 0
     # 1 -> 0: nothing has to be done
     # 0 -> 1: all synced books have to be added to archived books, + currently synced shelfs
     # which don't have to be synced have to be removed (added to Shelf archive)
@@ -2750,6 +2888,7 @@ def _handle_edit_user(to_save, content, languages, translations, kobo_support):
     # Auto-send and metadata fetch settings
     content.auto_send_enabled = to_save.get("auto_send_enabled") == "on"
     content.auto_metadata_fetch = to_save.get("auto_metadata_fetch") == "on"
+    content.auto_load_more = to_save.get("auto_load_more") == "on"
 
     # OPDS root order
     opds_order_raw = to_save.get("opds_root_order", "").strip()
@@ -2904,6 +3043,10 @@ def _handle_edit_user(to_save, content, languages, translations, kobo_support):
             content.allow_additional_ereader_emails = to_save.get("allow_additional_ereader_emails") == "on"
         else:
             content.allow_additional_ereader_emails = False
+        if "auto_load_more" in to_save:
+            content.auto_load_more = to_save.get("auto_load_more") == "on"
+        else:
+            content.auto_load_more = False
         if to_save.get("kindle_mail") != content.kindle_mail:
             content.kindle_mail = valid_email(to_save["kindle_mail"]) if to_save["kindle_mail"] else ""
         if to_save.get("kindle_mail_subject") is not None:

@@ -1,4 +1,4 @@
-{% extends "layout.html" %}
+{% extends parent_template|default("layout.html") %}
 {% macro display_bool_setting(setting_value) -%}
   {% if setting_value %}<span class="glyphicon glyphicon-ok"></span>{% else %}<span class="glyphicon glyphicon-remove"></span>{% endif %}
 {%- endmacro %}
@@ -30,7 +30,7 @@
           {% for user in allUser %}
             {% if not user.role_anonymous() or config.config_anonbrowse %}
             <tr>
-              <td><a class="session" href="{{url_for('admin.edit_user', user_id=user.id)}}">{{user.name}}</a></td>
+              <td><a href="{{url_for('admin.edit_user', user_id=user.id)}}">{{user.name}}</a></td>
               <td>{{user.email}}</td>
               <td>{{user.kindle_mail}}</td>
               <td>{{user.kindle_mail_subject}}</td>
@@ -233,7 +233,7 @@
     <div class="btn btn-default" id="restart_database" data-toggle="modal" data-target="#StatusDialog">{{_('Reconnect Calibre Database')}}</div>
   </div>
   <div class="row form-group">
-    <div class="btn btn-default" id="admin_restart" data-toggle="modal" data-target="#RestartDialog">{{_('Restart')}}</div>
+    <div class="btn btn-default" id="admin_restart">{{_('Restart')}}</div>
     <div class="btn btn-default" id="admin_stop" data-toggle="modal" data-target="#ShutdownDialog">{{_('Shutdown')}}</div>
   </div>
 {% if config.schedule_metadata_backup %}
@@ -286,24 +286,7 @@
   </div>
 </div>
 
-<!-- Modal -->
-<div id="RestartDialog" class="modal fade" role="dialog">
-  <div class="modal-dialog modal-sm">
-    <!-- Modal content-->
-    <div class="modal-content">
-      <div class="modal-header bg-info"></div>
-      <div class="modal-body text-center">
-        <p>{{_('Are you sure you want to restart?')}}</p>
-          <div id="spinner" class="spinner"  style="display:none;">
-                <img id="img-spinner" src="{{ url_for('static', filename='css/libs/images/loading-icon.gif') }}"/>
-          </div>
-          <p></p>
-        <button type="button" class="btn btn-default" id="restart" >{{_('OK')}}</button>
-        <button type="button" class="btn btn-default" data-dismiss="modal">{{_('Cancel')}}</button>
-      </div>
-    </div>
-  </div>
-</div>
+{# RestartDialog moved to layout.html — available globally on every page #}
 <div id="ShutdownDialog" class="modal fade" role="dialog">
   <div class="modal-dialog modal-sm">
     <!-- Modal content-->

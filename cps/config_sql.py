@@ -71,6 +71,15 @@ class _Settings(_Base):
     config_random_books = Column(Integer, default=4)
     config_authors_max = Column(Integer, default=0)
     config_read_column = Column(Integer, default=0)
+    config_subtitle_column = Column(Integer, default=0)
+    config_series2_column = Column(Integer, default=0)
+    config_series2_label = Column(String, default='')
+    config_series2_slug = Column(String, default='series2')
+    config_series2_icon = Column(String, default='glyphicon-bookmark')
+    config_show_series2_on_book_list = Column(Boolean, default=True)
+    config_cc_display_order = Column(String, default='')
+    config_cc_link_columns = Column(String, default='')
+    config_cc_hidden_columns = Column(String, default='')
     config_title_regex = Column(String,
                                 default=r'^(A|The|An|Der|Die|Das|Den|Ein|Eine'
                                         r'|Einen|Dem|Des|Einem|Eines|Le|La|Les|L\'|Un|Une)\s+')
@@ -132,6 +141,13 @@ class _Settings(_Base):
     config_login_type = Column(Integer, default=0)
 
     config_kobo_proxy = Column(Boolean, default=False)
+    config_kobo_pages_cc = Column(SmallInteger, default=0)
+    config_kobo_words_cc = Column(SmallInteger, default=0)
+    config_kobo_subtitle_cc = Column(SmallInteger, default=0)
+    config_kobo_subtitle_prefix = Column(String, default="")
+    config_kobo_subtitle_suffix = Column(String, default="")
+    config_kobo_series2_priority = Column(Boolean, default=False)
+    config_kobo_strip_comment_newlines = Column(Boolean, default=False)
 
     # Kobo cover aspect-ratio padding. Pads server-side so the device shows
     # full-screen artwork instead of letterboxing tall publisher covers.
@@ -180,6 +196,7 @@ class _Settings(_Base):
     config_reverse_proxy_login_header_name = Column(String)
     config_allow_reverse_proxy_header_login = Column(Boolean, default=False)
     config_reverse_proxy_auto_create_users = Column(Boolean, default=False)
+    config_reverse_proxy_login_use_email = Column(Boolean, default=False)
     config_ldap_auto_create_users = Column(Boolean, default=True)
     config_oauth_redirect_host = Column(String, default='')
     config_disable_standard_login = Column(Boolean, default=False)
@@ -424,7 +441,7 @@ class ConfigSQL(object):
             db_file = os.path.join(self.config_calibre_dir, 'metadata.db')
             have_metadata_db = os.path.isfile(db_file)
         self.db_configured = have_metadata_db
-        
+
         from . import cli_param
         if os.environ.get('FLASK_DEBUG'):
             logfile = logger.setup(logger.LOG_TO_STDOUT, logger.logging.DEBUG)
@@ -555,6 +572,7 @@ def _migrate_table(session, orm_class, secret_key=None):
     if secret_key:
         _encrypt_fields(session, secret_key)
     changed = False
+    new_columns = set()
 
     for column_name, column in orm_class.__dict__.items():
         if column_name[0] != '_':
@@ -582,6 +600,7 @@ def _migrate_table(session, orm_class, secret_key=None):
                 log.debug(alter_table)
                 session.execute(alter_table)
                 changed = True
+                new_columns.add(column_name)
             except json.decoder.JSONDecodeError as e:
                 log.error("Database corrupt column: {}".format(column_name))
                 log.debug(e)
@@ -591,6 +610,8 @@ def _migrate_table(session, orm_class, secret_key=None):
             session.commit()
         except OperationalError:
             session.rollback()
+
+    return new_columns
 
 
 def autodetect_calibre_binaries():
@@ -613,7 +634,7 @@ def autodetect_calibre_binaries():
             if all(values):
                 version = values[0].group(1)
                 log.debug("calibre version %s", version)
-                return element 
+                return element
     return ""
 
 
@@ -658,15 +679,22 @@ def autodetect_kepubify_binary():
 def _migrate_database(session, secret_key):
     # make sure the table is created, if it does not exist
     _Base.metadata.create_all(session.bind)
-    _migrate_table(session, _Settings, secret_key)
+    new_settings_columns = _migrate_table(session, _Settings, secret_key)
     _migrate_table(session, _Flask_Settings)
+    return new_settings_columns
 
 
 def load_configuration(session, secret_key):
-    _migrate_database(session, secret_key)
+    new_columns = _migrate_database(session, secret_key)
     if not session.query(_Settings).count():
         session.add(_Settings())
         session.commit()
+        return True
+    # Trigger subtitle-column autodetection when either subtitle config column
+    # is newly added — covers both a fresh install and an upgrade that adds the
+    # Kobo subtitle column after the book-detail one already existed.
+    return ('config_subtitle_column' in new_columns
+            or 'config_kobo_subtitle_cc' in new_columns)
 
 
 def get_flask_session_key(_session):

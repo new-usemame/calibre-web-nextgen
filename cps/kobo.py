@@ -266,6 +266,7 @@ def HandleSyncRequest():
             ub.session.rollback()
 
     only_kobo_shelves = current_user.kobo_only_shelves_sync
+    sync_public_shelves = current_user.kobo_sync_public_shelves
 
     log.debug("Kobo Sync: books last modified: {}".format(sync_token.books_last_modified))
 
@@ -345,6 +346,7 @@ def HandleSyncRequest():
                            .outerjoin(ub.Shelf, ub.Shelf.id == ub.BookShelf.shelf)
                            .filter(or_(
                                and_(ub.Shelf.user_id == current_user.id, ub.Shelf.kobo_sync == True),
+                               and_(ub.Shelf.is_public == True, ub.Shelf.kobo_sync == True) if sync_public_shelves else False,
                                db.Books.id.in_(magic_shelf_book_ids) if magic_shelf_book_ids else False
                            ))
                            .options(joinedload(db.Books.authors),
@@ -518,7 +520,7 @@ def HandleSyncRequest():
             })
             new_reading_state_last_modified = max(new_reading_state_last_modified, kobo_reading_state.last_modified)
 
-    sync_shelves(sync_token, sync_results, only_kobo_shelves)
+    sync_shelves(sync_token, sync_results, only_kobo_shelves, sync_public_shelves)
 
     # Always emit DeletedTags for magic shelves that should NOT be on
     # the device — covers two distinct cases:
@@ -763,7 +765,10 @@ def current_time():
 def get_description(book):
     if not book.comments:
         return None
-    return book.comments[0].text
+    text = book.comments[0].text
+    if config.config_kobo_strip_comment_newlines:
+        text = text.replace('\n', '')
+    return text
 
 
 def get_author(book):
@@ -790,28 +795,39 @@ def get_series(book):
 
 
 def get_subtitle(book):
-    # Backport of janeczku PR #3358 (@dotknott): surface a per-book
-    # Subtitle in Kobo sync metadata when the Calibre library has a
-    # custom column labeled "subtitle". The upstream patch had three
-    # null-handling bugs (.all()[0] IndexError when no column exists,
-    # unreachable else branch, TypeError on None custom_column attr);
-    # rewritten here for correct empty-result handling end-to-end.
-    col = (calibre_db.session.query(db.CustomColumns)
-                       .filter(db.CustomColumns.mark_for_delete == 0)
-                       .filter(db.CustomColumns.datatype.notin_(db.cc_exceptions))
-                       .filter(db.CustomColumns.label == 'subtitle')
-                       .first())
-    if col is None:
+    # Subtitle source is the admin-configured custom column
+    # (config_kobo_subtitle_cc). On first creation that column is auto-detected
+    # from a Calibre column labeled "subtitle" (see cps.__init__
+    # _autodetect_subtitle_column), preserving the fork's original zero-config
+    # behavior. Returns "" defensively at every fork — unconfigured, missing
+    # attribute (schema drift / lazy-load), no value, or a NULL cell — so a sync
+    # is never broken by a missing subtitle.
+    if not config.config_kobo_subtitle_cc:
         return ""
-    column_attr = getattr(book, 'custom_column_' + str(col.id), None)
-    if not column_attr:
+    subtitleColumn = getattr(book, f'custom_column_{config.config_kobo_subtitle_cc}', None)
+    if not subtitleColumn:
         return ""
-    value = getattr(column_attr[0], 'value', None)
-    return value or ""
+    value = subtitleColumn[0].value
+    if value is None:
+        return ""
+    return (
+        f"{config.config_kobo_subtitle_prefix or ''} "
+        f"{value} "
+        f"{config.config_kobo_subtitle_suffix or ''}"
+    ).strip()
 
 
 def get_seriesindex(book):
     return book.series_index if isinstance(book.series_index, float) else 1
+
+
+def _format_series_index(value, decimals=2):
+    if not value:
+        return str(value)
+    formatted = f'{value:.{decimals}f}'
+    if formatted.endswith('.' + '0' * decimals):
+        formatted = formatted.rstrip('0').rstrip('.')
+    return formatted
 
 
 def get_language(book):
@@ -905,9 +921,36 @@ def get_metadata(book):
                 download_urls.append(build_download_url(book, book_data, dl_format, 'EPUB'))
 
     book_uuid = book.uuid
+    book_isbn = None
+    book_pages = None
+    book_words = None
+    for i in book.identifiers:
+        if i.format_type() == "ISBN":
+            book_isbn = i.val
+    if config.config_kobo_pages_cc:
+        pages_col = getattr(book, "custom_column_" + str(config.config_kobo_pages_cc), None)
+        if pages_col:
+            book_pages = pages_col[0].value
+    if config.config_kobo_words_cc:
+        words_col = getattr(book, "custom_column_" + str(config.config_kobo_words_cc), None)
+        if words_col:
+            book_words = words_col[0].value
     cover_image_id = _get_cover_image_id(book)
     if cover_image_id != str(book_uuid):
         log.debug("Kobo Sync: cache-busting cover id for book %s: %s", book.id, cover_image_id)
+
+    subtitle_val = get_subtitle(book)
+
+    series2_val = ""
+    if config.config_series2_column and db.series2_link_class is not None and book.series2:
+        link = book.series2[0]
+        series2_val = f"{link.value} [{_format_series_index(link.extra)}]"
+
+    if config.config_kobo_series2_priority:
+        subtitle = series2_val or subtitle_val
+    else:
+        subtitle = subtitle_val or series2_val
+
     metadata = {
         "Categories": ["00000000-0000-0000-0000-000000000001", ],
         # "Contributors": get_author(book),
@@ -930,9 +973,12 @@ def get_metadata(book):
         "Publisher": {"Imprint": "", "Name": get_publisher(book), },
         "RevisionId": book_uuid,
         "Title": book.title,
-        "Subtitle": get_subtitle(book),
+        "Subtitle": subtitle,
         "WorkId": book_uuid,
         "Series": {},
+        "ISBN": book_isbn,
+        "StorePages" : book_pages,
+        "StoreWordCount" : book_words,
     }
     metadata.update(get_author(book))
 
@@ -1148,7 +1194,7 @@ def HandleTagRemoveItem(tag_id):
 
 # Add new, changed, or deleted shelves to the sync_results.
 # Note: Public shelves that aren't owned by the user aren't supported.
-def sync_shelves(sync_token, sync_results, only_kobo_shelves=False):
+def sync_shelves(sync_token, sync_results, only_kobo_shelves=False, sync_public_shelves=False):
     new_tags_last_modified = sync_token.tags_last_modified
     # transmit all archived shelfs independent of last sync (why should this matter?)
     for shelf in ub.session.query(ub.ShelfArchive).filter(ub.ShelfArchive.user_id == current_user.id):
@@ -1180,11 +1226,18 @@ def sync_shelves(sync_token, sync_results, only_kobo_shelves=False):
                 }
             })
         extra_filters.append(ub.Shelf.kobo_sync)
+        if sync_public_shelves:
+            extra_filters.append(
+                or_(ub.Shelf.user_id == current_user.id, and_(ub.Shelf.is_public, ub.Shelf.kobo_sync))
+            )
+        else:
+            extra_filters.append(ub.Shelf.user_id == current_user.id)
+    else:
+        extra_filters.append(ub.Shelf.user_id == current_user.id)
 
     shelflist = ub.session.query(ub.Shelf).outerjoin(ub.BookShelf).filter(
         or_(func.datetime(ub.Shelf.last_modified) > sync_token.tags_last_modified,
             func.datetime(ub.BookShelf.date_added) > sync_token.tags_last_modified),
-        ub.Shelf.user_id == current_user.id,
         *extra_filters
     ).distinct().order_by(func.datetime(ub.Shelf.last_modified).asc())
 

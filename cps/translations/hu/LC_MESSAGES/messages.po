@@ -2483,8 +2483,8 @@ msgstr "Hiba varázspolc betöltése közben"
 
 #: cps/web.py:1058
 #, python-format
-msgid "Magic Shelf&nbsp&nbsp&nbsp—&nbsp&nbsp&nbsp%(icon)s %(name)s"
-msgstr "Varázspolc&nbsp&nbsp&nbsp—&nbsp&nbsp&nbsp%(icon)s %(name)s"
+msgid "Magic Shelf — %(icon)s %(name)s"
+msgstr "Varázspolc — %(icon)s %(name)s"
 
 #: cps/web.py:1218
 msgid "No rules provided"

@@ -147,9 +147,9 @@ class SyncToken:
         if sync_token_header.startswith(SyncToken.COMPRESSED_PREFIX):
             # Transport-compressed token (fork #331): z1: + b64(zlib(json)).
             # The header is attacker-suppliable, so decompression is bounded
-            # (CWE-409 zip bomb): a real token is <4KB decompressed — the
-            # schema carries one JWT plus a handful of timestamps/ints — so
-            # anything needing more than the caps below is malformed by
+            # (CWE-409 data amplification): a real token is <4KB decompressed
+            # — the schema carries one JWT plus a handful of timestamps/ints —
+            # so anything needing more than the caps below is malformed by
             # definition and degrades to a fresh sync.
             try:
                 payload = sync_token_header[len(SyncToken.COMPRESSED_PREFIX):]

@@ -128,19 +128,19 @@ class TestCompressedTokens:
         tok = SyncToken.from_headers({SyncToken.SYNC_TOKEN_HEADER: header[:len(header) // 2]})
         assert tok.books_last_modified == datetime.min
 
-    def test_zip_bomb_is_bounded(self):
-        """CWE-409: the header is attacker-suppliable. A zlib bomb that fits
-        the 16KB compressed pre-filter but expands past the 64KB
-        decompression cap must degrade to a fresh token, not exhaust
-        memory. (zlib level 9 on zeros gives ~1000:1 — 8MB of zeros is
-        ~11KB of b64, passing the pre-filter while expanding 128x past
-        the decompression cap.)"""
-        bomb = b64encode(zlib.compress(b"\x00" * (8 * 1024 * 1024), 9)).decode()
-        assert len(bomb) < SyncToken.MAX_COMPRESSED_B64, (
-            "test bomb must pass the pre-filter to exercise the "
+    def test_decompression_amplification_is_bounded(self):
+        """CWE-409 (improper handling of highly compressed data): the header
+        is attacker-suppliable, so expansion must be capped. A payload small
+        enough to pass the 16KB compressed pre-filter but decompressing past
+        the 64KB cap must degrade to a fresh token instead of being
+        expanded in full. (Highly repetitive input compresses far below the
+        pre-filter while decompressing well past the cap.)"""
+        oversized = b64encode(zlib.compress(b"\x00" * (256 * 1024), 9)).decode()
+        assert len(oversized) < SyncToken.MAX_COMPRESSED_B64, (
+            "fixture must pass the pre-filter to exercise the "
             "decompression cap")
         tok = SyncToken.from_headers(
-            {SyncToken.SYNC_TOKEN_HEADER: "z1:" + bomb})
+            {SyncToken.SYNC_TOKEN_HEADER: "z1:" + oversized})
         assert tok.books_last_modified == datetime.min
         assert tok.books_last_id == -1
 

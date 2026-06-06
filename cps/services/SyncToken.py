@@ -7,6 +7,7 @@
 # See CONTRIBUTORS for full list of authors.
 
 import sys
+import zlib
 from base64 import b64decode, b64encode
 from jsonschema import validate, exceptions
 from datetime import datetime
@@ -67,6 +68,19 @@ class SyncToken:
     VERSION = "1-4-0"
     LAST_MODIFIED_ADDED_VERSION = "1-1-0"
     MIN_VERSION = "1-0-0"
+    # Transport-level compression marker (fork #331). With Kobo store
+    # proxying enabled, the store's ~2-2.5KB JWT is embedded in our JSON
+    # and then base64'd again (+33% on the largest component), pushing
+    # total response headers past nginx's 4K proxy_buffer_size default —
+    # "Sync failed" behind stock reverse proxies while direct HTTP works.
+    # Compressing the JSON before base64 roughly halves the header.
+    # Devices echo the token opaquely (only this server parses it), so
+    # from_headers sniffing the prefix gives full backward compatibility:
+    # legacy plain-b64 tokens still parse, new tokens are compressed.
+    # The ':' cannot appear in base64, and '.' (the kobo-store raw-token
+    # sentinel) cannot appear in this prefix — no format collisions.
+    # The schema VERSION above is untouched: this is transport, not schema.
+    COMPRESSED_PREFIX = "z1:"
 
     token_schema = {
         "type": "object",
@@ -122,6 +136,25 @@ class SyncToken:
         # On the first sync from a Kobo device, we may receive the SyncToken
         # from the official Kobo store. Without digging too deep into it, that
         # token is of the form [b64encoded blob].[b64encoded blob 2]
+        # (Checked before the compressed-prefix sniff is irrelevant — the
+        # prefix contains ':' which never appears in store tokens, and store
+        # tokens contain '.' which never appears in our b64 — but keep the
+        # historical order for clarity.)
+        if sync_token_header.startswith(SyncToken.COMPRESSED_PREFIX):
+            # Transport-compressed token (fork #331): z1: + b64(zlib(json)).
+            try:
+                payload = sync_token_header[len(SyncToken.COMPRESSED_PREFIX):]
+                raw = zlib.decompress(
+                    b64decode(payload + "=" * (-len(payload) % 4)))
+                sync_token_json = json.loads(raw)
+            except Exception:
+                # Truncated by a proxy (the original #331 failure class),
+                # corrupted, or not actually compressed — degrade to a fresh
+                # token exactly like a malformed legacy token does.
+                log.error("Compressed sync token failed to decode; starting fresh.")
+                return SyncToken()
+            return SyncToken._from_token_json(sync_token_json)
+
         if "." in sync_token_header:
             return SyncToken(raw_kobo_store_token=sync_token_header)
 
@@ -129,6 +162,16 @@ class SyncToken:
             sync_token_json = json.loads(
                 b64decode(sync_token_header + "=" * (-len(sync_token_header) % 4))
             )
+        except Exception:
+            log.error("Sync token is not valid base64 JSON.")
+            return SyncToken()
+        return SyncToken._from_token_json(sync_token_json)
+
+    @staticmethod
+    def _from_token_json(sync_token_json):
+        """Validate + extract a decoded token dict (shared by the legacy
+        plain-b64 and the z1-compressed transport formats)."""
+        try:
             validate(sync_token_json, SyncToken.token_schema)
             if sync_token_json["version"] < SyncToken.MIN_VERSION:
                 raise ValueError
@@ -196,7 +239,13 @@ class SyncToken:
                 "magic_shelf_membership_at": to_epoch_timestamp(self.magic_shelf_membership_at),
             },
         }
-        return b64encode_json(token)
+        # Transport compression (fork #331): the embedded raw_kobo_store_token
+        # JWT dominates the size, and base64-of-base64 inflates it another
+        # 33%. zlib on the JSON before base64 roughly halves the header and
+        # keeps total response headers inside nginx's 4K default. Devices
+        # echo the token opaquely; from_headers sniffs the prefix.
+        return SyncToken.COMPRESSED_PREFIX + b64encode(
+            zlib.compress(json.dumps(token).encode(), 9)).decode("utf-8")
 
     def __str__(self):
         return "{},{},{},{},{},{},{},{},{}".format(self.books_last_created,

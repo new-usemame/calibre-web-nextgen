@@ -120,7 +120,7 @@ class TestSerializedConnectionBreaksDeadlock:
     def test_guarded_connection_survives_the_deadlock_interleave(self):
         """With the factory, the exact AB-BA interleave completes cleanly.
 
-        15s budget vs a ~1.5s happy path (plus cps import time): generous
+        30s budget vs a ~1.5s happy path (plus cps import time): generous
         enough to never flake, tight enough that a reintroduced deadlock
         fails here as a NAMED test instead of a silent CI step wall.
         """
@@ -169,21 +169,25 @@ class TestFactoryWiredIntoProductionEngines:
     """Source-pin: both calibre engines pass the guard factory."""
 
     def test_both_create_engine_sites_use_the_factory(self):
+        """Arg-order-agnostic pin: count the calibre engine sites, then count
+        connect_args dicts carrying the guard factory — both must be 2."""
         src = (REPO_ROOT / "cps" / "db.py").read_text(encoding="utf-8")
-        sites = re.findall(
-            r"create_engine\('sqlite://',.*?poolclass=StaticPool\)",
+        engine_sites = re.findall(r"create_engine\('sqlite://'", src)
+        assert len(engine_sites) == 2, (
+            f"expected exactly 2 in-memory calibre engines in cps/db.py, "
+            f"found {len(engine_sites)} — update this pin if the architecture "
+            f"changed"
+        )
+        guarded_connect_args = re.findall(
+            r"connect_args=\{[^}]*'factory':\s*_SerializedSqliteConnection",
             src,
-            flags=re.DOTALL,
         )
-        assert len(sites) == 2, (
-            f"expected exactly 2 StaticPool calibre engines in cps/db.py, "
-            f"found {len(sites)} — update this pin if the architecture changed"
+        assert len(guarded_connect_args) == 2, (
+            f"expected the deadlock-guard factory in both calibre engines' "
+            f"connect_args, found {len(guarded_connect_args)} — a calibre "
+            f"engine without _SerializedSqliteConnection reopens the "
+            f"GIL↔sqlite-mutex freeze"
         )
-        for site in sites:
-            assert "'factory': _SerializedSqliteConnection" in site, (
-                "calibre engine missing the GIL↔sqlite-mutex deadlock-guard "
-                "factory in connect_args:\n" + site
-            )
 
     def test_wrapped_surface_covers_the_dbapi_calls_sqlalchemy_uses(self):
         """The guard only works if the wrapped surface stays complete."""

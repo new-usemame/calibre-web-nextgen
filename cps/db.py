@@ -233,6 +233,18 @@ class _SerializedSqliteConnection(sqlite3.Connection):
         with self._cwa_sqlite_lock:
             return super().backup(*args, **kwargs)
 
+    def set_authorizer(self, *args, **kwargs):
+        with self._cwa_sqlite_lock:
+            return super().set_authorizer(*args, **kwargs)
+
+    def set_progress_handler(self, *args, **kwargs):
+        with self._cwa_sqlite_lock:
+            return super().set_progress_handler(*args, **kwargs)
+
+    def set_trace_callback(self, *args, **kwargs):
+        with self._cwa_sqlite_lock:
+            return super().set_trace_callback(*args, **kwargs)
+
     @property
     def isolation_level(self):
         return sqlite3.Connection.isolation_level.__get__(self)

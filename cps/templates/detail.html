@@ -545,17 +545,23 @@
                                     {% endif %}
 
                                     {% if not current_user.is_anonymous %}
-                                        {# Read-status icon uses checkmark (glyphicon-ok / glyphicon-unchecked) per fork #319
-                                           @droM4X pushback. The old eye-open / eye-close collided visually with the hide button
-                                           (also an eye), which was the source of the user-hostile accidental-hide failure
-                                           SethMilliken reported. Hide button now also gated by config flag + placed at the
-                                           end of the action row — see further down. #}
+                                        {# Read-status icon uses the glyphicon-check / glyphicon-unchecked matched
+                                           pair per fork #319 @droM4X (#2 + #3 of the 2026-05-28 four-item list).
+                                           The icon shows the ACTION the click will perform, matching the button label:
+                                             read_status=False (unread) → label 'Mark As Read'     → icon ☑  glyphicon-check
+                                             read_status=True  (read)   → label 'Mark As Unread'   → icon ☐  glyphicon-unchecked
+                                           Same matched pair is used as a passive STATE indicator on the grid badge
+                                           (index.html) and cover overlay (image.html) — where there's no click context,
+                                           a check means 'this book is read'. The old eye-open / eye-close collided
+                                           visually with the hide button (also an eye), which was the SethMilliken
+                                           accidental-hide failure mode. Hide button is now gated by the config flag +
+                                           placed at the end of the action row — see further down. #}
                                         <button type="button" class="btn btn-default action-icon-btn" id="toggle-read-btn"
                                                 title="{{ entry.read_status and _('Mark As Unread') or _('Mark As Read') }}"
                                                 aria-label="{{ entry.read_status and _('Mark As Unread') or _('Mark As Read') }}"
                                                 data-toast-on="{{ _('Marked as read') }}"
                                                 data-toast-off="{{ _('Marked as unread') }}">
-                                            <span id="read-icon" class="glyphicon {{ entry.read_status and 'glyphicon-ok' or 'glyphicon-unchecked' }}"></span>
+                                            <span id="read-icon" class="glyphicon {{ entry.read_status and 'glyphicon-unchecked' or 'glyphicon-check' }}"></span>
                                         </button>
                                         {% if current_user.check_visibility(32768) %}
                                             <button type="button" class="btn btn-default action-icon-btn" id="toggle-archive-btn"
@@ -573,6 +579,25 @@
                                            class="btn btn-primary action-icon-btn" role="button" title="{{ _('Edit Metadata') }}" aria-label="{{ _('Edit Metadata') }}">
                                             <span class="glyphicon glyphicon-pencil"></span>
                                         </a>
+                                        {# Reload-metadata-from-disk button — fork issue #218.
+                                           Replaces the manual `curl -X POST /admin/book/<id>/reload_metadata`
+                                           workflow that @yodatak (400 — CSRF token missing) and
+                                           @magdalar (405 — Chrome sent GET) were both stuck on. Posts
+                                           via $.ajax with X-CSRFToken so the @csrf_protect gate sees the
+                                           token, then reloads the page on success so the user immediately
+                                           sees the refreshed title/comments/publisher/pubdate/languages.
+                                           Same role_edit() gate as the route's @edit_required. #}
+                                        <button type="button"
+                                                class="btn btn-primary action-icon-btn"
+                                                id="reload-metadata-btn"
+                                                data-book-id="{{ entry.id }}"
+                                                data-toast-success="{{ _('Reloaded metadata from disk') }}"
+                                                data-toast-no-change="{{ _('On-disk metadata matches — nothing to update') }}"
+                                                data-toast-error="{{ _('Could not reload metadata') }}"
+                                                title="{{ _('Reload metadata from disk') }}"
+                                                aria-label="{{ _('Reload metadata from disk') }}">
+                                            <span id="reload-metadata-icon" class="glyphicon glyphicon-refresh"></span>
+                                        </button>
                                         <a href="{{ url_for('cover_picker.cover_picker_page', book_id=entry.id) }}"
                                            class="btn btn-primary action-icon-btn" role="button" title="{{ _('Change cover') }}" aria-label="{{ _('Change cover') }}">
                                             <span class="glyphicon glyphicon-picture"></span>
@@ -1072,10 +1097,12 @@
                     }
                     var $icon = $("#read-icon");
                     var isRead = $cb.prop("checked");
-                    // Read-status uses checkmark icons (fork #319 droM4X) so the
-                    // toggle no longer collides visually with the hide button (eye).
-                    $icon.toggleClass("glyphicon-ok", isRead)
-                         .toggleClass("glyphicon-unchecked", !isRead);
+                    // Read-status uses the glyphicon-check / glyphicon-unchecked matched
+                    // pair, showing ACTION (fork #319 droM4X). When the book is now read,
+                    // the icon switches to glyphicon-unchecked (next click = mark unread);
+                    // when unread, glyphicon-check (next click = mark read).
+                    $icon.toggleClass("glyphicon-unchecked", isRead)
+                         .toggleClass("glyphicon-check", !isRead);
                     var title = isRead ? $cb.data("checked") : $cb.data("unchecked");
                     $("#toggle-read-btn").attr("title", title).attr("aria-label", title);
                     var $btn = $("#toggle-read-btn");
@@ -1116,6 +1143,58 @@
                 },
                 error: function () {
                     $cb.prop("checked", !nextChecked);
+                }
+            });
+        });
+
+        // Reload-metadata handler — fork issue #218. Replaces the manual
+        // curl invocation @yodatak/@magdalar were attempting (400/405).
+        // POSTs with X-CSRFToken (CSRF gate on the route), shows a spinner
+        // on the refresh icon while in flight, then a toast + page reload
+        // so the user sees the refreshed title/comments/publisher.
+        $("#reload-metadata-btn").on("click", function () {
+            var $btn = $("#reload-metadata-btn");
+            if ($btn.prop("disabled")) {
+                return;
+            }
+            var bookId = $btn.data("book-id");
+            var $icon = $("#reload-metadata-icon");
+            $btn.prop("disabled", true);
+            $icon.removeClass("glyphicon-refresh").addClass("glyphicon-hourglass");
+            $.ajax({
+                url: "/admin/book/" + bookId + "/reload_metadata",
+                method: "post",
+                headers: {
+                    "X-CSRFToken": $('meta[name="csrf-token"]').attr("content") || ""
+                },
+                success: function (data) {
+                    if (data && data.success) {
+                        var updated = (data.updated_fields || []).length;
+                        var msg = updated > 0 ? $btn.data("toast-success")
+                                              : $btn.data("toast-no-change");
+                        showActionToast(msg, $btn[0]);
+                        if (updated > 0) {
+                            // Page reload so refreshed metadata renders.
+                            setTimeout(function () { location.reload(); }, 800);
+                        } else {
+                            $icon.removeClass("glyphicon-hourglass").addClass("glyphicon-refresh");
+                            $btn.prop("disabled", false);
+                        }
+                    } else {
+                        var err = (data && data.error) ? data.error : $btn.data("toast-error");
+                        showActionToast(err, $btn[0]);
+                        $icon.removeClass("glyphicon-hourglass").addClass("glyphicon-refresh");
+                        $btn.prop("disabled", false);
+                    }
+                },
+                error: function (xhr) {
+                    var err = $btn.data("toast-error");
+                    if (xhr && xhr.responseJSON && xhr.responseJSON.error) {
+                        err = xhr.responseJSON.error;
+                    }
+                    showActionToast(err, $btn[0]);
+                    $icon.removeClass("glyphicon-hourglass").addClass("glyphicon-refresh");
+                    $btn.prop("disabled", false);
                 }
             });
         });

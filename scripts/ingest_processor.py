@@ -793,6 +793,10 @@ class NewBookProcessor:
         # Current file
         self.filepath = filepath
         self.filename = os.path.basename(filepath)
+        # As-imported basename, snapshotted before any conversion/rename can
+        # touch it — recorded into app.db after a successful add so users can
+        # recognize misidentified auto-matches (fork #346).
+        self.original_filename = Path(filepath).name
         self.can_convert, self.input_format = self.can_convert_check()
         # Determine if the file is already in the desired target format using normalized extensions
         self.is_target_format = (self.input_format.lower() == str(self.target_format).lower())
@@ -939,6 +943,37 @@ class NewBookProcessor:
             return True
         else:
             return False
+
+
+    def record_original_filename(self) -> None:
+        """Persist the as-imported filename for every book id this add
+        produced (fork #346) — the one stable reference for recognizing
+        misidentified auto-matches after ingest renames the file.
+
+        Direct sqlite write to app.db with a busy timeout — the processor's
+        established pattern for app.db access (_load_cps_settings_from_app_db).
+        ON CONFLICT(book_id) DO NOTHING: the CREATING import wins; format
+        additions to an existing book never overwrite the original. Best
+        effort: a failure (e.g. table missing on a first boot where the web
+        app hasn't run its migrations yet) must never block the import.
+        """
+        book_ids = self.last_added_book_ids or (
+            [self.last_added_book_id] if self.last_added_book_id else [])
+        if not book_ids or not self.original_filename:
+            return
+        try:
+            with sqlite3.connect(get_app_db_path(), timeout=30) as con:
+                for bid in book_ids:
+                    con.execute(
+                        "INSERT INTO book_original_filename "
+                        "(book_id, filename, created_at) "
+                        "VALUES (?, ?, datetime('now')) "
+                        "ON CONFLICT(book_id) DO NOTHING",
+                        (int(bid), self.original_filename),
+                    )
+        except (sqlite3.Error, ValueError, TypeError) as e:
+            print(f"[ingest-processor] WARN: could not record original "
+                  f"filename for {book_ids}: {e}", flush=True)
 
     def backup(self, input_file, backup_type):
         output_path = None
@@ -1208,6 +1243,7 @@ class NewBookProcessor:
                 else:
                     self._fallback_last_added_book_id()
             print(f"[ingest-processor] Added {staged_path.stem} to Calibre database", flush=True)
+            self.record_original_filename()
 
             if self.cwa_settings['auto_backup_imports']:
                 self.backup(str(staged_path), backup_type="imported")

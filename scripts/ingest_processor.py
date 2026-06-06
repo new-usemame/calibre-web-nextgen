@@ -797,6 +797,9 @@ class NewBookProcessor:
         # touch it — recorded into app.db after a successful add so users can
         # recognize misidentified auto-matches (fork #346).
         self.original_filename = Path(filepath).name
+        # True when last_added_book_id(s) came from the most-recently-modified
+        # fallback guess rather than parsed calibredb output.
+        self.last_added_ids_are_fallback = False
         self.can_convert, self.input_format = self.can_convert_check()
         # Determine if the file is already in the desired target format using normalized extensions
         self.is_target_format = (self.input_format.lower() == str(self.target_format).lower())
@@ -871,6 +874,11 @@ class NewBookProcessor:
                 if row:
                     self.last_added_book_id = int(row[0])
                     self.last_added_book_ids = [self.last_added_book_id]
+                    # Guess, not parsed output — under concurrent ingest this
+                    # can be ANOTHER processor's book. Consumers that would
+                    # mis-attribute on a wrong id (original-filename capture)
+                    # check this flag and skip.
+                    self.last_added_ids_are_fallback = True
                     print(
                         "[ingest-processor] WARN: Could not parse calibredb output; using most recently modified book ID.",
                         flush=True,
@@ -950,8 +958,10 @@ class NewBookProcessor:
         produced (fork #346) — the one stable reference for recognizing
         misidentified auto-matches after ingest renames the file.
 
-        Direct sqlite write to app.db with a busy timeout — the processor's
-        established pattern for app.db access (_load_cps_settings_from_app_db).
+        Direct sqlite write to app.db with a busy timeout. Note: the
+        processor's other app.db access is read-only; this is its first
+        WRITE — kept safe by app.db's WAL mode (writers don't block the web
+        app's readers), the 30s busy timeout, and the best-effort except.
         ON CONFLICT(book_id) DO NOTHING: the CREATING import wins; format
         additions to an existing book never overwrite the original. Best
         effort: a failure (e.g. table missing on a first boot where the web
@@ -960,6 +970,14 @@ class NewBookProcessor:
         book_ids = self.last_added_book_ids or (
             [self.last_added_book_id] if self.last_added_book_id else [])
         if not book_ids or not self.original_filename:
+            return
+        if self.last_added_ids_are_fallback:
+            # The id is a most-recently-modified guess (calibredb output
+            # parsing failed) — under concurrent ingest it can belong to a
+            # DIFFERENT book, and a wrong "Imported as" is worse than none.
+            print("[ingest-processor] Skipping original-filename record: "
+                  "book id came from fallback inference, not calibredb "
+                  "output", flush=True)
             return
         try:
             with sqlite3.connect(get_app_db_path(), timeout=30) as con:

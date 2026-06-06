@@ -128,6 +128,40 @@ class TestCompressedTokens:
         tok = SyncToken.from_headers({SyncToken.SYNC_TOKEN_HEADER: header[:len(header) // 2]})
         assert tok.books_last_modified == datetime.min
 
+    def test_zip_bomb_is_bounded(self):
+        """CWE-409: the header is attacker-suppliable. A zlib bomb that fits
+        the 16KB compressed pre-filter but expands past the 64KB
+        decompression cap must degrade to a fresh token, not exhaust
+        memory. (zlib level 9 on zeros gives ~1000:1 — 8MB of zeros is
+        ~11KB of b64, passing the pre-filter while expanding 128x past
+        the decompression cap.)"""
+        bomb = b64encode(zlib.compress(b"\x00" * (8 * 1024 * 1024), 9)).decode()
+        assert len(bomb) < SyncToken.MAX_COMPRESSED_B64, (
+            "test bomb must pass the pre-filter to exercise the "
+            "decompression cap")
+        tok = SyncToken.from_headers(
+            {SyncToken.SYNC_TOKEN_HEADER: "z1:" + bomb})
+        assert tok.books_last_modified == datetime.min
+        assert tok.books_last_id == -1
+
+    def test_oversized_compressed_payload_rejected_by_prefilter(self):
+        """Anything past 16KB of b64 payload is rejected before
+        decompression is even attempted."""
+        big = "A" * (SyncToken.MAX_COMPRESSED_B64 + 100)
+        tok = SyncToken.from_headers(
+            {SyncToken.SYNC_TOKEN_HEADER: "z1:" + big})
+        assert tok.books_last_modified == datetime.min
+
+    def test_real_tokens_fit_far_under_the_caps(self):
+        """The caps must never bite legitimate traffic: a realistic token
+        with a fat store JWT sits an order of magnitude under both."""
+        src = SyncToken(raw_kobo_store_token=_fake_store_jwt(2400))
+        header = src.build_sync_token()
+        payload = header[len(SyncToken.COMPRESSED_PREFIX):]
+        assert len(payload) < SyncToken.MAX_COMPRESSED_B64 / 4
+        raw = zlib.decompress(b64decode(payload))
+        assert len(raw) < SyncToken.MAX_DECOMPRESSED / 8
+
     def test_schema_version_untouched(self):
         """Compression is transport-level: the inner schema VERSION must
         stay 1-4-0 so version-gated logic is unaffected."""

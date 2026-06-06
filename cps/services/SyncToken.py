@@ -81,6 +81,10 @@ class SyncToken:
     # sentinel) cannot appear in this prefix — no format collisions.
     # The schema VERSION above is untouched: this is transport, not schema.
     COMPRESSED_PREFIX = "z1:"
+    # Decompression bounds (CWE-409): real tokens are <4KB decompressed and
+    # <4KB compressed+b64. Generous caps; anything past them is malformed.
+    MAX_COMPRESSED_B64 = 16 * 1024
+    MAX_DECOMPRESSED = 64 * 1024
 
     token_schema = {
         "type": "object",
@@ -142,15 +146,27 @@ class SyncToken:
         # historical order for clarity.)
         if sync_token_header.startswith(SyncToken.COMPRESSED_PREFIX):
             # Transport-compressed token (fork #331): z1: + b64(zlib(json)).
+            # The header is attacker-suppliable, so decompression is bounded
+            # (CWE-409 zip bomb): a real token is <4KB decompressed — the
+            # schema carries one JWT plus a handful of timestamps/ints — so
+            # anything needing more than the caps below is malformed by
+            # definition and degrades to a fresh sync.
             try:
                 payload = sync_token_header[len(SyncToken.COMPRESSED_PREFIX):]
-                raw = zlib.decompress(
-                    b64decode(payload + "=" * (-len(payload) % 4)))
+                if len(payload) > SyncToken.MAX_COMPRESSED_B64:
+                    raise ValueError("compressed sync token exceeds size cap")
+                compressed = b64decode(payload + "=" * (-len(payload) % 4))
+                decompressor = zlib.decompressobj()
+                raw = decompressor.decompress(
+                    compressed, SyncToken.MAX_DECOMPRESSED)
+                if decompressor.unconsumed_tail:
+                    raise ValueError(
+                        "sync token exceeds decompressed size cap")
                 sync_token_json = json.loads(raw)
             except Exception:
                 # Truncated by a proxy (the original #331 failure class),
-                # corrupted, or not actually compressed — degrade to a fresh
-                # token exactly like a malformed legacy token does.
+                # corrupted, oversized, or not actually compressed — degrade
+                # to a fresh token exactly like a malformed legacy token does.
                 log.error("Compressed sync token failed to decode; starting fresh.")
                 return SyncToken()
             return SyncToken._from_token_json(sync_token_json)

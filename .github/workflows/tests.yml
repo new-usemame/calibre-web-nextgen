@@ -92,6 +92,13 @@ jobs:
           # currently-executing test for pytest-timeout to interrupt). See
           # notes/xdist-worker-ipc-hang-followup-2026-05-21.md for diagnostic
           # log signature + hypothesis. Fewer worker handoffs ≈ fewer races.
+          #
+          # --faulthandler-timeout: last line of defense for whole-process
+          # freezes (e.g. the GIL↔sqlite-mutex AB-BA deadlock, see
+          # notes/fix-udf-gil-deadlock-DESIGN.md). faulthandler's watchdog
+          # writes every thread's stack WITHOUT needing the GIL, so a freeze
+          # that starves pytest-timeout still produces named stacks in the
+          # log instead of a silent 10-minute step wall.
           pytest -m "smoke or unit" \
             -n auto \
             --dist=loadfile \
@@ -100,6 +107,7 @@ jobs:
             --tb=short \
             --timeout=120 \
             --timeout-method=thread \
+            --faulthandler-timeout=90 \
             --cov=cps \
             --cov-report=xml \
             --cov-report=term-missing

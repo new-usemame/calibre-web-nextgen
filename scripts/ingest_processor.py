@@ -967,11 +967,16 @@ class NewBookProcessor:
         effort: a failure (e.g. table missing on a first boot where the web
         app hasn't run its migrations yet) must never block the import.
         """
-        book_ids = self.last_added_book_ids or (
-            [self.last_added_book_id] if self.last_added_book_id else [])
-        if not book_ids or not self.original_filename:
+        # getattr defaults: tests (and any future code path) construct
+        # NewBookProcessor via object.__new__ without running __init__ —
+        # a missing attribute must mean "nothing to record", never an
+        # AttributeError that trips the import's failure branch.
+        book_ids = getattr(self, 'last_added_book_ids', None) or (
+            [self.last_added_book_id]
+            if getattr(self, 'last_added_book_id', None) else [])
+        if not book_ids or not getattr(self, 'original_filename', None):
             return
-        if self.last_added_ids_are_fallback:
+        if getattr(self, 'last_added_ids_are_fallback', False):
             # The id is a most-recently-modified guess (calibredb output
             # parsing failed) — under concurrent ingest it can belong to a
             # DIFFERENT book, and a wrong "Imported as" is worse than none.

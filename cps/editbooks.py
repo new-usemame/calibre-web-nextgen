@@ -38,6 +38,7 @@ from .services.calibre_db_lock import metadata_db_write_lock
 from .usermanagement import user_login_required, login_required_if_no_ano
 from .string_helper import strip_whitespaces
 from werkzeug.utils import secure_filename
+from types import SimpleNamespace
 import uuid
 
 editbook = Blueprint('edit-book', __name__)
@@ -198,6 +199,81 @@ def upload():
 
         return Response(json.dumps({"location": url_for('tasks.get_tasks_status')}), mimetype='application/json')
     abort(400)
+
+
+def _queue_existing_file_for_ingest(src_path, book_id, original_filename):
+    """Copy an on-disk book format into the ingest folder with an add_format manifest.
+
+    The ingest worker reprocesses the queued file through its DRM-removal hook
+    (which de-DRMs it when DeDRM is configured) and then re-attaches the result
+    to ``book_id``. This reuses the exact pipeline used by format uploads, so
+    the heavy decryption happens in the background ingest process rather than in
+    the web request.
+    """
+    _ensure_ingest_dir_writable(allow_create=True, check_write=False)
+    # _get_ingest_path only needs a ``.filename`` attribute on its argument.
+    name_shim = SimpleNamespace(filename=original_filename)
+    final_path = _get_ingest_path(name_shim, prefix_parts=["format", book_id])
+    tmp_path = final_path + ".uploading"
+    copyfile(src_path, tmp_path)
+    manifest = {
+        "action": "add_format",
+        "book_id": book_id,
+        "original_filename": original_filename,
+    }
+    with open(final_path + ".cwa.json", "w", encoding="utf-8") as manifest_file:
+        json.dump(manifest, manifest_file, ensure_ascii=False)
+    # Atomic rename last, so the watcher never sees the file before its manifest.
+    os.replace(tmp_path, final_path)
+
+
+@editbook.route("/remove-drm/<int:book_id>", methods=["POST"])
+@login_required_if_no_ano
+@edit_required
+def remove_drm(book_id):
+    """Queue DRM removal for every DRM-removable format of a book.
+
+    When DeDRM is not configured this returns a warning telling the admin to
+    configure it first (no work is done). Otherwise each supported format file
+    is copied into the ingest folder with an add_format manifest; the ingest
+    worker's DRM hook strips the DRM and re-attaches the cleaned file.
+    """
+    from . import dedrm
+
+    if not dedrm.is_configured():
+        return jsonify({
+            "type": "warning",
+            "message": _("DeDRM is not configured. Configure it in Admin → DRM Removal (DeDRM) before removing DRM."),
+        })
+
+    book = calibre_db.get_book(book_id)
+    if not book:
+        return jsonify({"type": "danger", "message": _("Book not found.")})
+
+    calibre_path = config.get_book_path()
+    queued = 0
+    for data in book.data:
+        book_format = data.format.lower()
+        if book_format not in dedrm.SUPPORTED_EXTENSIONS:
+            continue
+        source = os.path.join(calibre_path, book.path, data.name + "." + book_format)
+        if not os.path.isfile(source):
+            continue
+        try:
+            _queue_existing_file_for_ingest(source, book_id, data.name + "." + book_format)
+            queued += 1
+        except Exception as e:
+            log.error_or_exception("Failed to queue DRM removal for book %s: %s", book_id, e)
+
+    if queued == 0:
+        return jsonify({
+            "type": "warning",
+            "message": _("This book has no formats that DeDRM can process."),
+        })
+    return jsonify({
+        "type": "success",
+        "message": _("DRM removal queued. The book will be updated shortly."),
+    })
 
 
 @editbook.route("/admin/book/convert/<int:book_id>", methods=['POST'])

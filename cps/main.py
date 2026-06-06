@@ -37,6 +37,7 @@ def main():
     from .remotelogin import remotelogin
     from .progress_syncing.protocols.kosync import kosync
     from .duplicates import duplicates
+    from .dedrm_admin import dedrm_admin
     try:
         from .kobo import kobo, get_kobo_activated
         from .kobo_auth import kobo_auth
@@ -89,6 +90,7 @@ def main():
     app.register_blueprint(annotations_bp)
     app.register_blueprint(kosync)
     app.register_blueprint(duplicates)
+    app.register_blueprint(dedrm_admin)
     if kobo_available:
         app.register_blueprint(kobo)
         app.register_blueprint(kobo_auth)

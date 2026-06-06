@@ -179,3 +179,44 @@ $(function () {
         $("[data-toggle-two='tooltip']").tooltip({ container: "body", trigger: "hover focus", placement: "bottom", viewport: "body" });
     } catch (e) { /* noop */ }
 });
+
+// Remove DRM button (vendored DeDRM module). Posts to the per-book route and
+// surfaces the JSON {type, message} response as a flash alert, mirroring the
+// pattern used by the read-status toggle above. A "warning" response is what
+// the server returns when DeDRM is not configured, prompting the admin to set
+// it up first.
+$(document).on("click", "#remove-drm-btn", function () {
+    var $btn = $(this);
+    var url = $btn.data("remove-drm-url");
+    if (!url) {
+        return;
+    }
+    $btn.prop("disabled", true);
+    $.ajax({
+        url: url,
+        method: "post",
+        data: { csrf_token: $("input[name='csrf_token']").val() }
+    })
+    .done(function (data) {
+        var type = (data && data.type) ? data.type : "info";
+        var message = (data && data.message) ? data.message : "";
+        $("#flash_" + type).remove();
+        $(".navbar").after(
+            '<div class="row-fluid text-center">' +
+            '<div id="flash_' + type + '" class="alert alert-' + type + '">' +
+            $("<div>").text(message).html() +
+            '</div></div>'
+        );
+    })
+    .fail(function (xhr) {
+        $(".navbar").after(
+            '<div class="row-fluid text-center">' +
+            '<div id="flash_danger" class="alert alert-danger">' +
+            $("<div>").text(xhr.responseText || "Request failed").html() +
+            '</div></div>'
+        );
+    })
+    .always(function () {
+        $btn.prop("disabled", false);
+    });
+});

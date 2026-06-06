@@ -7826,3 +7826,339 @@ msgstr ""
 msgid "Show Read/Unread Section"
 msgstr ""
 
+
+msgid "eInk Kindle serial number"
+msgstr ""
+
+msgid ""
+"For books from a physical Kindle e-reader. Enter the device serial number "
+"(Settings → Device Info on the Kindle; 16 characters, usually starting with "
+"'B' or 'G')."
+msgstr ""
+
+msgid "e.g. B0XXXXXXXXXXXXXX"
+msgstr ""
+
+msgid "Adobe Digital Editions key"
+msgstr ""
+
+msgid ""
+"For Adobe-DRM EPUB/PDF (e.g. from public libraries or many ebook stores). "
+"Upload the .der key file exported by the DeDRM key-extraction tools, or "
+"paste the key as a hex string."
+msgstr ""
+
+msgid "Paste the key as hex, or upload a .der file below"
+msgstr ""
+
+msgid "Kindle for PC/Mac key"
+msgstr ""
+
+msgid ""
+"For Kindle books downloaded through the Kindle for PC or Mac app. Upload the"
+" .k4i key file produced by the DeDRM key-extraction tools."
+msgstr ""
+
+msgid "Upload a .k4i file below"
+msgstr ""
+
+msgid "Kindle for Android key"
+msgstr ""
+
+msgid ""
+"For Kindle books from the Android app. Upload the .k4a key file produced by "
+"the DeDRM key-extraction tools."
+msgstr ""
+
+msgid "Upload a .k4a file below"
+msgstr ""
+
+msgid "Barnes & Noble / ADE PassHash key"
+msgstr ""
+
+msgid "For Barnes & Noble (Nook) books, as a base64 PassHash key string."
+msgstr ""
+
+msgid "Paste the base64 key"
+msgstr ""
+
+msgid "eReader key (advanced)"
+msgstr ""
+
+msgid "For older eReader (.pdb) books. Paste the key string."
+msgstr ""
+
+msgid "Paste the key"
+msgstr ""
+
+msgid "Mobipocket PID"
+msgstr ""
+
+msgid "For Mobipocket books. Enter the 8 or 10 character PID."
+msgstr ""
+
+msgid "e.g. 1234567*89"
+msgstr ""
+
+msgid "Readium LCP passphrase"
+msgstr ""
+
+msgid "For Readium LCP protected books. Enter the passphrase."
+msgstr ""
+
+msgid "Enter the passphrase"
+msgstr ""
+
+msgid "Adobe PDF passphrase"
+msgstr ""
+
+msgid "For password-protected Adobe PDFs. Enter the passphrase."
+msgstr ""
+
+msgid "DRM removal & Adobe (DeDRM + DeACSM)"
+msgstr ""
+
+msgid "DeDRM settings saved."
+msgstr ""
+
+msgid "Unknown key store."
+msgstr ""
+
+msgid "The uploaded key file is empty."
+msgstr ""
+
+msgid "The uploaded key file could not be read in the expected format."
+msgstr ""
+
+msgid "Please upload a %(ext)s key file."
+msgstr ""
+
+msgid "Please provide a key value or upload a key file."
+msgstr ""
+
+msgid "key"
+msgstr ""
+
+msgid "That key is already present."
+msgstr ""
+
+msgid "Key '%(name)s' added."
+msgstr ""
+
+msgid "Please provide a value."
+msgstr ""
+
+msgid "Value added."
+msgstr ""
+
+msgid "Key removed."
+msgstr ""
+
+msgid "Value removed."
+msgstr ""
+
+msgid "Please choose a dedrm.json file to import."
+msgstr ""
+
+msgid "That file is not a valid dedrm.json."
+msgstr ""
+
+msgid "Imported DeDRM configuration (%(n)s new entries)."
+msgstr ""
+
+msgid "Adobe ID and password are required."
+msgstr ""
+
+msgid "Adobe account activated. The key is now shared with DeDRM."
+msgstr ""
+
+msgid "Adobe activation failed: %(msg)s"
+msgstr ""
+
+msgid "Adobe account deactivated."
+msgstr ""
+
+msgid "Could not deactivate the Adobe account."
+msgstr ""
+
+msgid "Adobe/ACSM settings saved."
+msgstr ""
+
+msgid "Please choose an activation .zip to import."
+msgstr ""
+
+msgid "Adobe activation imported. The key is now shared with DeDRM."
+msgstr ""
+
+msgid "Import failed: %(msg)s"
+msgstr ""
+
+msgid "No activated Adobe account to export."
+msgstr ""
+
+msgid "No account key available to export."
+msgstr ""
+
+msgid ""
+"When DeDRM is configured (enabled below or at least one "
+"key/serial/passphrase is present), DRM is removed automatically from books "
+"as they are ingested. When it is not configured, books are left untouched."
+msgstr ""
+
+msgid ""
+"Add only the entries that match how you obtained your books. The most common"
+" one for a physical Kindle is the eInk Kindle serial number."
+msgstr ""
+
+msgid "Adobe account (ACSM fulfillment)"
+msgstr ""
+
+msgid ""
+"Activate an Adobe account to download Adobe-DRM books from .acsm files "
+"(library loans, many stores). The account key is shared with DeDRM "
+"automatically, so Adobe EPUB/PDF decryption also works — no separate key "
+"upload needed."
+msgstr ""
+
+msgid "Activated"
+msgstr ""
+
+msgid "Export activation (.zip)"
+msgstr ""
+
+msgid "Export key (.der)"
+msgstr ""
+
+msgid ""
+"Back up the activation .zip to move this exact account to another DeACSM / "
+"Calibre install without spending a new Adobe activation. The .der is the raw"
+" encryption key for use with other tools."
+msgstr ""
+
+msgid "Deactivate the Adobe account and remove its shared key?"
+msgstr ""
+
+msgid "Deactivate"
+msgstr ""
+
+msgid "Not activated"
+msgstr ""
+
+msgid ""
+"Already using this Adobe account in desktop Calibre (DeACSM)? There, click "
+"\"Export account activation data\" to get an adobe_account_backup_*.zip, "
+"then import it here. This reuses the SAME device — books you already "
+"downloaded stay readable and no new activation is spent. This is the "
+"recommended option."
+msgstr ""
+
+msgid "Import activation (.zip)"
+msgstr ""
+
+msgid "— or activate a new account —"
+msgstr ""
+
+msgid ""
+"Anonymous activation works for most library loans and needs no credentials."
+msgstr ""
+
+msgid "Activate anonymously"
+msgstr ""
+
+msgid ""
+"…or activate with an Adobe ID (needed for purchased books tied to an "
+"account). The password is used once to sign in and is not stored."
+msgstr ""
+
+msgid "Adobe ID (email)"
+msgstr ""
+
+msgid "Adobe password"
+msgstr ""
+
+msgid "Activate with Adobe ID"
+msgstr ""
+
+msgid "ACSM options"
+msgstr ""
+
+msgid "Log a message when an .acsm is fulfilled"
+msgstr ""
+
+msgid "Delete the .acsm file after a successful fulfillment"
+msgstr ""
+
+msgid "Detailed ACSM logging"
+msgstr ""
+
+msgid "General"
+msgstr ""
+
+msgid "Enable DRM removal"
+msgstr ""
+
+msgid "Deobfuscate fonts in EPUBs"
+msgstr ""
+
+msgid "Remove watermarks from EPUBs"
+msgstr ""
+
+msgid "Name"
+msgstr ""
+
+msgid "Value"
+msgstr ""
+
+msgid "(imported key file)"
+msgstr ""
+
+msgid "Nothing configured."
+msgstr ""
+
+msgid "Name (optional)"
+msgstr ""
+
+msgid "e.g. Living-room Kindle"
+msgstr ""
+
+msgid "A label to recognise this key"
+msgstr ""
+
+msgid "Key value"
+msgstr ""
+
+msgid "…or upload a %(ext)s key file"
+msgstr ""
+
+msgid "Add key"
+msgstr ""
+
+msgid "Backup / restore (DeDRM keys)"
+msgstr ""
+
+msgid ""
+"Already configured DeDRM in desktop Calibre? Copy its dedrm.json (in "
+"Calibre's plugins folder) and import it here to bring over all your keys, "
+"serials and passphrases at once. Importing merges additively — existing "
+"entries are kept."
+msgstr ""
+
+msgid "Export configuration (dedrm.json)"
+msgstr ""
+
+msgid "Import configuration (dedrm.json)"
+msgstr ""
+
+msgid "Remove DRM"
+msgstr ""
+
+msgid ""
+"DeDRM is not configured. Configure it in Admin → DRM Removal (DeDRM) before "
+"removing DRM."
+msgstr ""
+
+msgid "DRM removal queued. The book will be updated shortly."
+msgstr ""
+
+msgid "This book has no formats that DeDRM can process."
+msgstr ""

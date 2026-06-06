@@ -1186,9 +1186,8 @@ msgid "Invalid book selection."
 msgstr "ID inválido del libro."
 
 #: cps/cwa_functions.py:2228
-#, fuzzy
 msgid "Book not found."
-msgstr "Token no encontrado"
+msgstr "Libro no encontrado."
 
 #: cps/cwa_functions.py:2234
 #, fuzzy
@@ -9063,3 +9062,384 @@ msgstr "Mostrar Selección Leidos/No Leidos"
 #, fuzzy
 #~ msgid "Mark Book as Read or Unread"
 #~ msgstr "Marcar como no leido"
+
+msgid "eInk Kindle serial number"
+msgstr "Número de serie del Kindle eInk"
+
+msgid ""
+"For books from a physical Kindle e-reader. Enter the device serial number "
+"(Settings → Device Info on the Kindle; 16 characters, usually starting with "
+"'B' or 'G')."
+msgstr ""
+"Para libros de un Kindle físico. Introduce el número de serie del "
+"dispositivo (Ajustes → Información del dispositivo en el Kindle; 16 "
+"caracteres, normalmente empieza por «B» o «G»)."
+
+msgid "e.g. B0XXXXXXXXXXXXXX"
+msgstr "p.ej. B0XXXXXXXXXXXXXX"
+
+msgid "Adobe Digital Editions key"
+msgstr "Clave de Adobe Digital Editions"
+
+msgid ""
+"For Adobe-DRM EPUB/PDF (e.g. from public libraries or many ebook stores). "
+"Upload the .der key file exported by the DeDRM key-extraction tools, or "
+"paste the key as a hex string."
+msgstr ""
+"Para EPUB/PDF con DRM de Adobe (p.ej. de bibliotecas públicas o muchas "
+"tiendas). Sube el fichero de clave .der exportado por las herramientas de "
+"extracción de claves de DeDRM, o pega la clave como cadena hexadecimal."
+
+msgid "Paste the key as hex, or upload a .der file below"
+msgstr "Pega la clave en hexadecimal, o sube un fichero .der abajo"
+
+msgid "Kindle for PC/Mac key"
+msgstr "Clave de Kindle para PC/Mac"
+
+msgid ""
+"For Kindle books downloaded through the Kindle for PC or Mac app. Upload the"
+" .k4i key file produced by the DeDRM key-extraction tools."
+msgstr ""
+"Para libros Kindle descargados con la app de Kindle para PC o Mac. Sube el "
+"fichero de clave .k4i generado por las herramientas de extracción de claves "
+"de DeDRM."
+
+msgid "Upload a .k4i file below"
+msgstr "Sube un fichero .k4i abajo"
+
+msgid "Kindle for Android key"
+msgstr "Clave de Kindle para Android"
+
+msgid ""
+"For Kindle books from the Android app. Upload the .k4a key file produced by "
+"the DeDRM key-extraction tools."
+msgstr ""
+"Para libros Kindle de la app de Android. Sube el fichero de clave .k4a "
+"generado por las herramientas de extracción de claves de DeDRM."
+
+msgid "Upload a .k4a file below"
+msgstr "Sube un fichero .k4a abajo"
+
+msgid "Barnes & Noble / ADE PassHash key"
+msgstr "Clave Barnes & Noble / ADE PassHash"
+
+msgid "For Barnes & Noble (Nook) books, as a base64 PassHash key string."
+msgstr ""
+"Para libros de Barnes & Noble (Nook), como cadena de clave PassHash en "
+"base64."
+
+msgid "Paste the base64 key"
+msgstr "Pega la clave en base64"
+
+msgid "eReader key (advanced)"
+msgstr "Clave de eReader (avanzado)"
+
+msgid "For older eReader (.pdb) books. Paste the key string."
+msgstr "Para libros antiguos de eReader (.pdb). Pega la cadena de clave."
+
+msgid "Paste the key"
+msgstr "Pega la clave"
+
+msgid "Mobipocket PID"
+msgstr "PID de Mobipocket"
+
+msgid "For Mobipocket books. Enter the 8 or 10 character PID."
+msgstr "Para libros Mobipocket. Introduce el PID de 8 o 10 caracteres."
+
+msgid "e.g. 1234567*89"
+msgstr "p.ej. 1234567*89"
+
+msgid "Readium LCP passphrase"
+msgstr "Frase de contraseña de Readium LCP"
+
+msgid "For Readium LCP protected books. Enter the passphrase."
+msgstr ""
+"Para libros protegidos con Readium LCP. Introduce la frase de contraseña."
+
+msgid "Enter the passphrase"
+msgstr "Introduce la frase de contraseña"
+
+msgid "Adobe PDF passphrase"
+msgstr "Frase de contraseña de PDF de Adobe"
+
+msgid "For password-protected Adobe PDFs. Enter the passphrase."
+msgstr ""
+"Para PDF de Adobe protegidos con contraseña. Introduce la frase de "
+"contraseña."
+
+msgid "DRM removal & Adobe (DeDRM + DeACSM)"
+msgstr "Eliminación de DRM y Adobe (DeDRM + DeACSM)"
+
+msgid "DeDRM settings saved."
+msgstr "Ajustes de DeDRM guardados."
+
+msgid "Unknown key store."
+msgstr "Almacén de claves desconocido."
+
+msgid "The uploaded key file is empty."
+msgstr "El fichero de clave subido está vacío."
+
+msgid "The uploaded key file could not be read in the expected format."
+msgstr "No se pudo leer el fichero de clave subido en el formato esperado."
+
+msgid "Please upload a %(ext)s key file."
+msgstr "Sube un fichero de clave %(ext)s."
+
+msgid "Please provide a key value or upload a key file."
+msgstr "Proporciona un valor de clave o sube un fichero de clave."
+
+msgid "key"
+msgstr "clave"
+
+msgid "That key is already present."
+msgstr "Esa clave ya está presente."
+
+msgid "Key '%(name)s' added."
+msgstr "Clave «%(name)s» añadida."
+
+msgid "Please provide a value."
+msgstr "Proporciona un valor."
+
+msgid "Value added."
+msgstr "Valor añadido."
+
+msgid "Key removed."
+msgstr "Clave eliminada."
+
+msgid "Value removed."
+msgstr "Valor eliminado."
+
+msgid "Please choose a dedrm.json file to import."
+msgstr "Elige un fichero dedrm.json para importar."
+
+msgid "That file is not a valid dedrm.json."
+msgstr "Ese fichero no es un dedrm.json válido."
+
+msgid "Imported DeDRM configuration (%(n)s new entries)."
+msgstr "Configuración de DeDRM importada (%(n)s entradas nuevas)."
+
+msgid "Adobe ID and password are required."
+msgstr "Se requieren el Adobe ID y la contraseña."
+
+msgid "Adobe account activated. The key is now shared with DeDRM."
+msgstr "Cuenta de Adobe activada. La clave ahora se comparte con DeDRM."
+
+msgid "Adobe activation failed: %(msg)s"
+msgstr "Falló la activación de Adobe: %(msg)s"
+
+msgid "Adobe account deactivated."
+msgstr "Cuenta de Adobe desactivada."
+
+msgid "Could not deactivate the Adobe account."
+msgstr "No se pudo desactivar la cuenta de Adobe."
+
+msgid "Adobe/ACSM settings saved."
+msgstr "Ajustes de Adobe/ACSM guardados."
+
+msgid "Please choose an activation .zip to import."
+msgstr "Elige un .zip de activación para importar."
+
+msgid "Adobe activation imported. The key is now shared with DeDRM."
+msgstr "Activación de Adobe importada. La clave ahora se comparte con DeDRM."
+
+msgid "Import failed: %(msg)s"
+msgstr "Falló la importación: %(msg)s"
+
+msgid "No activated Adobe account to export."
+msgstr "No hay ninguna cuenta de Adobe activada para exportar."
+
+msgid "No account key available to export."
+msgstr "No hay clave de cuenta disponible para exportar."
+
+msgid ""
+"When DeDRM is configured (enabled below or at least one "
+"key/serial/passphrase is present), DRM is removed automatically from books "
+"as they are ingested. When it is not configured, books are left untouched."
+msgstr ""
+"Cuando DeDRM está configurado (activado abajo o con al menos una "
+"clave/serie/frase de contraseña), el DRM se elimina automáticamente de los "
+"libros a medida que se ingieren. Cuando no está configurado, los libros se "
+"dejan intactos."
+
+msgid ""
+"Add only the entries that match how you obtained your books. The most common"
+" one for a physical Kindle is the eInk Kindle serial number."
+msgstr ""
+"Añade solo las entradas que correspondan a cómo obtuviste tus libros. La más"
+" habitual para un Kindle físico es el número de serie del Kindle eInk."
+
+msgid "Adobe account (ACSM fulfillment)"
+msgstr "Cuenta de Adobe (canje de ACSM)"
+
+msgid ""
+"Activate an Adobe account to download Adobe-DRM books from .acsm files "
+"(library loans, many stores). The account key is shared with DeDRM "
+"automatically, so Adobe EPUB/PDF decryption also works — no separate key "
+"upload needed."
+msgstr ""
+"Activa una cuenta de Adobe para descargar libros con DRM de Adobe desde "
+"ficheros .acsm (préstamos de bibliotecas, muchas tiendas). La clave de la "
+"cuenta se comparte con DeDRM automáticamente, así que el descifrado de "
+"EPUB/PDF de Adobe también funciona, sin necesidad de subir una clave aparte."
+
+msgid "Activated"
+msgstr "Activada"
+
+msgid "Export activation (.zip)"
+msgstr "Exportar activación (.zip)"
+
+msgid "Export key (.der)"
+msgstr "Exportar clave (.der)"
+
+msgid ""
+"Back up the activation .zip to move this exact account to another DeACSM / "
+"Calibre install without spending a new Adobe activation. The .der is the raw"
+" encryption key for use with other tools."
+msgstr ""
+"Haz una copia del .zip de activación para mover esta misma cuenta a otra "
+"instalación de DeACSM / Calibre sin gastar una activación de Adobe nueva. El"
+" .der es la clave de cifrado en bruto para usar con otras herramientas."
+
+msgid "Deactivate the Adobe account and remove its shared key?"
+msgstr "¿Desactivar la cuenta de Adobe y eliminar su clave compartida?"
+
+msgid "Deactivate"
+msgstr "Desactivar"
+
+msgid "Not activated"
+msgstr "No activada"
+
+msgid ""
+"Already using this Adobe account in desktop Calibre (DeACSM)? There, click "
+"\"Export account activation data\" to get an adobe_account_backup_*.zip, "
+"then import it here. This reuses the SAME device — books you already "
+"downloaded stay readable and no new activation is spent. This is the "
+"recommended option."
+msgstr ""
+"¿Ya usas esta cuenta de Adobe en Calibre de escritorio (DeACSM)? Allí, pulsa"
+" «Export account activation data» para obtener un adobe_account_backup_*.zip"
+" y luego impórtalo aquí. Esto reutiliza el MISMO dispositivo: los libros que"
+" ya descargaste siguen siendo legibles y no se gasta una activación nueva. "
+"Es la opción recomendada."
+
+msgid "Import activation (.zip)"
+msgstr "Importar activación (.zip)"
+
+msgid "— or activate a new account —"
+msgstr "— o activa una cuenta nueva —"
+
+msgid ""
+"Anonymous activation works for most library loans and needs no credentials."
+msgstr ""
+"La activación anónima funciona para la mayoría de préstamos de bibliotecas y"
+" no necesita credenciales."
+
+msgid "Activate anonymously"
+msgstr "Activar de forma anónima"
+
+msgid ""
+"…or activate with an Adobe ID (needed for purchased books tied to an "
+"account). The password is used once to sign in and is not stored."
+msgstr ""
+"…o activa con un Adobe ID (necesario para libros comprados ligados a una "
+"cuenta). La contraseña se usa una sola vez para iniciar sesión y no se "
+"guarda."
+
+msgid "Adobe ID (email)"
+msgstr "Adobe ID (correo)"
+
+msgid "Adobe password"
+msgstr "Contraseña de Adobe"
+
+msgid "Activate with Adobe ID"
+msgstr "Activar con Adobe ID"
+
+msgid "ACSM options"
+msgstr "Opciones de ACSM"
+
+msgid "Log a message when an .acsm is fulfilled"
+msgstr "Registrar un mensaje cuando se canjea un .acsm"
+
+msgid "Delete the .acsm file after a successful fulfillment"
+msgstr "Eliminar el fichero .acsm tras un canje correcto"
+
+msgid "Detailed ACSM logging"
+msgstr "Registro detallado de ACSM"
+
+msgid "General"
+msgstr "General"
+
+msgid "Enable DRM removal"
+msgstr "Activar la eliminación de DRM"
+
+msgid "Deobfuscate fonts in EPUBs"
+msgstr "Desofuscar fuentes en los EPUB"
+
+msgid "Remove watermarks from EPUBs"
+msgstr "Eliminar marcas de agua de los EPUB"
+
+msgid "Name"
+msgstr "Nombre"
+
+msgid "Value"
+msgstr "Valor"
+
+msgid "(imported key file)"
+msgstr "(fichero de clave importado)"
+
+msgid "Nothing configured."
+msgstr "Nada configurado."
+
+msgid "Name (optional)"
+msgstr "Nombre (opcional)"
+
+msgid "e.g. Living-room Kindle"
+msgstr "p.ej. Kindle del salón"
+
+msgid "A label to recognise this key"
+msgstr "Una etiqueta para reconocer esta clave"
+
+msgid "Key value"
+msgstr "Valor de la clave"
+
+msgid "…or upload a %(ext)s key file"
+msgstr "…o sube un fichero de clave %(ext)s"
+
+msgid "Add key"
+msgstr "Añadir clave"
+
+msgid "Backup / restore (DeDRM keys)"
+msgstr "Copia de seguridad / restauración (claves DeDRM)"
+
+msgid ""
+"Already configured DeDRM in desktop Calibre? Copy its dedrm.json (in "
+"Calibre's plugins folder) and import it here to bring over all your keys, "
+"serials and passphrases at once. Importing merges additively — existing "
+"entries are kept."
+msgstr ""
+"¿Ya configuraste DeDRM en Calibre de escritorio? Copia su dedrm.json (en la "
+"carpeta plugins de Calibre) e impórtalo aquí para traer todas tus claves, "
+"series y frases de contraseña de una vez. La importación fusiona de forma "
+"aditiva: las entradas existentes se conservan."
+
+msgid "Export configuration (dedrm.json)"
+msgstr "Exportar configuración (dedrm.json)"
+
+msgid "Import configuration (dedrm.json)"
+msgstr "Importar configuración (dedrm.json)"
+
+msgid "Remove DRM"
+msgstr "Eliminar DRM"
+
+msgid ""
+"DeDRM is not configured. Configure it in Admin → DRM Removal (DeDRM) before "
+"removing DRM."
+msgstr ""
+"DeDRM no está configurado. Configúralo en Administración → Eliminación de "
+"DRM (DeDRM) antes de eliminar el DRM."
+
+msgid "DRM removal queued. The book will be updated shortly."
+msgstr "Eliminación de DRM en cola. El libro se actualizará en breve."
+
+msgid "This book has no formats that DeDRM can process."
+msgstr "Este libro no tiene formatos que DeDRM pueda procesar."

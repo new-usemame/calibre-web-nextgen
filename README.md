@@ -46,6 +46,7 @@ Library, settings, users, OAuth tokens, and KOReader sync state are preserved. S
   - [Hardcover metadata provider](#hardcover-metadata-provider)
   - [KOReader sync](#koreader-sync)
   - [Kobo sync](#kobo-sync)
+  - [DRM removal & Adobe ACSM (DeDRM + DeACSM)](#drm-removal--adobe-acsm-dedrm--deacsm)
 - [Troubleshooting](#troubleshooting)
 - [Differences from upstream](#differences-from-upstream)
 - [Contributing](#contributing)
@@ -76,6 +77,7 @@ Everything CWA has, plus the patches in [`CHANGES-vs-upstream.md`](CHANGES-vs-up
 - `.cbr` and `.cbz` use IANA-registered mimetypes in OPDS feeds.
 - Higher-resolution covers from Google Books, Amazon, and an iTunes-backed fallback for high-DPI e-readers (Libra Color, etc.).
 - Translation PRs merged: ja, fr, cs, hu, zh_Hans, zh_Hant, and others.
+- Built-in DRM removal (DeDRM) and Adobe `.acsm` fulfillment (DeACSM), configured from the web UI — no desktop Calibre needed. See [DRM removal & Adobe ACSM](#drm-removal--adobe-acsm-dedrm--deacsm).
 
 ---
 
@@ -388,6 +390,40 @@ Signing into a Kobo account, or doing a factory reset, can rewrite the `api_endp
 
 To keep the Kobo Store and your library working at the same time, turn on **Proxy unknown requests to Kobo Store** in Admin → Edit Basic Configuration. With it off (the default), any request CWA doesn't recognize gets an empty response — fine for a sideload-only device, but store features won't load.
 
+### DRM removal & Adobe ACSM (DeDRM + DeACSM)
+
+This build vendors the [DeDRM](https://github.com/Satsuoni/DeDRM_tools) and [DeACSM](https://github.com/Leseratte10/acsm-calibre-plugin) plugins directly into the app and runs them headless, so you can remove DRM and redeem Adobe `.acsm` loans without a desktop Calibre install. Everything is configured from **Admin → DRM removal & Adobe (DeDRM + DeACSM)**.
+
+> Intended for personal use with books you own — to make backups, convert formats, or read on a device of your choice. You are responsible for complying with the law and the terms of service that apply to you.
+
+**How it works.** When DeDRM is configured (any key/serial present) or an Adobe account is activated, every book that enters the library — web upload or a file dropped in `/cwa-book-ingest` — is processed automatically: an `.acsm` is first fulfilled to the real EPUB/PDF, then DRM is stripped, then the book is imported. Books without DRM pass through untouched. Nothing happens unless you configure it.
+
+**DeDRM (remove DRM from books you have).** On the admin page each key type has its own clearly-labelled section:
+
+- **eInk Kindle serial number** — for books from a physical Kindle; plain text, e.g. `B0XXXXXXXXXXXXXX` (Settings → Device Info on the Kindle). You can give each serial a friendly name.
+- **Adobe / Kindle-for-PC / Android / B&N / eReader keys** — paste the key, or upload the key file produced by the DeDRM key-extraction tools (`.der` for Adobe, `.k4i` for Kindle for PC/Mac, `.k4a` for Android).
+- **PIDs / LCP / Adobe-PDF passphrases** — plain text.
+
+There's also a per-book **Remove DRM** button on the book detail page.
+
+**DeACSM (Adobe `.acsm` fulfillment).** Activate an Adobe account once, then drop `.acsm` files into the ingest folder (or upload them) and they're redeemed and imported as normal books:
+
+- **Activate anonymously** — works for most public-library loans; no credentials.
+- **Activate with an Adobe ID** — for books tied to an account. The password is used once to sign in and is never stored.
+
+Activating an Adobe account automatically shares its encryption key with DeDRM, so Adobe EPUB/PDF decryption starts working too — you don't need to upload a separate `.der`.
+
+**Bringing your setup over from desktop Calibre.** If you already use these plugins in desktop Calibre, import your existing configuration instead of redoing it:
+
+- **DeDRM:** in the Backup / restore section, import the `dedrm.json` from desktop Calibre's `plugins/` folder — all your keys, serials and passphrases come over at once (additive merge). You can also export your current config as a backup.
+- **DeACSM:** in desktop DeACSM click *Export account activation data* to get an `adobe_account_backup_*.zip`, then **Import activation (.zip)** here. This reuses the *same* Adobe device, so books you already downloaded stay readable and you don't spend a new activation. You can likewise export the activation `.zip` or the raw key `.der` from here.
+
+**Notes.**
+
+- The decryption engines run in isolated subprocesses, so a bad file can't take down the app.
+- Account activation and `.acsm` fulfillment need outbound network access to Adobe's servers.
+- Configuration lives under `/config` (`config/dedrm/` and `config/deacsm/`), so it survives restarts and is included in a normal config backup.
+
 ---
 
 ## Troubleshooting
@@ -433,6 +469,10 @@ Three common causes:
 
 The defaults are `admin` / `admin123` (lowercase). If you've already changed the password and forgotten it: stop the container, delete `config/app.db`, and restart. This resets the database. User accounts are lost; the library itself is untouched.
 
+### Books still have DRM, or `.acsm` files aren't fulfilled
+
+DRM removal only runs when you've configured it. Check **Admin → DRM Managemnt**: DeDRM needs at least one key/serial, and `.acsm` fulfillment needs an activated Adobe account. If an Adobe download fails, confirm the account is still activated and the container can reach Adobe's servers; an `.acsm` is a time-limited token, so re-download it from the library if it has expired. Adobe books decrypted on another device need that device's key — import your existing activation (DeACSM) or `dedrm.json` (DeDRM) rather than activating a new account, which would use a different key.
+
 ### Something else
 
 Check the [issue tracker](https://github.com/new-usemame/Calibre-Web-NextGen/issues) or [open a new issue](https://github.com/new-usemame/Calibre-Web-NextGen/issues/new). Useful information:
@@ -459,6 +499,7 @@ Check the [issue tracker](https://github.com/new-usemame/Calibre-Web-NextGen/iss
 | Cover resolution on high-DPI readers | Often 290×475 (Hardcover thumbnail) | 1000×1500+ via booster |
 | Admin routes (`cwa_logs`, `convert`, `epub_fixer`, …) | 14 unauthenticated | All require admin |
 | Translations: ja, fr, cs, hu, zh_Hans, zh_Hant | Open in PRs | Merged |
+| DRM removal / Adobe `.acsm` fulfillment | Not available | Built-in DeDRM + DeACSM, configured from the web UI |
 
 Backports are conservative. Anything that touches auth, schema, or dependencies gets a manual review before merging.
 

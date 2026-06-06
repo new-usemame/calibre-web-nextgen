@@ -577,6 +577,14 @@
                                            class="btn btn-primary action-icon-btn" role="button" title="{{ _('Change cover') }}" aria-label="{{ _('Change cover') }}">
                                             <span class="glyphicon glyphicon-picture"></span>
                                         </a>
+                                        {# Remove DRM via the vendored DeDRM module. The route returns a
+                                           warning when DeDRM is not configured, prompting the admin to set it up. #}
+                                        <button type="button" class="btn btn-default action-icon-btn" id="remove-drm-btn"
+                                                data-remove-drm-url="{{ url_for('edit-book.remove_drm', book_id=entry.id) }}"
+                                                title="{{ _('Remove DRM') }}" aria-label="{{ _('Remove DRM') }}">
+                                            <span class="glyphicon glyphicon-lock"></span>
+                                            <span class="sr-only">{{ _('Remove DRM') }}</span>
+                                        </button>
                                     {% endif %}
                                     {% if current_user.role_edit() and current_user.role_delete_books() %}
                                         <button type="button" class="btn btn-danger action-icon-btn" id="delete"

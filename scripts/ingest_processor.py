@@ -1088,6 +1088,104 @@ class NewBookProcessor:
         return False # Timeout reached
 
 
+    def fulfill_acsm_if_configured(self) -> None:
+        """Fulfill an incoming .acsm file via DeACSM, if an Adobe account is set up.
+
+        An .acsm is not a book — it is an Adobe fulfillment token. When DeACSM is
+        activated we redeem it against Adobe, download the actual EPUB/PDF (still
+        Adobe-DRM protected), and replace the staged .acsm with that book so the
+        DRM-removal hook and the rest of the pipeline operate on a real book.
+
+        No-ops for non-.acsm files or when no Adobe account is activated. Any
+        failure logs and leaves the original file; it never aborts ingest.
+        """
+        if Path(self.filepath).suffix.lower() != ".acsm":
+            return
+        try:
+            from cps import deacsm
+        except Exception as e:
+            print(f"[ingest-processor] DeACSM module unavailable, skipping fulfillment: {e}", flush=True)
+            return
+        try:
+            if not deacsm.is_activated():
+                print("[ingest-processor] .acsm received but no Adobe account is activated; skipping.", flush=True)
+                return
+            print(f"[ingest-processor] Fulfilling ACSM via DeACSM: {self.filename}", flush=True)
+            book = deacsm.fulfill(self.filepath, self.staging_dir)
+        except Exception as e:
+            print(f"[ingest-processor] WARN: DeACSM error, keeping original: {e}", flush=True)
+            return
+        if not book:
+            print("[ingest-processor] WARN: ACSM fulfillment produced no book; keeping original.", flush=True)
+            return
+        try:
+            new_ext = os.path.splitext(book)[1]
+            new_path = os.path.splitext(self.filepath)[0] + new_ext
+            shutil.move(book, new_path)
+            if new_path != self.filepath and os.path.exists(self.filepath):
+                os.remove(self.filepath)
+            self.filepath = new_path
+            self.filename = os.path.basename(new_path)
+            self.can_convert, self.input_format = self.can_convert_check()
+            self.is_target_format = (self.input_format.lower() == str(self.target_format).lower())
+            print(f"[ingest-processor] ACSM fulfilled to {self.filename}", flush=True)
+        except Exception as e:
+            print(f"[ingest-processor] WARN: Failed to swap in fulfilled book, keeping original: {e}", flush=True)
+
+
+    def strip_drm_if_configured(self) -> None:
+        """Remove DRM from the incoming file in place, if DeDRM is configured.
+
+        Behaviour (per project policy):
+        * DeDRM not configured  -> do nothing at all.
+        * Unsupported file type  -> do nothing.
+        * No DRM / nothing to do -> keep the original file unchanged.
+        * Any error              -> log a warning and keep the original; DRM
+          removal must never abort an ingest.
+
+        On a successful decryption the staged file is replaced with the
+        decrypted version. Because the output extension can change (e.g. a KFX
+        ``.azw`` becomes ``.epub``), ``self.filepath`` / ``self.filename`` and
+        the format-dependent attributes are recomputed; callers must re-read
+        ``self.filepath`` afterwards.
+        """
+        try:
+            from cps import dedrm
+        except Exception as e:
+            print(f"[ingest-processor] DeDRM module unavailable, skipping DRM removal: {e}", flush=True)
+            return
+
+        try:
+            if not dedrm.is_configured():
+                return
+            if not dedrm.is_supported(self.filepath):
+                return
+            print(f"[ingest-processor] DeDRM configured; attempting DRM removal: {self.filename}", flush=True)
+            output = dedrm.remove_drm(self.filepath, self.staging_dir)
+        except Exception as e:
+            print(f"[ingest-processor] WARN: DeDRM error, keeping original: {e}", flush=True)
+            return
+
+        if not output:
+            # No DRM present or nothing to do: leave the original untouched.
+            return
+
+        try:
+            # Swap the decrypted file in, honouring a possible extension change.
+            new_ext = os.path.splitext(output)[1]
+            new_path = os.path.splitext(self.filepath)[0] + new_ext
+            shutil.move(output, new_path)
+            if new_path != self.filepath and os.path.exists(self.filepath):
+                os.remove(self.filepath)
+            self.filepath = new_path
+            self.filename = os.path.basename(new_path)
+            # Recompute format-dependent state after the possible extension change.
+            self.can_convert, self.input_format = self.can_convert_check()
+            self.is_target_format = (self.input_format.lower() == str(self.target_format).lower())
+            print(f"[ingest-processor] DeDRM removed DRM: {self.filename}", flush=True)
+        except Exception as e:
+            print(f"[ingest-processor] WARN: Failed to swap in de-DRMed file, keeping original: {e}", flush=True)
+
 
     def add_book_to_library(self, book_path:str, text: bool=True, format: str="text" ) -> None:
         # If kindle-epub-fixer is on, run it first and import the *fixed* file.
@@ -1688,8 +1786,22 @@ def main(filepath=None):
                 skip_delete = True
                 return 0
 
-        # Sidecar manifest handling for explicit actions (e.g., add_format)
+        # The sidecar manifest keeps the ORIGINAL file name, so resolve its path
+        # before DRM removal may rename the book file below.
         manifest_path = filepath + ".cwa.json"
+
+        # Fulfill an .acsm first (no-op unless it's an .acsm and DeACSM is
+        # activated): redeem it against Adobe and replace it with the downloaded
+        # (still Adobe-DRM) book, which the DRM hook below then decrypts.
+        nbp.fulfill_acsm_if_configured()
+
+        # Remove DRM in place (a no-op unless DeDRM is configured). This may
+        # change the staged file's path/extension, so re-sync the local
+        # filepath that the rest of main() operates on.
+        nbp.strip_drm_if_configured()
+        filepath = nbp.filepath
+
+        # Sidecar manifest handling for explicit actions (e.g., add_format)
         try:
             if Path(manifest_path).exists():
                 with open(manifest_path, 'r', encoding='utf-8') as mf:

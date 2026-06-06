@@ -1,0 +1,265 @@
+{% extends "layout.html" %}
+{# Dedicated admin page to manage the vendored DeDRM module. Every section is
+   driven by KEY_SECTIONS in cps/dedrm_admin.py so each one states exactly what
+   belongs there, in which format, and whether a file upload applies. Settings
+   persist to CONFIG_DIR/dedrm/plugins/dedrm.json via cps.dedrm.prefs_store —
+   the same file the ingest worker reads. #}
+{% block body %}
+<div class="discover">
+  <h2 style="font-size: 15px;">{{ title }}</h2>
+
+  <p class="help-block">
+    {{ _('When DeDRM is configured (enabled below or at least one key/serial/passphrase is present), DRM is removed automatically from books as they are ingested. When it is not configured, books are left untouched.') }}
+  </p>
+  <p class="help-block">
+    {{ _('Add only the entries that match how you obtained your books. The most common one for a physical Kindle is the eInk Kindle serial number.') }}
+  </p>
+
+  <!-- Adobe account (DeACSM) --------------------------------------------- -->
+  <div class="settings-container">
+    <h4 class="settings-section-header">{{ _('Adobe account (ACSM fulfillment)') }}</h4>
+    <p class="help-block">
+      {{ _('Activate an Adobe account to download Adobe-DRM books from .acsm files (library loans, many stores). The account key is shared with DeDRM automatically, so Adobe EPUB/PDF decryption also works — no separate key upload needed.') }}
+    </p>
+
+    {% if deacsm_status and deacsm_status.activated %}
+    <p>
+      <span class="label label-success">{{ _('Activated') }}</span>
+      {% if deacsm_status.account_type %}<span class="text-muted">({{ deacsm_status.account_type }})</span>{% endif %}
+      {% if deacsm_status.email %}<strong>{{ deacsm_status.email }}</strong>{% endif %}
+      {% if deacsm_status.uuid %}<code>{{ deacsm_status.uuid }}</code>{% endif %}
+    </p>
+
+    {# Backup / portability: export the activation or the raw key. #}
+    <p>
+      <a class="btn btn-default" href="{{ url_for('dedrm_admin.deacsm_export_activation') }}">{{ _('Export activation (.zip)') }}</a>
+      <a class="btn btn-default" href="{{ url_for('dedrm_admin.deacsm_export_key') }}">{{ _('Export key (.der)') }}</a>
+    </p>
+    <p class="help-block">{{ _('Back up the activation .zip to move this exact account to another DeACSM / Calibre install without spending a new Adobe activation. The .der is the raw encryption key for use with other tools.') }}</p>
+
+    <form method="POST" action="{{ url_for('dedrm_admin.deacsm_deactivate') }}" autocomplete="off"
+          onsubmit="return confirm('{{ _('Deactivate the Adobe account and remove its shared key?') }}');">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button type="submit" class="btn btn-danger">{{ _('Deactivate') }}</button>
+    </form>
+    {% else %}
+    <p><span class="label label-default">{{ _('Not activated') }}</span></p>
+
+    {# Import an existing activation (the recommended path if you already use
+       this Adobe account in desktop Calibre / ADE). #}
+    <form method="POST" action="{{ url_for('dedrm_admin.deacsm_import') }}" enctype="multipart/form-data" autocomplete="off" style="margin-bottom:15px;">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <p class="help-block">
+        {{ _('Already using this Adobe account in desktop Calibre (DeACSM)? There, click "Export account activation data" to get an adobe_account_backup_*.zip, then import it here. This reuses the SAME device — books you already downloaded stay readable and no new activation is spent. This is the recommended option.') }}
+      </p>
+      <div class="form-group">
+        <input type="file" name="activation_zip" accept=".zip,application/zip">
+      </div>
+      <button type="submit" class="btn btn-primary">{{ _('Import activation (.zip)') }}</button>
+    </form>
+
+    <p class="help-block"><strong>{{ _('— or activate a new account —') }}</strong></p>
+
+    <form method="POST" action="{{ url_for('dedrm_admin.deacsm_activate') }}" autocomplete="off" style="margin-bottom:15px;">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="method" value="anonymous">
+      <p class="help-block">{{ _('Anonymous activation works for most library loans and needs no credentials.') }}</p>
+      <button type="submit" class="btn btn-primary">{{ _('Activate anonymously') }}</button>
+    </form>
+
+    <form method="POST" action="{{ url_for('dedrm_admin.deacsm_activate') }}" autocomplete="off">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="method" value="adobeid">
+      <p class="help-block">{{ _('…or activate with an Adobe ID (needed for purchased books tied to an account). The password is used once to sign in and is not stored.') }}</p>
+      <div class="form-group">
+        <label for="deacsm_email">{{ _('Adobe ID (email)') }}</label>
+        <input type="email" class="form-control" id="deacsm_email" name="email" autocomplete="off">
+      </div>
+      <div class="form-group">
+        <label for="deacsm_password">{{ _('Adobe password') }}</label>
+        <input type="password" class="form-control" id="deacsm_password" name="password" autocomplete="new-password">
+      </div>
+      <button type="submit" class="btn btn-default">{{ _('Activate with Adobe ID') }}</button>
+    </form>
+    {% endif %}
+  </div>
+
+  <!-- Adobe / ACSM behaviour flags --------------------------------------- -->
+  <form role="form" method="POST" action="{{ url_for('dedrm_admin.deacsm_flags') }}" autocomplete="off">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="settings-container">
+      <h4 class="settings-section-header">{{ _('ACSM options') }}</h4>
+      <div class="form-group">
+        <input type="checkbox" id="notify_fulfillment" name="notify_fulfillment" {% if deacsm_prefs.notify_fulfillment %}checked{% endif %}>
+        <label for="notify_fulfillment">{{ _('Log a message when an .acsm is fulfilled') }}</label>
+      </div>
+      <div class="form-group">
+        <input type="checkbox" id="delete_acsm_after_fulfill" name="delete_acsm_after_fulfill" {% if deacsm_prefs.delete_acsm_after_fulfill %}checked{% endif %}>
+        <label for="delete_acsm_after_fulfill">{{ _('Delete the .acsm file after a successful fulfillment') }}</label>
+      </div>
+      <div class="form-group">
+        <input type="checkbox" id="detailed_logging" name="detailed_logging" {% if deacsm_prefs.detailed_logging %}checked{% endif %}>
+        <label for="detailed_logging">{{ _('Detailed ACSM logging') }}</label>
+      </div>
+      <button type="submit" class="btn btn-default">{{ _('Save') }}</button>
+    </div>
+  </form>
+
+  <!-- Master flags ------------------------------------------------------- -->
+  <form role="form" method="POST" action="{{ url_for('dedrm_admin.save_flags') }}" autocomplete="off">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="settings-container">
+      <h4 class="settings-section-header">{{ _('General') }}</h4>
+      <div class="form-group">
+        <input type="checkbox" id="configured" name="configured" {% if prefs.configured %}checked{% endif %}>
+        <label for="configured">{{ _('Enable DRM removal') }}</label>
+      </div>
+      <div class="form-group">
+        <input type="checkbox" id="deobfuscate_fonts" name="deobfuscate_fonts" {% if prefs.deobfuscate_fonts %}checked{% endif %}>
+        <label for="deobfuscate_fonts">{{ _('Deobfuscate fonts in EPUBs') }}</label>
+      </div>
+      <div class="form-group">
+        <input type="checkbox" id="remove_watermarks" name="remove_watermarks" {% if prefs.remove_watermarks %}checked{% endif %}>
+        <label for="remove_watermarks">{{ _('Remove watermarks from EPUBs') }}</label>
+      </div>
+      <button type="submit" class="btn btn-default">{{ _('Save') }}</button>
+    </div>
+  </form>
+
+  <!-- One section per key store, fully described --------------------------- -->
+  {% for section in key_sections %}
+  {% set store = section.store %}
+  <div class="settings-container">
+    <h4 class="settings-section-header">{{ section.label }}</h4>
+    <p class="help-block">{{ section.description }}</p>
+
+    {# Existing entries -------------------------------------------------- #}
+    {% if section.kind == 'named' %}
+      {% set entries = prefs[store] %}
+      {% if entries %}
+      <table class="table">
+        <thead>
+          <tr><th>{{ _('Name') }}</th><th>{{ _('Value') }}</th><th></th></tr>
+        </thead>
+        <tbody>
+          {% for key_name, key_value in entries.items() %}
+          <tr>
+            <td>{{ key_name }}</td>
+            <td>
+              {# Never render full secret material; strings get a short prefix,
+                 structured key data (k4i JSON, k4a lines) just gets a marker. #}
+              {% if key_value is string %}
+                <code>{{ key_value[:12] }}{% if key_value|length > 12 %}…{% endif %}</code>
+              {% else %}
+                <em class="text-muted">{{ _('(imported key file)') }}</em>
+              {% endif %}
+            </td>
+            <td>
+              <form method="POST" action="{{ url_for('dedrm_admin.delete_key') }}" style="display:inline;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="store" value="{{ store }}">
+                <input type="hidden" name="name" value="{{ key_name }}">
+                <button type="submit" class="btn btn-danger btn-xs">{{ _('Delete') }}</button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <p class="text-muted">{{ _('Nothing configured.') }}</p>
+      {% endif %}
+    {% else %}
+      {% set values = prefs[store] %}
+      {% if values %}
+      {% set labels = prefs.cwa_labels.get(store, {}) if section.labeled else {} %}
+      <table class="table">
+        {% if section.labeled %}
+        <thead><tr><th>{{ _('Name') }}</th><th>{{ _('Value') }}</th><th></th></tr></thead>
+        {% endif %}
+        <tbody>
+          {% for value in values %}
+          <tr>
+            {% if section.labeled %}<td>{{ labels.get(value, '') }}</td>{% endif %}
+            <td><code>{{ value }}</code></td>
+            <td>
+              <form method="POST" action="{{ url_for('dedrm_admin.delete_key') }}" style="display:inline;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="store" value="{{ store }}">
+                <input type="hidden" name="value" value="{{ value }}">
+                <button type="submit" class="btn btn-danger btn-xs">{{ _('Delete') }}</button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <p class="text-muted">{{ _('Nothing configured.') }}</p>
+      {% endif %}
+    {% endif %}
+
+    {# Add form ---------------------------------------------------------- #}
+    <form method="POST" action="{{ url_for('dedrm_admin.add_key') }}"
+          {% if section.file_ext %}enctype="multipart/form-data"{% endif %} autocomplete="off">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="store" value="{{ store }}">
+
+      {# Optional name: for named keys, and for list stores that opt into a
+         friendly label (e.g. naming each Kindle behind a serial number). #}
+      {% if section.kind == 'named' or section.labeled %}
+      <div class="form-group">
+        <label for="{{ store }}_name">{{ _('Name (optional)') }}</label>
+        <input type="text" class="form-control" id="{{ store }}_name" name="name"
+               placeholder="{% if section.labeled %}{{ _('e.g. Living-room Kindle') }}{% else %}{{ _('A label to recognise this key') }}{% endif %}">
+      </div>
+      {% endif %}
+
+      {# Text value field. Hidden for file-only key stores (.k4i / .k4a), where
+         pasting text would store the key in the wrong shape. #}
+      {% if section.kind != 'named' or section.allow_paste | default(true) %}
+      <div class="form-group">
+        {% if section.kind == 'named' %}
+        <label for="{{ store }}_value">{{ _('Key value') }}</label>
+        {% endif %}
+        <input type="text" class="form-control" id="{{ store }}_value" name="value"
+               placeholder="{{ section.placeholder }}">
+      </div>
+      {% endif %}
+
+      {# File upload ONLY where DeDRM actually imports from a file. #}
+      {% if section.file_ext %}
+      <div class="form-group">
+        <label for="{{ store }}_file">{{ _('…or upload a %(ext)s key file', ext=section.file_ext) }}</label>
+        <input type="file" id="{{ store }}_file" name="keyfile" accept="{{ section.file_ext }}">
+      </div>
+      {% endif %}
+
+      <button type="submit" class="btn btn-default">
+        {% if section.kind == 'named' %}{{ _('Add key') }}{% else %}{{ _('Add') }}{% endif %}
+      </button>
+    </form>
+  </div>
+  {% endfor %}
+
+  <!-- Backup / restore the whole DeDRM key configuration ---------------- -->
+  <div class="settings-container">
+    <h4 class="settings-section-header">{{ _('Backup / restore (DeDRM keys)') }}</h4>
+    <p class="help-block">
+      {{ _('Already configured DeDRM in desktop Calibre? Copy its dedrm.json (in Calibre\'s plugins folder) and import it here to bring over all your keys, serials and passphrases at once. Importing merges additively — existing entries are kept.') }}
+    </p>
+    <p>
+      <a class="btn btn-default" href="{{ url_for('dedrm_admin.dedrm_export') }}">{{ _('Export configuration (dedrm.json)') }}</a>
+    </p>
+    <form method="POST" action="{{ url_for('dedrm_admin.dedrm_import') }}" enctype="multipart/form-data" autocomplete="off">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="form-group">
+        <input type="file" name="dedrm_json" accept=".json,application/json">
+      </div>
+      <button type="submit" class="btn btn-default">{{ _('Import configuration (dedrm.json)') }}</button>
+    </form>
+  </div>
+
+  <a href="{{ url_for('admin.admin') }}" class="btn btn-default">{{ _('Back') }}</a>
+</div>
+{% endblock %}

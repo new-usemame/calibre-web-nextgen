@@ -2147,12 +2147,20 @@ def reload_metadata_from_disk(book_id):
     pull the on-disk file as source of truth without round-tripping
     through ingest.
 
-    Updates: title, comments, publisher, pubdate, languages. Authors,
-    tags, and series are deferred — they involve relationship-table
-    bookkeeping (author_sort regeneration, tag dedup, series
-    create-on-demand) that's better handled through the full edit-book
-    save path. The fields we DO update are the common-case ask
-    ("I changed the description in grimmory and want CWNG to show it").
+    Updates: title, authors, tags, series (+ index), comments, publisher,
+    pubdate, languages. Authors/tags/series ride the SAME helpers the
+    edit-book save path uses (handle_author_on_edit, edit_book_tags,
+    edit_book_series) so relationship bookkeeping — author_sort
+    regeneration, tag dedup + orphan cleanup, series create-on-demand —
+    stays identical, and title/author changes trigger
+    helper.update_dir_structure exactly like every other edit path
+    (#218 follow-up, @yodatak: "it don't reload all the metadata").
+
+    Absent-field safety: get_epub_info returns the literal 'Unknown' for
+    a missing <dc:creator> and '' for missing <dc:subject>/series. Both
+    mean "the file carries nothing", not "clear the field" — a tool that
+    drops those elements must not stomp curated data, so each of the
+    three is gated on a real value being present.
 
     Authorization: @edit_required (admin OR edit role) — same gate as
     /admin/book/<id> POST.
@@ -2199,6 +2207,7 @@ def reload_metadata_from_disk(book_id):
                                format=file_ext.upper(), err=str(ex))), 500
 
     updated = []
+    rename_warning = None
     try:
         with metadata_db_write_lock():
             # Title.
@@ -2235,6 +2244,73 @@ def reload_metadata_from_disk(book_id):
                 except Exception as ex:
                     log.debug("reload_metadata: language update failed: %s", ex)
 
+            # Authors — same helper as the edit-book save path
+            # (author_sort regeneration, rename handling, orphan
+            # cleanup). 'Unknown' is get_epub_info's missing-creator
+            # sentinel: a file without <dc:creator> must not stomp the
+            # book's real authors.
+            input_authors = None
+            author_value = strip_whitespaces(meta.author or '')
+            if author_value and meta.author != 'Unknown':
+                input_authors, author_change = handle_author_on_edit(
+                    book, author_value)
+                if author_change:
+                    updated.append('authors')
+
+            # Tags — comma-joined <dc:subject> values; '' when the file
+            # has none, which is ambiguous (the editing tool may simply
+            # not write subjects) and must not wipe curated tags.
+            if meta.tags and strip_whitespaces(meta.tags):
+                if edit_book_tags(meta.tags, book):
+                    updated.append('tags')
+
+            # Series + index — create-on-demand via the standard helper.
+            # The numeric check is inline because edit_book_series_index
+            # flashes on invalid input, and a flash inside a JSON
+            # endpoint leaks a stale message into the next rendered page.
+            if meta.series and strip_whitespaces(meta.series) \
+                    and meta.series != 'Unknown':
+                if edit_book_series(meta.series, book):
+                    updated.append('series')
+                series_id = strip_whitespaces(meta.series_id or '')
+                if series_id and series_id.replace('.', '', 1).isdigit():
+                    # Compare numerically: series_index is a REAL column, so
+                    # str(4.0) != "4" makes a string compare report a change
+                    # on every reload — each one re-marking the book modified
+                    # and churning Kobo-sync cursors. (edit_book_series_index
+                    # carries the same latent string compare; form posts
+                    # rarely trip it.)
+                    try:
+                        if float(book.series_index or 0) != float(series_id):
+                            book.series_index = series_id
+                            updated.append('series_index')
+                    except (TypeError, ValueError):
+                        log.debug("reload_metadata: unparseable series index %r",
+                                  series_id)
+
+            # Title/author changes move the book's on-disk directory the
+            # same way every other edit path does (Author/Title (id)
+            # convention) — otherwise reload leaves a layout no other
+            # write path produces. The v4.0.149 title-only reload skipped
+            # this; fixed here.
+            if 'title' in updated or 'authors' in updated:
+                if input_authors:
+                    first_author = input_authors[0]
+                elif book.authors:
+                    first_author = book.authors[0].name
+                else:
+                    first_author = None
+                rename_error = helper.update_dir_structure(
+                    book.id, config.get_book_path(), first_author)
+                if rename_error:
+                    # Metadata still commits (mirrors the edit path, which
+                    # flashes the error and proceeds) — surface it so the
+                    # caller knows the on-disk layout didn't converge.
+                    rename_warning = str(rename_error)
+                    log.warning(
+                        "reload_metadata: dir-structure update failed for "
+                        "book %d: %s", book.id, rename_error)
+
             if updated:
                 helper.mark_book_modified(book, set_dirty=False)
                 calibre_db.session.commit()
@@ -2253,10 +2329,14 @@ def reload_metadata_from_disk(book_id):
                        error=_("Could not save reloaded metadata: %(err)s",
                                err=str(ex))), 500
 
-    return jsonify(success=True,
-                   updated_fields=updated,
-                   source_format=file_ext.upper(),
-                   message=(_("Reloaded %(n)d field(s) from on-disk %(fmt)s",
-                              n=len(updated), fmt=file_ext.upper())
-                            if updated
-                            else _("On-disk metadata matches current — no fields updated"))), 200
+    response = dict(success=True,
+                    updated_fields=updated,
+                    source_format=file_ext.upper(),
+                    message=(_("Reloaded %(n)d field(s) from on-disk %(fmt)s",
+                               n=len(updated), fmt=file_ext.upper())
+                             if updated
+                             else _("On-disk metadata matches current — no fields updated")))
+    if rename_warning:
+        response["warning"] = _("Metadata updated, but the book folder could not "
+                                "be renamed to match: %(err)s", err=rename_warning)
+    return jsonify(**response), 200

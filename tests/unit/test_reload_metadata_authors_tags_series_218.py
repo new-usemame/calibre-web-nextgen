@@ -74,6 +74,38 @@ class TestReloadCoversDeferredFields:
             "authors changed — the v4.0.149 title-only reload skipped it"
         )
 
+    def test_rename_failure_rolls_back_never_commits(self):
+        """Adversarial-review finding: the edit-book POST path responds to
+        an update_dir_structure error with rollback + bail. Reload must
+        mirror that — committing metadata for a layout the move didn't
+        produce leaves the catalog pointing at paths that don't exist."""
+        body = _body()
+        m = re.search(
+            r"if rename_error:.*?calibre_db\.session\.rollback\(\).*?return jsonify\(",
+            body, re.DOTALL)
+        assert m, (
+            "rename_error must trigger session.rollback() and an error "
+            "return — never warn-and-commit"
+        )
+
+    def test_file_moves_run_outside_the_writers_lock(self):
+        """Adversarial-review finding: metadata_db_write_lock's contract is
+        single-commit duration (it coordinates with the ingest processor,
+        #192). File renames inside it can starve ingest for the length of
+        a folder move on slow storage. Only the COMMIT may hold it —
+        matching the edit-book POST path."""
+        body = _body()
+        lock_positions = [m.start() for m in re.finditer(r"metadata_db_write_lock\(\)", body)]
+        assert len(lock_positions) == 1, (
+            f"expected exactly one metadata_db_write_lock() in the reload "
+            f"(around the commit), found {len(lock_positions)}"
+        )
+        dir_call = body.index("update_dir_structure")
+        assert dir_call < lock_positions[0], (
+            "update_dir_structure must run BEFORE (outside) the writers' "
+            "lock; only the commit holds it"
+        )
+
 
 @pytest.mark.unit
 class TestAbsentFieldSafetyGates:
@@ -114,6 +146,43 @@ class TestAbsentFieldSafetyGates:
             "series index must be numeric-validated inline (the flash-based "
             "edit_book_series_index helper is for form requests)"
         )
+
+    def test_parse_epub_series_signals_absence_as_empty(self):
+        """Adversarial-review finding (CONFIRMED class): parse_epub_series
+        fabricated series_id='1' when the file carried no
+        calibre:series_index meta — so a file with a series NAME but no
+        index made reload stomp a curated index back to 1 on every run.
+        Absence must surface as '' so the reload gate skips it. Behavioral:
+        run the real parser against minimal OPF trees."""
+        from lxml import etree
+        from cps.epub import parse_epub_series
+
+        ns = {
+            "n": "urn:oasis:names:tc:opendocument:xmlns:container",
+            "pkg": "http://www.idpf.org/2007/opf",
+            "dc": "http://purl.org/dc/elements/1.1/",
+        }
+        opf_no_index = (
+            '<package xmlns="http://www.idpf.org/2007/opf" version="3.0">'
+            '<metadata xmlns:dc="http://purl.org/dc/elements/1.1/">'
+            '<meta name="calibre:series" content="Foo"/>'
+            '</metadata></package>'
+        )
+        tree = etree.fromstring(opf_no_index.encode())
+        out = parse_epub_series(ns, tree, {})
+        assert out["series"] == "Foo"
+        assert out["series_id"] == "", (
+            "missing calibre:series_index must yield '' (absence), not a "
+            "fabricated '1' that stomps curated indexes on reload"
+        )
+
+        opf_with_index = opf_no_index.replace(
+            "</metadata>",
+            '<meta name="calibre:series_index" content="4"/></metadata>',
+        )
+        tree2 = etree.fromstring(opf_with_index.encode())
+        out2 = parse_epub_series(ns, tree2, {})
+        assert out2["series_id"] == "4"
 
     def test_series_index_compares_numerically(self):
         """Caught live on the second reload of the same book: series_index

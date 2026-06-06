@@ -1886,6 +1886,11 @@ def migrate_kobo_magic_shelf_intent(engine, _session):
     if os.path.isfile(marker_path):
         return
 
+    def _write_marker():
+        os.makedirs(os.path.dirname(marker_path), exist_ok=True)
+        with open(marker_path, "w", encoding="utf-8") as fh:
+            fh.write(datetime.now(timezone.utc).isoformat())
+
     try:
         with engine.connect() as conn:
             intent = conn.execute(text(
@@ -1897,6 +1902,22 @@ def migrate_kobo_magic_shelf_intent(engine, _session):
                     "WHERE config_kobo_sync_magic_shelves = 0 "
                     "   OR config_kobo_sync_magic_shelves IS NULL"
                 ))
+                # Marker BEFORE commit: the flip and its never-again guard
+                # must land together. If the marker can't be written (e.g.
+                # read-only /config), abort WITHOUT committing — flipping
+                # while unable to record it would re-override a deliberate
+                # admin disable on every subsequent boot (Greptile P1 on
+                # PR #372). Not flipping is the safe failure: the gated
+                # checkbox UI tells users how to enable the setting manually.
+                try:
+                    _write_marker()
+                except OSError as e:
+                    log.warning(
+                        "[kobo-magic-shelf-intent-migration] marker %s not "
+                        "writable (%s) — NOT applying the flag flip; will "
+                        "retry next boot.", marker_path, e,
+                    )
+                    return  # no commit → UPDATE rolls back with the connection
                 conn.commit()
                 if getattr(flipped, "rowcount", 0):
                     log.info(
@@ -1906,6 +1927,7 @@ def migrate_kobo_magic_shelf_intent(engine, _session):
                         "existing per-shelf intent takes effect (#359).",
                         intent,
                     )
+                return  # marker already written above
     except exc.OperationalError as e:
         # magic_shelf table or settings column missing — pre-flag schema
         # mid-upgrade. Retry next boot (marker intentionally not written).
@@ -1915,10 +1937,11 @@ def migrate_kobo_magic_shelf_intent(engine, _session):
         )
         return
 
+    # No-intent path: record the decision so it isn't re-evaluated every
+    # boot. A marker-write failure here is harmless (re-evaluating "no
+    # intent" is a no-op) — log and move on.
     try:
-        os.makedirs(os.path.dirname(marker_path), exist_ok=True)
-        with open(marker_path, "w", encoding="utf-8") as fh:
-            fh.write(datetime.now(timezone.utc).isoformat())
+        _write_marker()
     except OSError as e:
         log.warning(
             "[kobo-magic-shelf-intent-migration] could not write marker %s: %s",

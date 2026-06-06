@@ -143,6 +143,30 @@ class TestIntentMigration:
         assert _flag(db) == 1
         assert (tmp_path / ".cwa_migrations" / MARKER_NAME).is_file()
 
+    def test_marker_unwritable_aborts_flip_then_recovers(self, tmp_path, monkeypatch):
+        """Greptile P1 on PR #372: if the marker can't be written, the flag
+        flip must NOT commit — otherwise a persistent filesystem problem
+        re-overrides a deliberate admin disable on every boot. The flip and
+        its never-again guard land together or not at all."""
+        db = tmp_path / "app.db"
+        _make_app_db(db, flag_value=0, intent_rows=1)
+        ro_config = tmp_path / "ro-config"
+        ro_config.mkdir()
+        ro_config.chmod(0o500)  # .cwa_migrations/ not creatable inside
+        try:
+            _run_migration(db, ro_config, monkeypatch)  # must not raise
+            assert _flag(db) == 0, (
+                "flag must NOT flip when the marker is unwritable — "
+                "flip + marker land together or not at all"
+            )
+            assert not (ro_config / ".cwa_migrations").exists()
+        finally:
+            ro_config.chmod(0o700)
+        # Filesystem fixed → next boot applies the flip and the marker.
+        _run_migration(db, ro_config, monkeypatch)
+        assert _flag(db) == 1
+        assert (ro_config / ".cwa_migrations" / MARKER_NAME).is_file()
+
     def test_missing_column_defers_without_marker(self, tmp_path, monkeypatch):
         """Pre-flag schema (settings column not added yet — config_sql adds
         it after ub migrations on first boot): must not crash, must NOT
@@ -196,6 +220,49 @@ class TestUiHonesty:
             "both magic_shelf_edit.html render calls (create + edit) must "
             "pass kobo_magic_sync_enabled"
         )
+
+
+@pytest.mark.unit
+class TestApiHonesty:
+    """Greptile gap 2 on PR #372: the create/edit POST handlers accept
+    kobo_sync=True from the JSON body without consulting the global flag —
+    a direct API call recreates the silent-swallow state the UI gating
+    fixed. The handlers must persist the intent (so enabling the global
+    setting later honors it — and so rule edits on previously-marked
+    shelves don't get rejected via the disabled-but-checked checkbox) but
+    return an explicit warning instead of a silent success."""
+
+    def test_create_handler_warns_on_inert_kobo_intent(self):
+        src = WEB_PY.read_text(encoding="utf-8")
+        create_body = src.split('@web.route("/magicshelf", methods=["GET", "POST"])', 1)[1]
+        create_body = create_body.split('@web.route("/magicshelf/<int:shelf_id>/edit"', 1)[0]
+        assert "kobo_sync and not config.config_kobo_sync_magic_shelves" in create_body, (
+            "create handler must detect persisted-but-inert kobo intent"
+        )
+        assert '"warning"' in create_body, (
+            "create handler must return a warning for inert kobo intent"
+        )
+
+    def test_edit_handler_warns_on_inert_kobo_intent(self):
+        src = WEB_PY.read_text(encoding="utf-8")
+        edit_body = src.split('@web.route("/magicshelf/<int:shelf_id>/edit"', 1)[1]
+        edit_body = edit_body.split('@web.route("/magicshelf/<int:shelf_id>/duplicate"', 1)[0]
+        assert "kobo_sync and not config.config_kobo_sync_magic_shelves" in edit_body, (
+            "edit handler must detect persisted-but-inert kobo intent"
+        )
+        assert '"warning"' in edit_body, (
+            "edit handler must return a warning for inert kobo intent"
+        )
+
+    def test_intent_is_persisted_not_rejected_or_coerced(self):
+        """Rejecting would break rule-edits on previously-marked shelves
+        (the disabled-but-checked checkbox still posts kobo_sync=true);
+        coercing to False would silently erase intent. The shelf keeps the
+        value the client sent."""
+        src = WEB_PY.read_text(encoding="utf-8")
+        # The assignment into the model must remain unconditional.
+        assert "kobo_sync=kobo_sync" in src, "create must persist intent as sent"
+        assert "shelf.kobo_sync = kobo_sync" in src, "edit must persist intent as sent"
 
 
 @pytest.mark.unit

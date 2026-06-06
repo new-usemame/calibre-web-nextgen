@@ -1863,6 +1863,69 @@ def migrate_kobo_deleted_book(engine, _session):
         )
 
 
+def migrate_kobo_magic_shelf_intent(engine, _session):
+    """One-time: turn on the global 'Sync Magic Shelves to Kobo' setting on
+    installs where per-shelf intent already exists (fork #359).
+
+    config_kobo_sync_magic_shelves ships default-False, but the magic-shelf
+    edit UI let users tick the per-shelf "Enable Kobo sync" checkbox with the
+    global flag off — the intent was then silently swallowed: no delivery, no
+    collections, and a DeletedTag tombstone per shelf on every sync.
+    @recruiterguy lived this across v4.0.76 → v4.0.155 (#359). The per-shelf
+    checkbox IS the user's expressed intent; where any shelf carries it, the
+    feature should be on.
+
+    Runs once per install (marker file), so an admin who later disables the
+    global setting deliberately is never re-flipped. If the settings table
+    doesn't yet have the column (upgrade from a pre-flag schema — config_sql
+    adds it AFTER ub migrations on first boot), the OperationalError path
+    leaves the marker unwritten so the flip retries on the next boot.
+    """
+    marker_path = os.path.join(constants.CONFIG_DIR, ".cwa_migrations",
+                               "kobo_magic_shelf_intent_v1")
+    if os.path.isfile(marker_path):
+        return
+
+    try:
+        with engine.connect() as conn:
+            intent = conn.execute(text(
+                "SELECT COUNT(*) FROM magic_shelf WHERE kobo_sync = 1"
+            )).scalar()
+            if intent:
+                flipped = conn.execute(text(
+                    "UPDATE settings SET config_kobo_sync_magic_shelves = 1 "
+                    "WHERE config_kobo_sync_magic_shelves = 0 "
+                    "   OR config_kobo_sync_magic_shelves IS NULL"
+                ))
+                conn.commit()
+                if getattr(flipped, "rowcount", 0):
+                    log.info(
+                        "[kobo-magic-shelf-intent-migration] %s magic shelves "
+                        "are marked for Kobo sync but the global 'Sync Magic "
+                        "Shelves to Kobo' setting was off — enabled it so the "
+                        "existing per-shelf intent takes effect (#359).",
+                        intent,
+                    )
+    except exc.OperationalError as e:
+        # magic_shelf table or settings column missing — pre-flag schema
+        # mid-upgrade. Retry next boot (marker intentionally not written).
+        log.warning(
+            "[kobo-magic-shelf-intent-migration] deferred (schema not ready "
+            "yet, will retry next boot): %s", e,
+        )
+        return
+
+    try:
+        os.makedirs(os.path.dirname(marker_path), exist_ok=True)
+        with open(marker_path, "w", encoding="utf-8") as fh:
+            fh.write(datetime.now(timezone.utc).isoformat())
+    except OSError as e:
+        log.warning(
+            "[kobo-magic-shelf-intent-migration] could not write marker %s: %s",
+            marker_path, e,
+        )
+
+
 def migrate_shelf_table(engine, _session):
     """Ensure Shelf.kobo_sync column exists; backfill DDL if not (legacy
     fork branch — predates the dedicated kobo_sync migrations elsewhere).
@@ -2297,6 +2360,10 @@ def migrate_Database(_session):
     migrate_magic_shelf_table(engine, _session)
     migrate_kobo_unique_constraints(engine, _session)
     migrate_kobo_deleted_book(engine, _session)
+    # Must run before config_sql.load_configuration (it does — ub.init_db
+    # precedes config load in cps/__init__.py) so the flipped value is live
+    # the same boot.
+    migrate_kobo_magic_shelf_intent(engine, _session)
     migrate_kobo_annotation_sync_h1_columns(engine, _session)
     migrate_annotation_decouple_source_target(engine, _session)
     migrate_annotation_polymorphic_position(engine, _session)

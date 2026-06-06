@@ -1344,11 +1344,12 @@ def create_magic_shelf():
         except:
             language_map[lang.lang_code] = lang.lang_code
 
-    return render_title_template('magic_shelf_edit.html', 
-                                 title=_("Create Magic Shelf"), 
+    return render_title_template('magic_shelf_edit.html',
+                                 title=_("Create Magic Shelf"),
                                  page="magic_shelf_create",
                                  opds_expose_enabled=current_user.opds_only_shelves_sync,
                                  opds_expose_checked=False,
+                                 kobo_magic_sync_enabled=bool(config.config_kobo_sync_magic_shelves),
                                  allowed_icons=ALLOWED_ICONS,
                                  languages=language_map)
 
@@ -1460,12 +1461,13 @@ def edit_magic_shelf(shelf_id):
         except:
             language_map[lang.lang_code] = lang.lang_code
 
-    return render_title_template('magic_shelf_edit.html', 
-                                 shelf=shelf, 
-                                 title=_("Edit Magic Shelf"), 
+    return render_title_template('magic_shelf_edit.html',
+                                 shelf=shelf,
+                                 title=_("Edit Magic Shelf"),
                                  page="magic_shelf_edit",
                                  opds_expose_enabled=current_user.opds_only_shelves_sync,
                                  opds_expose_checked=opds_expose_checked,
+                                 kobo_magic_sync_enabled=bool(config.config_kobo_sync_magic_shelves),
                                  allowed_icons=ALLOWED_ICONS,
                                  languages=language_map)
 

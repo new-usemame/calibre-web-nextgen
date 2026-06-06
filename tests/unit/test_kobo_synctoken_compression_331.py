@@ -23,6 +23,7 @@ the existing dotted kobo-store-token path ('.' in token) stays reachable.
 """
 
 import json
+import random
 import zlib
 from base64 import b64decode, b64encode
 from datetime import datetime
@@ -59,6 +60,17 @@ def _fake_store_jwt(size=2400):
     return "eyJhbGciOiJSUzI1NiJ9." + part[:size - 60] + ".sig"
 
 
+def _fake_store_jwt_high_entropy(size=2400):
+    """Like _fake_store_jwt but with seeded-random payload bytes. Real store
+    JWTs are b64 of cryptographic material — near-maximal entropy — so zlib
+    only recovers the 8->6-bit b64 repacking (~25%), not the ~10x a run of
+    'x' gives. This is the worst realistic case for the header budget."""
+    rnd = random.Random(331)
+    raw = rnd.getrandbits(size * 8).to_bytes(size, "big")
+    part = b64encode(raw).decode()
+    return "eyJhbGciOiJSUzI1NiJ9." + part[:size - 60] + ".sig"
+
+
 @pytest.mark.unit
 class TestLegacyTokensStillParse:
     def test_legacy_plain_b64_parses_with_all_fields(self):
@@ -92,12 +104,18 @@ class TestCompressedTokens:
         assert out.magic_shelf_last_id == 7
         assert out.raw_kobo_store_token == src.raw_kobo_store_token
 
-    def test_oversized_store_token_fits_4k_budget(self):
+    @pytest.mark.parametrize(
+        "make_jwt", [_fake_store_jwt, _fake_store_jwt_high_entropy],
+        ids=["compressible", "high-entropy"])
+    def test_oversized_store_token_fits_4k_budget(self, make_jwt):
         """The reporter-mirror case: a realistic ~2.4KB store JWT must leave
         the whole header value comfortably inside nginx's 4K default once
         cookies (~300B) + CSP (~140B) + the rest (~400B) are accounted
-        for. Budget: token value < 3000 bytes."""
-        src = SyncToken(raw_kobo_store_token=_fake_store_jwt(2400))
+        for. Budget: token value < 3000 bytes. The high-entropy variant is
+        the one that actually exercises the boundary (~2650B measured) —
+        real JWTs barely compress, so a regression that bloats the encoding
+        for incompressible input fails here first."""
+        src = SyncToken(raw_kobo_store_token=make_jwt(2400))
         header = src.build_sync_token()
         assert len(header) < 3000, (
             f"compressed token is {len(header)}B — must stay under the 3000B "

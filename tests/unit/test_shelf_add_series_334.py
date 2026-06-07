@@ -265,6 +265,19 @@ class TestBulkAddFailureHonesty:
         )
 
 
+# ------------------------------------- Greptile P1: .orig on the wrong class
+
+class TestDbErrorMessageNeverCrashes:
+    def test_no_bare_orig_access_in_shelf_error_paths(self):
+        """InvalidRequestError is a plain SQLAlchemyError — it has no .orig.
+        Every error message in shelf.py must use getattr(e, 'orig', e), or a
+        session-state error turns the friendly flash into its own 500."""
+        assert not re.search(r"\be(?:x)?\.orig\b", SHELF_PY), (
+            "bare .orig access found — InvalidRequestError has no .orig; "
+            "use getattr(e, 'orig', e)"
+        )
+
+
 # -------------------------------------------- A1: hardcover transport parity
 
 class TestHardcoverTransportParity:

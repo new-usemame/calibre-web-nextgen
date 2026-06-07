@@ -90,7 +90,7 @@ def add_to_shelf(shelf_id, book_id):
     except (OperationalError, InvalidRequestError) as e:
         ub.session.rollback()
         log.error_or_exception("Settings Database error: {}".format(e))
-        flash(_("Oops! Database Error: %(error)s.", error=e.orig), category="error")
+        flash(_("Oops! Database Error: %(error)s.", error=getattr(e, 'orig', e)), category="error")
         if "HTTP_REFERER" in request.environ:
             return redirect(request.environ["HTTP_REFERER"])
         else:
@@ -169,7 +169,7 @@ def search_to_shelf(shelf_id):
         except (OperationalError, InvalidRequestError) as e:
             ub.session.rollback()
             log.error_or_exception("Settings Database error: {}".format(e))
-            flash(_("Oops! Database Error: %(error)s.", error=e.orig), category="error")
+            flash(_("Oops! Database Error: %(error)s.", error=getattr(e, 'orig', e)), category="error")
     else:
         log.error("Could not add books to shelf: {}".format(shelf.name))
         flash(_("Could not add books to shelf: %(sname)s", sname=shelf.name), category="error")
@@ -241,7 +241,7 @@ def add_series_to_shelf(shelf_id, series_id):
     except (OperationalError, InvalidRequestError) as e:
         ub.session.rollback()
         log.error_or_exception("Settings Database error: {}".format(e))
-        flash(_("Oops! Database Error: %(error)s.", error=e.orig), category="error")
+        flash(_("Oops! Database Error: %(error)s.", error=getattr(e, 'orig', e)), category="error")
         return _back()
 
     log.debug("Series %s (%d books) added to shelf: %s", series.name, len(to_add), shelf.name)
@@ -304,7 +304,7 @@ def remove_from_shelf(shelf_id, book_id):
         except (OperationalError, InvalidRequestError) as e:
             ub.session.rollback()
             log.error_or_exception("Settings Database error: {}".format(e))
-            flash(_("Oops! Database Error: %(error)s.", error=e.orig), category="error")
+            flash(_("Oops! Database Error: %(error)s.", error=getattr(e, 'orig', e)), category="error")
             if "HTTP_REFERER" in request.environ:
                 return redirect(request.environ["HTTP_REFERER"])
             else:
@@ -354,7 +354,7 @@ def delete_shelf(shelf_id):
     except InvalidRequestError as e:
         ub.session.rollback()
         log.error_or_exception("Settings Database error: {}".format(e))
-        flash(_("Oops! Database Error: %(error)s.", error=e.orig), category="error")
+        flash(_("Oops! Database Error: %(error)s.", error=getattr(e, 'orig', e)), category="error")
     return redirect(url_for('web.index'))
 
 
@@ -394,7 +394,7 @@ def order_shelf(shelf_id):
             except (OperationalError, InvalidRequestError) as e:
                 ub.session.rollback()
                 log.error_or_exception("Settings Database error: {}".format(e))
-                flash(_("Oops! Database Error: %(error)s.", error=e.orig), category="error")
+                flash(_("Oops! Database Error: %(error)s.", error=getattr(e, 'orig', e)), category="error")
 
         result = list()
         if shelf:
@@ -474,7 +474,7 @@ def create_edit_shelf(shelf, page_title, page, shelf_id=False):
                 ub.session.rollback()
                 log.error_or_exception(ex)
                 log.error_or_exception("Settings Database error: {}".format(ex))
-                flash(_("Oops! Database Error: %(error)s.", error=ex.orig), category="error")
+                flash(_("Oops! Database Error: %(error)s.", error=getattr(ex, 'orig', ex)), category="error")
             except Exception as ex:
                 ub.session.rollback()
                 log.error_or_exception(ex)
@@ -599,7 +599,7 @@ def render_show_shelf(shelf_type, shelf_id, page_no, sort_param):
             except (OperationalError, InvalidRequestError) as e:
                 ub.session.rollback()
                 log.error_or_exception("Settings Database error: {}".format(e))
-                flash(_("Oops! Database Error: %(error)s.", error=e.orig), category="error")
+                flash(_("Oops! Database Error: %(error)s.", error=getattr(e, 'orig', e)), category="error")
 
         return render_title_template(page,
                                      entries=result,
@@ -674,7 +674,7 @@ def add_selected_to_shelf():
             # persisted, so this must report a plain failure. (It previously
             # claimed a partial success with a positive added_count here,
             # telling users books were added when zero were.)
-            return jsonify({'status': 'error', 'message': f'Database error: {e.orig}',
+            return jsonify({'status': 'error', 'message': f"Database error: {getattr(e, 'orig', e)}",
                             'errors': errors, 'added_count': 0}), 500
 
     if errors:

@@ -2759,6 +2759,9 @@
 @keyframes pdf-loading-spin{
   to{ transform:rotate(360deg); }
 }
+@media (prefers-reduced-motion: reduce) {
+  .pdfViewer .page.loadingIcon::after { animation-duration: 2.4s; }
+}
 
 .pdfViewer .page.loading::after{
   display:block;

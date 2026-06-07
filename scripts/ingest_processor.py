@@ -1795,6 +1795,17 @@ def main(filepath=None):
         # (still Adobe-DRM) book, which the DRM hook below then decrypts.
         nbp.fulfill_acsm_if_configured()
 
+        # If the file is still an .acsm after the fulfill hook it means DeACSM
+        # is not activated or fulfillment failed. ebook-convert cannot handle
+        # .acsm at all, so bail out early with a clear message rather than
+        # letting the conversion step produce a confusing "No plugin" error.
+        if Path(nbp.filepath).suffix.lower() == ".acsm":
+            print(f"[ingest-processor] ERROR: .acsm file could not be fulfilled. "
+                  f"Activate an Adobe account in Admin → DRM Removal (DeDRM + DeACSM) "
+                  f"to process .acsm files: {nbp.filename}", flush=True)
+            nbp.backup(nbp.filepath, backup_type="failed")
+            return 0
+
         # Remove DRM in place (a no-op unless DeDRM is configured). This may
         # change the staged file's path/extension, so re-sync the local
         # filepath that the rest of main() operates on.

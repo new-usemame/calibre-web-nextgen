@@ -62,14 +62,27 @@ class TestToggleLooksLikeAMenuButton:
         """caliBlur paints a profile-head glyph over Bootstrap's hamburger
         button; nothing on a phone reads as "menu" (operator: "there is no
         hamburger visible"). The override must repaint the toggle's :before
-        with a three-bar glyph and drop the theme's circular clip."""
-        m = re.search(
-            r"button\.navbar-toggle:before\s*\{([^}]*)\}",
-            OVERRIDE_CSS,
+        with a three-bar glyph and drop the theme's circular clip — and the
+        rule must live INSIDE the theme's mobile media block (767px, where
+        the toggle is visible), not at top level (Greptile P2)."""
+        mobile_chunks = [
+            chunk
+            for chunk in OVERRIDE_CSS.split("@media")
+            if chunk.lstrip().startswith("only screen and (max-width: 767px)")
+        ]
+        assert mobile_chunks, (
+            "the hamburger override must be wrapped in the theme's own "
+            "mobile media query — @media only screen and (max-width: 767px)"
         )
+        m = None
+        for chunk in mobile_chunks:
+            m = re.search(r"button\.navbar-toggle:before\s*\{([^}]*)\}", chunk)
+            if m:
+                break
         assert m, (
-            "caliBlur_override.css must override the toggle's :before glyph — "
-            "the theme's profile-head fails the menu-affordance test"
+            "caliBlur_override.css must override the toggle's :before glyph "
+            "inside the 767px media block — the theme's profile-head fails "
+            "the menu-affordance test"
         )
         block = m.group(1)
         assert "background-image" in block, (

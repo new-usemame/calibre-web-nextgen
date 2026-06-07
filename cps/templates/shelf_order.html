@@ -1,7 +1,14 @@
 {% import 'image.html' as image %}
 {% extends "layout.html" %}
 {% block body %}
-  <div class="discover">
+  {# Deliberately NOT the discover wrapper class: main.js runs isotope on
+     every `.discover .row` that contains .book cards. Isotope absolutely-
+     positions cards from its own item-order model, which goes stale the
+     moment Sortable moves a DOM node — any relayout (viewport resize, font
+     load) snaps the covers back to the pre-drag picture while the DB
+     already holds the new order. This page owns its layout: plain
+     responsive flow, Sortable moves real nodes. #}
+  <div class="reorder-page">
     <h2>{{title}}</h2>
     {# fork #320 (@SpookyUSAF): the reorder screen is the same responsive
        cover grid as the regular shelf view — drag a cover where it belongs,

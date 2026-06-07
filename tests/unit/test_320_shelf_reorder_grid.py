@@ -171,6 +171,17 @@ class TestTemplateContract:
         assert 'tabindex="0"' in ORDER_HTML
         assert 'role="list"' in ORDER_HTML
 
+    def test_grid_not_wrapped_in_discover_isotope_selector(self):
+        """main.js initializes isotope on every `.discover .row` containing
+        .book cards. Isotope absolutely-positions cards from its own item
+        model, which desyncs from Sortable's DOM moves — a resize or font
+        load snaps covers back to the pre-drag picture while the DB holds
+        the new order. The reorder page must NOT match that selector."""
+        assert 'class="discover"' not in ORDER_HTML, (
+            "shelf_order.html must not use class=discover — isotope would "
+            "capture the reorder grid and fight Sortable"
+        )
+
     def test_status_line_carries_translated_strings(self):
         for attr in ("data-saving-text", "data-saved-text", "data-error-text",
                      "data-moved-text"):

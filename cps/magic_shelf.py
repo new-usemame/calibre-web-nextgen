@@ -392,6 +392,17 @@ def build_filter_from_rule(rule, user_id=None):
                             log.warning(f"Invalid date value '{v}' for custom column {cc_id}")
                             return None
                     value = parsed
+            elif cc_col.datatype == 'enumeration':
+                try:
+                    allowed = set(cc_col.get_display_dict().get('enum_values', []))
+                except Exception:
+                    allowed = set()
+                if allowed:
+                    values_to_check = value if isinstance(value, list) else [value]
+                    for v in values_to_check:
+                        if v not in allowed:
+                            log.warning(f"Invalid enum value '{v}' for custom column {cc_id}")
+                            return None
 
         negated_ops = {
             'not_equal': 'equal',

@@ -200,13 +200,15 @@ class TestDisplayFollowup320:
 
     def test_cover_height_capped_independent_of_theme(self):
         m = re.search(
-            r"#reorder-grid\s+\.reorder-item\s+\.cover\s+img\s*\{[^}]*max-height:\s*225px",
+            r"#reorder-grid\s+\.reorder-item\s+\.cover\s+img\s*\{"
+            r"[^}]*max-height:\s*225px[^}]*!important",
             ORDER_HTML,
         )
         assert m, (
             "shelf_order.html must cap reorder cover height to the normal "
-            "book-grid box (225px) with an id-scoped rule on the image — "
-            "without it, default-theme covers render near-natural size "
+            "book-grid box (225px !important) with an id-scoped rule on the "
+            "image — the !important is deliberate: it caps covers even on the "
+            "reporters' instances where the global .cover box renders uncapped "
             "(#320 follow-up, @droM4X)"
         )
 

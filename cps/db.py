@@ -1065,8 +1065,10 @@ class CalibreDB:
                             for attempt in range(10):
                                 try:
                                     _startup_conn = _sqlite3.connect(_dbfile, timeout=6)
-                                    mode = _startup_conn.execute("PRAGMA journal_mode=DELETE").fetchone()[0]
-                                    _startup_conn.close()
+                                    try:
+                                        mode = _startup_conn.execute("PRAGMA journal_mode=DELETE").fetchone()[0]
+                                    finally:
+                                        _startup_conn.close()
                                     if mode == 'delete':
                                         break
                                     # Mode didn't switch (another connection holds WAL); retry.

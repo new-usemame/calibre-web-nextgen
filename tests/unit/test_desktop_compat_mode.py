@@ -251,9 +251,12 @@ class TestDesktopCompatModeConnectListener:
         finally:
             engine.dispose()
 
-    def test_lower_udf_available_on_nullpool_connection(self, tmp_path):
-        """UDFs registered by _register_sqlite_udfs (called from the closure)
-        must be available on each NullPool connection.
+    def test_sql_scalar_functions_available_on_nullpool_connection(self, tmp_path):
+        """SQL scalar functions work on each NullPool connection.
+
+        _build_nullpool_engine omits _register_sqlite_udfs to stay self-contained,
+        so this exercises SQLite's built-in lower() rather than the custom UDF.
+        Custom UDF registration is covered by test_sqlite_udf_registration_listener.py.
         """
         dbpath = tmp_path / "metadata.db"
         app_db_path = tmp_path / "app_settings.db"

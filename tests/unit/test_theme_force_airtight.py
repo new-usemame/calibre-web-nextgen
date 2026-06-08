@@ -40,18 +40,25 @@ pytestmark = pytest.mark.unit
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 ADMIN_SRC = (REPO_ROOT / "cps" / "admin.py").read_text()
-HTTP_ERROR_HTML = (REPO_ROOT / "cps" / "templates" / "http_error.html").read_text()
 
 
 def _before_request_src() -> str:
-    """Slice the body of admin.before_request() out of the file text (no import,
-    matching the file-based source-pin style of the other UI regression tests)."""
+    """Slice the body of the ``@admi.before_app_request`` ``before_request()``
+    handler out of the file text. Anchored on the decorator (not just the
+    function name) so a rename — or a second ``before_request`` added elsewhere
+    in the file — can't make the pin analyze the wrong function. File-based, no
+    import, matching the other UI regression tests."""
     lines = ADMIN_SRC.splitlines()
-    start = next(
-        (i for i, ln in enumerate(lines) if ln.startswith("def before_request():")),
+    dec = next(
+        (i for i, ln in enumerate(lines) if ln.strip() == "@admi.before_app_request"),
         None,
     )
-    assert start is not None, "def before_request(): not found in cps/admin.py"
+    assert dec is not None, "@admi.before_app_request decorator not found in cps/admin.py"
+    start = next((j for j in range(dec + 1, len(lines)) if lines[j].startswith("def ")), None)
+    assert start is not None, "no def follows the @admi.before_app_request decorator"
+    assert lines[start].startswith("def before_request():"), (
+        f"the @admi.before_app_request handler is not before_request(): {lines[start]!r}"
+    )
     end = len(lines)
     for j in range(start + 1, len(lines)):
         if re.match(r"^(@|def |class )", lines[j]):
@@ -99,19 +106,34 @@ class TestThemeForcedFirstAndUnconditional:
         pytest.fail("no 'g.current_theme = 1' assignment found in before_request")
 
 
-class TestErrorPageThemeResilient:
-    def test_http_error_defaults_undefined_theme_to_caliblur(self):
+# Standalone templates (no `{% extends "layout.html" %}`) can render on paths
+# where before_request may not have completed — so each must default an unset
+# theme to caliBlur. layout.html keeps its bare checks intentionally: it renders
+# only after a completed request, where before_request has already forced the
+# theme as its first statement.
+STANDALONE_THEME_TEMPLATES = ["http_error.html", "shelfdown.html"]
+
+
+class TestStandaloneTemplatesDefaultToCaliblur:
+    @pytest.mark.parametrize("name", STANDALONE_THEME_TEMPLATES)
+    def test_uses_resilient_default(self, name):
+        html = (REPO_ROOT / "cps" / "templates" / name).read_text()
+        assert "{% extends" not in html, (
+            f"{name} is expected to be standalone (the reason it needs the "
+            f"resilient default); if it now extends a base template, revisit this."
+        )
         assert (
-            "g.get('current_theme', 1)" in HTTP_ERROR_HTML
-            or 'g.get("current_theme", 1)' in HTTP_ERROR_HTML
+            "g.get('current_theme', 1)" in html or 'g.get("current_theme", 1)' in html
         ), (
-            "http_error.html must use g.get('current_theme', 1) so the standalone "
-            "error page renders caliBlur even when before_request never set the "
-            "theme — it renders on exactly those failures."
+            f"{name} must default an unset theme to caliBlur via "
+            f"g.get('current_theme', 1) — it can render when before_request never "
+            f"set the theme, and the light/default theme is deprecated."
         )
 
-    def test_http_error_has_no_bare_nonresilient_check(self):
-        assert "g.current_theme == 1" not in HTTP_ERROR_HTML, (
-            "http_error.html still has a bare g.current_theme == 1 check, which "
-            "falls back to the deprecated default theme when the theme is unset."
+    @pytest.mark.parametrize("name", STANDALONE_THEME_TEMPLATES)
+    def test_no_bare_nonresilient_check(self, name):
+        html = (REPO_ROOT / "cps" / "templates" / name).read_text()
+        assert "g.current_theme == 1" not in html, (
+            f"{name} still has a bare g.current_theme == 1 check, which falls back "
+            f"to the deprecated default theme when the theme is unset."
         )

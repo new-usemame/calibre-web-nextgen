@@ -187,14 +187,19 @@ def config_page():
 @user_login_required
 @admin_required
 def save_flags():
-    """Persist the boolean flags (master enable + post-processing options)."""
+    """Persist all DRM + ACSM behaviour flags from the unified settings form."""
     prefs = dedrm.get_prefs()
-    # Checkboxes are only present in the form data when ticked.
-    prefs["configured"] = request.form.get("configured") == "on"
     prefs["deobfuscate_fonts"] = request.form.get("deobfuscate_fonts") == "on"
     prefs["remove_watermarks"] = request.form.get("remove_watermarks") == "on"
     dedrm.save_prefs(prefs)
-    flash(_("DeDRM settings saved."), category="success")
+
+    acsm_prefs = deacsm.get_prefs()
+    acsm_prefs["notify_fulfillment"] = request.form.get("notify_fulfillment") == "on"
+    acsm_prefs["delete_acsm_after_fulfill"] = request.form.get("delete_acsm_after_fulfill") == "on"
+    acsm_prefs["detailed_logging"] = request.form.get("detailed_logging") == "on"
+    deacsm.save_prefs(acsm_prefs)
+
+    flash(_("Settings saved."), category="success")
     return redirect(url_for("dedrm_admin.config_page"))
 
 

@@ -8,87 +8,19 @@
 <div class="discover">
   <h2 style="font-size: 15px;">{{ title }}</h2>
 
-  <p class="help-block">
-    {{ _('When DeDRM is configured (enabled below or at least one key/serial/passphrase is present), DRM is removed automatically from books as they are ingested. When it is not configured, books are left untouched.') }}
-  </p>
-  <p class="help-block">
-    {{ _('Add only the entries that match how you obtained your books. The most common one for a physical Kindle is the eInk Kindle serial number.') }}
-  </p>
-
-  <!-- Adobe account (DeACSM) --------------------------------------------- -->
-  <div class="settings-container">
-    <h4 class="settings-section-header">{{ _('Adobe account (ACSM fulfillment)') }}</h4>
-    <p class="help-block">
-      {{ _('Activate an Adobe account to download Adobe-DRM books from .acsm files (library loans, many stores). The account key is shared with DeDRM automatically, so Adobe EPUB/PDF decryption also works — no separate key upload needed.') }}
-    </p>
-
-    {% if deacsm_status and deacsm_status.activated %}
-    <p>
-      <span class="label label-success">{{ _('Activated') }}</span>
-      {% if deacsm_status.account_type %}<span class="text-muted">({{ deacsm_status.account_type }})</span>{% endif %}
-      {% if deacsm_status.email %}<strong>{{ deacsm_status.email }}</strong>{% endif %}
-      {% if deacsm_status.uuid %}<code>{{ deacsm_status.uuid }}</code>{% endif %}
-    </p>
-
-    {# Backup / portability: export the activation or the raw key. #}
-    <p>
-      <a class="btn btn-default" href="{{ url_for('dedrm_admin.deacsm_export_activation') }}">{{ _('Export activation (.zip)') }}</a>
-      <a class="btn btn-default" href="{{ url_for('dedrm_admin.deacsm_export_key') }}">{{ _('Export key (.der)') }}</a>
-    </p>
-    <p class="help-block">{{ _('Back up the activation .zip to move this exact account to another DeACSM / Calibre install without spending a new Adobe activation. The .der is the raw encryption key for use with other tools.') }}</p>
-
-    <form method="POST" action="{{ url_for('dedrm_admin.deacsm_deactivate') }}" autocomplete="off"
-          onsubmit="return confirm('{{ _('Deactivate the Adobe account and remove its shared key?') }}');">
-      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-      <button type="submit" class="btn btn-danger">{{ _('Deactivate') }}</button>
-    </form>
-    {% else %}
-    <p><span class="label label-default">{{ _('Not activated') }}</span></p>
-
-    {# Import an existing activation (the recommended path if you already use
-       this Adobe account in desktop Calibre / ADE). #}
-    <form method="POST" action="{{ url_for('dedrm_admin.deacsm_import') }}" enctype="multipart/form-data" autocomplete="off" style="margin-bottom:15px;">
-      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-      <p class="help-block">
-        {{ _('Already using this Adobe account in desktop Calibre (DeACSM)? There, click "Export account activation data" to get an adobe_account_backup_*.zip, then import it here. This reuses the SAME device — books you already downloaded stay readable and no new activation is spent. This is the recommended option.') }}
-      </p>
-      <div class="form-group">
-        <input type="file" name="activation_zip" accept=".zip,application/zip">
-      </div>
-      <button type="submit" class="btn btn-primary">{{ _('Import activation (.zip)') }}</button>
-    </form>
-
-    <p class="help-block"><strong>{{ _('— or activate a new account —') }}</strong></p>
-
-    <form method="POST" action="{{ url_for('dedrm_admin.deacsm_activate') }}" autocomplete="off" style="margin-bottom:15px;">
-      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-      <input type="hidden" name="method" value="anonymous">
-      <p class="help-block">{{ _('Anonymous activation works for most library loans and needs no credentials.') }}</p>
-      <button type="submit" class="btn btn-primary">{{ _('Activate anonymously') }}</button>
-    </form>
-
-    <form method="POST" action="{{ url_for('dedrm_admin.deacsm_activate') }}" autocomplete="off">
-      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-      <input type="hidden" name="method" value="adobeid">
-      <p class="help-block">{{ _('…or activate with an Adobe ID (needed for purchased books tied to an account). The password is used once to sign in and is not stored.') }}</p>
-      <div class="form-group">
-        <label for="deacsm_email">{{ _('Adobe ID (email)') }}</label>
-        <input type="email" class="form-control" id="deacsm_email" name="email" autocomplete="off">
-      </div>
-      <div class="form-group">
-        <label for="deacsm_password">{{ _('Adobe password') }}</label>
-        <input type="password" class="form-control" id="deacsm_password" name="password" autocomplete="new-password">
-      </div>
-      <button type="submit" class="btn btn-default">{{ _('Activate with Adobe ID') }}</button>
-    </form>
-    {% endif %}
-  </div>
-
-  <!-- Adobe / ACSM behaviour flags --------------------------------------- -->
-  <form role="form" method="POST" action="{{ url_for('dedrm_admin.deacsm_flags') }}" autocomplete="off">
+  <!-- Unified settings --------------------------------------------------- -->
+  <form role="form" method="POST" action="{{ url_for('dedrm_admin.save_flags') }}" autocomplete="off">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <div class="settings-container">
-      <h4 class="settings-section-header">{{ _('ACSM options') }}</h4>
+      <h4 class="settings-section-header">{{ _('General') }}</h4>
+      <div class="form-group">
+        <input type="checkbox" id="deobfuscate_fonts" name="deobfuscate_fonts" {% if prefs.deobfuscate_fonts %}checked{% endif %}>
+        <label for="deobfuscate_fonts">{{ _('Deobfuscate fonts in EPUBs') }}</label>
+      </div>
+      <div class="form-group">
+        <input type="checkbox" id="remove_watermarks" name="remove_watermarks" {% if prefs.remove_watermarks %}checked{% endif %}>
+        <label for="remove_watermarks">{{ _('Remove watermarks from EPUBs') }}</label>
+      </div>
       <div class="form-group">
         <input type="checkbox" id="notify_fulfillment" name="notify_fulfillment" {% if deacsm_prefs.notify_fulfillment %}checked{% endif %}>
         <label for="notify_fulfillment">{{ _('Log a message when an .acsm is fulfilled') }}</label>
@@ -105,33 +37,117 @@
     </div>
   </form>
 
-  <!-- Master flags ------------------------------------------------------- -->
-  <form role="form" method="POST" action="{{ url_for('dedrm_admin.save_flags') }}" autocomplete="off">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <div class="settings-container">
-      <h4 class="settings-section-header">{{ _('General') }}</h4>
+  <!-- Adobe account (DeACSM) --------------------------------------------- -->
+  <div class="settings-container">
+    <h4 class="settings-section-header">{{ _('Adobe account (ACSM fulfillment)') }}</h4>
+    <p class="settings-explanation">
+      {{ _('Activate an Adobe account to download Adobe-DRM books from .acsm files (library loans, many stores). The account key is shared with DeDRM automatically, so Adobe EPUB/PDF decryption also works — no separate key upload needed.') }}
+    </p>
+
+    {% if deacsm_status and deacsm_status.activated %}
+    <p>
+      <span class="label label-success">{{ _('Activated') }}</span>
+      {% if deacsm_status.account_type %}<span class="text-muted">({{ deacsm_status.account_type }})</span>{% endif %}
+      {% if deacsm_status.email %}<strong>{{ deacsm_status.email }}</strong>{% endif %}
+      {% if deacsm_status.uuid %}<code>{{ deacsm_status.uuid }}</code>{% endif %}
+    </p>
+    <p>
+      <a class="btn btn-default" href="{{ url_for('dedrm_admin.deacsm_export_activation') }}">{{ _('Export activation (.zip)') }}</a>
+      <a class="btn btn-default" href="{{ url_for('dedrm_admin.deacsm_export_key') }}">{{ _('Export key (.der)') }}</a>
+    </p>
+    <p class="settings-explanation">{{ _('Export the activation .zip to move this account to another install without spending a new activation. The .der is the raw encryption key, also usable with other tools.') }}</p>
+    <p class="cwa-settings-tip">{{ _('The account key is shared with DeDRM automatically — Adobe-DRM EPUB and PDF decryption works with no separate key upload needed.') }}</p>
+    <form method="POST" action="{{ url_for('dedrm_admin.deacsm_deactivate') }}" autocomplete="off"
+          onsubmit="return confirm('{{ _('Deactivate the Adobe account and remove its shared key?') }}');">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button type="submit" class="btn btn-danger">{{ _('Deactivate') }}</button>
+    </form>
+
+    {% else %}
+    <p><span class="label label-default">{{ _('Not activated') }}</span></p>
+
+    {# Show any manually-imported Adobe keys with delete option #}
+    {% if prefs.adeptkeys %}
+    <p class="settings-explanation">{{ _('Manually imported Adobe keys:') }}</p>
+    <table class="table">
+      <thead><tr><th>{{ _('Name') }}</th><th>{{ _('Value') }}</th><th></th></tr></thead>
+      <tbody>
+        {% for key_name, key_value in prefs.adeptkeys.items() %}
+        <tr>
+          <td>{{ key_name }}</td>
+          <td><code>{{ key_value[:12] if key_value is string else '' }}{% if key_value is string and key_value|length > 12 %}…{% endif %}</code></td>
+          <td>
+            <form method="POST" action="{{ url_for('dedrm_admin.delete_key') }}" style="display:inline;">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <input type="hidden" name="store" value="adeptkeys">
+              <input type="hidden" name="name" value="{{ key_name }}">
+              <button type="submit" class="btn btn-danger btn-xs">{{ _('Delete') }}</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% endif %}
+
+    {# Option 1: import a full activation ZIP (recommended) #}
+    <form method="POST" action="{{ url_for('dedrm_admin.deacsm_import') }}" enctype="multipart/form-data" autocomplete="off" style="margin-bottom:15px;">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <p class="settings-explanation">
+        {{ _('Already using this Adobe account in desktop Calibre (DeACSM)? Export the activation data there to get an adobe_account_backup_*.zip, then import it here. This reuses the same device — books already downloaded stay readable and no new activation is spent.') }}
+      </p>
       <div class="form-group">
-        <input type="checkbox" id="configured" name="configured" {% if prefs.configured %}checked{% endif %}>
-        <label for="configured">{{ _('Enable DRM removal') }}</label>
+        <input type="file" name="activation_zip" accept=".zip,application/zip">
+      </div>
+      <button type="submit" class="btn btn-default">{{ _('Import activation (.zip)') }}</button>
+    </form>
+
+    {# Option 2: import just the .der key (no full activation) #}
+    <p class="settings-explanation"><strong>{{ _('— or import just the Adobe key (.der) —') }}</strong></p>
+    <form method="POST" action="{{ url_for('dedrm_admin.add_key') }}" enctype="multipart/form-data" autocomplete="off" style="margin-bottom:15px;">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="store" value="adeptkeys">
+      <p class="settings-explanation">{{ _('Have the Adobe encryption key as a .der file (exported from Adobe Digital Editions or another DeDRM tool)? Upload it here to enable Adobe-DRM decryption without a full account activation. Note: this does not enable .acsm fulfillment.') }}</p>
+      <div class="form-group">
+        <input type="file" name="keyfile" accept=".der">
+      </div>
+      <button type="submit" class="btn btn-default">{{ _('Import key (.der)') }}</button>
+    </form>
+
+    {# Option 3/4: activate a new account #}
+    <p class="settings-explanation"><strong>{{ _('— or activate a new account —') }}</strong></p>
+    <form method="POST" action="{{ url_for('dedrm_admin.deacsm_activate') }}" autocomplete="off" style="margin-bottom:15px;">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="method" value="anonymous">
+      <p class="settings-explanation">{{ _('Anonymous activation works for most library loans and needs no credentials.') }}</p>
+      <button type="submit" class="btn btn-default">{{ _('Activate anonymously') }}</button>
+    </form>
+
+    <form method="POST" action="{{ url_for('dedrm_admin.deacsm_activate') }}" autocomplete="off">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="method" value="adobeid">
+      <p class="settings-explanation">{{ _('…or activate with an Adobe ID (needed for purchased books tied to an account). The password is used once to sign in and is not stored.') }}</p>
+      <div class="form-group">
+        <label for="deacsm_email">{{ _('Adobe ID (email)') }}</label>
+        <input type="email" class="form-control" id="deacsm_email" name="email" autocomplete="off">
       </div>
       <div class="form-group">
-        <input type="checkbox" id="deobfuscate_fonts" name="deobfuscate_fonts" {% if prefs.deobfuscate_fonts %}checked{% endif %}>
-        <label for="deobfuscate_fonts">{{ _('Deobfuscate fonts in EPUBs') }}</label>
+        <label for="deacsm_password">{{ _('Adobe password') }}</label>
+        <input type="password" class="form-control" id="deacsm_password" name="password" autocomplete="new-password">
       </div>
-      <div class="form-group">
-        <input type="checkbox" id="remove_watermarks" name="remove_watermarks" {% if prefs.remove_watermarks %}checked{% endif %}>
-        <label for="remove_watermarks">{{ _('Remove watermarks from EPUBs') }}</label>
-      </div>
-      <button type="submit" class="btn btn-default">{{ _('Save') }}</button>
-    </div>
-  </form>
+      <button type="submit" class="btn btn-default">{{ _('Activate with Adobe ID') }}</button>
+    </form>
+    {% endif %}
+  </div>
 
   <!-- One section per key store, fully described --------------------------- -->
   {% for section in key_sections %}
+  {# adeptkeys is managed entirely inside the Adobe account card above. #}
+  {% if section.store != 'adeptkeys' %}
   {% set store = section.store %}
   <div class="settings-container">
     <h4 class="settings-section-header">{{ section.label }}</h4>
-    <p class="help-block">{{ section.description }}</p>
+    <p class="settings-explanation">{{ section.description }}</p>
 
     {# Existing entries -------------------------------------------------- #}
     {% if section.kind == 'named' %}
@@ -240,12 +256,13 @@
       </button>
     </form>
   </div>
+  {% endif %}
   {% endfor %}
 
   <!-- Backup / restore the whole DeDRM key configuration ---------------- -->
   <div class="settings-container">
     <h4 class="settings-section-header">{{ _('Backup / restore (DeDRM keys)') }}</h4>
-    <p class="help-block">
+    <p class="settings-explanation">
       {{ _('Already configured DeDRM in desktop Calibre? Copy its dedrm.json (in Calibre\'s plugins folder) and import it here to bring over all your keys, serials and passphrases at once. Importing merges additively — existing entries are kept.') }}
     </p>
     <p>

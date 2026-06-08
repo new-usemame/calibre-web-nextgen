@@ -1,0 +1,31 @@
+---
+# Local development compose — mounts ./cps live into the container so code
+# changes take effect on container restart without a full image rebuild.
+#
+# Usage:
+#   docker compose -f docker-compose.yml.local-dev up -d
+#   docker compose -f docker-compose.yml.local-dev restart   # pick up code changes
+#   docker compose -f docker-compose.yml.local-dev down
+#
+# The published :latest image is used as the base so you get all the compiled
+# dependencies (Calibre, kepubify, Python venv) without waiting for a full build.
+
+services:
+  calibre-web-automated:
+    image: ghcr.io/new-usemame/calibre-web-nextgen:latest
+    container_name: calibre-web-nextgen-dev
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=America/New_York
+      - HARDCOVER_TOKEN=dev
+    volumes:
+      # Live-reload the app source — no rebuild needed, just restart the container
+      - ./cps:/app/calibre-web-automated/cps
+      # Persistent dev config & CWA state (db, logs, etc.)
+      - ./dev-config:/config
+      # Point at a local Calibre library (ideally one with custom columns to test)
+      - /path/to/your/calibre-library:/calibre-library
+    ports:
+      - "8084:8083"
+    restart: "no"

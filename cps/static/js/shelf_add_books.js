@@ -22,6 +22,7 @@
   var countEl = document.getElementById("addBooksCount");
   var submitBtn = document.getElementById("addBooksSubmit");
   var shelfNameEl = document.getElementById("addBooksShelfName");
+  var errorEl = document.getElementById("addBooksError");
 
   var shelfId = Number(btn.getAttribute("data-shelf-id"));
   var availableUrl = btn.getAttribute("data-available-url");
@@ -32,7 +33,8 @@
     add: modal.getAttribute("data-i18n-add") || "Add",
     addN: modal.getAttribute("data-i18n-add-n") || "Add {count}",
     empty: modal.getAttribute("data-i18n-empty") || "No books found.",
-    added: modal.getAttribute("data-i18n-added") || "Already on this shelf"
+    added: modal.getAttribute("data-i18n-added") || "Already on this shelf",
+    error: modal.getAttribute("data-i18n-error") || "Could not add the books. Please try again."
   };
 
   var selected = new Set();
@@ -53,6 +55,14 @@
     countEl.textContent = fmt(i18n.selected, n);
     submitBtn.disabled = n === 0;
     submitBtn.textContent = n > 0 ? fmt(i18n.addN, n) : i18n.add;
+  }
+
+  function setError(message) {
+    if (!errorEl) {
+      return;
+    }
+    errorEl.textContent = message || "";
+    errorEl.hidden = !message;
   }
 
   function makeRow(book) {
@@ -157,6 +167,7 @@
 
   function openModal() {
     selected.clear();
+    setError("");
     updateFooter();
     shelfNameEl.textContent = btn.getAttribute("data-shelf-name") || "";
     searchInput.value = "";
@@ -188,6 +199,7 @@
       return;
     }
     submitBtn.disabled = true;
+    setError("");
     fetch(addUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-CSRFToken": csrfToken() },
@@ -195,16 +207,28 @@
       body: JSON.stringify({ shelf_id: shelfId, book_ids: Array.from(selected) })
     })
       .then(function (r) {
-        return r.json().then(function (d) {
-          return { status: r.status, data: d };
-        });
+        return r.json().then(
+          function (d) { return { status: r.status, data: d }; },
+          function () { return { status: r.status, data: {} }; }
+        );
       })
-      .then(function () {
-        closeModal();
-        window.location.reload();
+      .then(function (res) {
+        if (res.status >= 200 && res.status < 300) {
+          // 200 success or 207 partial — the added books appear on the reloaded
+          // shelf; any already-present ones were skipped server-side.
+          closeModal();
+          window.location.reload();
+        } else {
+          // 400 / 403 / 500 (e.g. a session that expired while the picker was
+          // open): keep the picker open and surface the failure instead of
+          // silently closing + reloading with nothing added.
+          setError((res.data && res.data.message) || i18n.error);
+          submitBtn.disabled = selected.size === 0;
+        }
       })
       .catch(function () {
-        submitBtn.disabled = false;
+        setError(i18n.error);
+        submitBtn.disabled = selected.size === 0;
       });
   }
 

@@ -111,6 +111,14 @@
 .add-books-count {
   margin-right: auto;
 }
+.add-books-error {
+  margin-right: auto;
+  font-size: 0.9em;
+}
+/* When an error is shown it takes the count's left slot. */
+.add-books-error:not([hidden]) + .add-books-count {
+  display: none;
+}
 
 /* Phones: full-screen sheet so the picker is comfortable to use one-handed. */
 @media (max-width: 767px) {

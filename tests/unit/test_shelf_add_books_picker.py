@@ -81,6 +81,15 @@ class TestPickerJsSafety:
         # JS reads the add URL from the button rather than hardcoding it
         assert "data-add-url" in PICKER_JS or "getAttribute(\"data-add-url\")" in PICKER_JS
 
+    def test_submit_checks_status_before_reload(self):
+        # submit() must not blindly close + reload on any JSON response — a 4xx/5xx
+        # (e.g. a session that expired while the picker was open) must surface an
+        # error instead of silently closing with nothing added (Greptile finding).
+        assert "res.status >= 200 && res.status < 300" in PICKER_JS, (
+            "submit() must gate close+reload on a 2xx status"
+        )
+        assert "setError(" in PICKER_JS, "submit() must surface failures to the user"
+
     def test_book_text_set_via_textcontent_not_innerhtml(self):
         # titles/authors come from the library — they must be assigned with
         # textContent, never interpolated into innerHTML (XSS).

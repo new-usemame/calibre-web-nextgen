@@ -102,7 +102,8 @@
      data-i18n-add="{{ _('Add') }}"
      data-i18n-add-n="{{ _('Add %(count)s', count='{count}') }}"
      data-i18n-empty="{{ _('No books found.') }}"
-     data-i18n-added="{{ _('Already on this shelf') }}">
+     data-i18n-added="{{ _('Already on this shelf') }}"
+     data-i18n-error="{{ _('Could not add the books. Please try again.') }}">
   <div class="modal-dialog modal-lg" role="document">
     <div class="modal-content">
       <div class="modal-header">
@@ -119,6 +120,7 @@
         <p id="addBooksEmpty" class="text-muted add-books-empty" hidden>{{ _('No books found.') }}</p>
       </div>
       <div class="modal-footer add-books-footer">
+        <span id="addBooksError" class="add-books-error text-danger" role="alert" hidden></span>
         <span id="addBooksCount" class="add-books-count text-muted">{{ _('%(count)s selected', count=0) }}</span>
         <button type="button" class="btn btn-default" data-dismiss="modal">{{ _('Cancel') }}</button>
         <button type="button" class="btn btn-primary" id="addBooksSubmit" disabled>{{ _('Add') }}</button>

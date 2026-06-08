@@ -369,19 +369,29 @@ def build_filter_from_rule(rule, user_id=None):
 
         # Coerce value to match the column's Python type before filtering
         from . import calibre_db
-        cc_col = calibre_db.session.query(db.CustomColumns).get(cc_id)
+        cc_col = calibre_db.session.get(db.CustomColumns, cc_id)
         if cc_col:
             if cc_col.datatype == 'bool' and value is not None:
                 try:
                     value = bool(int(value))
                 except (ValueError, TypeError):
                     pass
-            elif cc_col.datatype == 'datetime' and isinstance(value, str):
-                try:
-                    value = datetime.strptime(value, '%Y-%m-%d')
-                except ValueError:
-                    log.warning(f"Invalid date value '{value}' for custom column {cc_id}")
-                    return None
+            elif cc_col.datatype == 'datetime':
+                if isinstance(value, str):
+                    try:
+                        value = datetime.strptime(value, '%Y-%m-%d')
+                    except ValueError:
+                        log.warning(f"Invalid date value '{value}' for custom column {cc_id}")
+                        return None
+                elif isinstance(value, list):
+                    parsed = []
+                    for v in value:
+                        try:
+                            parsed.append(datetime.strptime(v, '%Y-%m-%d'))
+                        except (ValueError, TypeError):
+                            log.warning(f"Invalid date value '{v}' for custom column {cc_id}")
+                            return None
+                    value = parsed
 
         negated_ops = {
             'not_equal': 'equal',

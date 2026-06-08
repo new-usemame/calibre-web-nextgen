@@ -914,6 +914,9 @@ class CalibreDB:
                     ccdict['value'] = Column(String)
                 if row.datatype in ['float', 'int', 'bool', 'datetime', 'comments']:
                     ccdict['book'] = Column(Integer, ForeignKey('books.id'))
+                if row.datatype in ['text', 'enumeration']:
+                    ccdict['name'] = property(lambda self: self.value)
+                    ccdict['sort'] = None
                 cc_classes[row.id] = type(str('custom_column_' + str(row.id)), (Base,), ccdict)
 
         for cc_id in cc_ids:
@@ -1079,13 +1082,12 @@ class CalibreDB:
                                 log.warning("DESKTOP_COMPAT_MODE: could not convert %s to DELETE "
                                             "journal mode after 10 attempts; WAL may still be active.", _dbfile)
 
-                    cls.engine = create_engine(
-                        'sqlite://',
-                        echo=False,
-                        isolation_level="SERIALIZABLE",
-                        connect_args={'check_same_thread': False, 'timeout': 30,
-                                      'factory': _SerializedSqliteConnection},
-                        poolclass=NullPool)
+                    cls.engine = create_engine('sqlite://',
+                                               echo=False,
+                                               isolation_level="SERIALIZABLE",
+                                               connect_args={'check_same_thread': False, 'timeout': 30,
+                                                             'factory': _SerializedSqliteConnection},
+                                               poolclass=NullPool)
                     event.listen(cls.engine, "connect", _attach_and_configure)
                     cls._desktop_compat = True
                     log.warning(

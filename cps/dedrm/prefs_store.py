@@ -37,7 +37,12 @@ try:
 except ImportError:  # pragma: no cover - non-POSIX fallback
     fcntl = None
 
-from cps.constants import CONFIG_DIR
+# Resolve config directory the same way the ingest worker's get_app_db_path()
+# does — cannot rely on cps.constants.CONFIG_DIR because CALIBRE_DBPATH is
+# only exported for the Flask process (svc-calibre-web-automated/run) and
+# not for the ingest-service subprocess, so BASE_DIR would be picked up
+# there instead of /config.
+CONFIG_DIR = os.environ.get("CALIBRE_DBPATH", "/config")
 
 # Directory that holds everything DeDRM-related for this install.
 DEDRM_DIR = os.path.join(CONFIG_DIR, "dedrm")

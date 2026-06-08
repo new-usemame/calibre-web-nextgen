@@ -24,7 +24,12 @@ try:
 except ImportError:  # pragma: no cover - non-POSIX fallback
     fcntl = None
 
-from cps.constants import CONFIG_DIR
+# Resolve config directory the same way the ingest worker's get_app_db_path()
+# does — cannot rely on cps.constants.CONFIG_DIR because CALIBRE_DBPATH is
+# only exported for the Flask process (svc-calibre-web-automated/run) and
+# not for the ingest-service subprocess, so BASE_DIR would be picked up
+# there instead of /config.
+CONFIG_DIR = os.environ.get("CALIBRE_DBPATH", "/config")
 
 # Everything DeACSM-related for this install lives here.
 DEACSM_DIR = os.path.join(CONFIG_DIR, "deacsm")

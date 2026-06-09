@@ -240,7 +240,7 @@ class TestD3FilesDeletedAfterDbCommit:
     def test_db_commit_precedes_file_delete(self):
         src = self._body()
         commit = src.find("calibre_db.session.commit()")
-        file_del = src.find("helper.delete_book(book, config.get_book_path()")
+        file_del = src.find("helper.delete_book(")
         assert commit != -1 and file_del != -1, "commit + file-delete must both exist in the loop"
         assert commit < file_del, (
             "delete_whole_book + calibre_db.session.commit() must run BEFORE "
@@ -248,15 +248,30 @@ class TestD3FilesDeletedAfterDbCommit:
             "files are already gone (D3/D11)"
         )
 
-    def test_file_attrs_forceloaded_and_object_detached_before_commit(self):
+    def test_file_cleanup_uses_plain_standin_not_orm_object(self):
         src = self._body()
-        assert "_ = book.path" in src and "list(book.data)" in src, (
-            "book.path (delete_book_file) and book.data (delete_book_gdrive) must be "
-            "force-loaded before the DB delete detaches/expires `book` (D3)"
+        # delete_whole_book runs intermediate commits (custom-column deletes) +
+        # a bulk Books.delete() that expire/detach `book`; passing it to the
+        # files-last cleanup raises DetachedInstanceError on custom-column
+        # libraries (Greptile #399). Hand the cleanup a plain stand-in instead.
+        assert "helper.delete_book(book," not in src, (
+            "files-last cleanup must NOT pass the ORM `book` — it is detached/"
+            "expired after delete_whole_book on custom-column libraries (D3)"
         )
-        assert "expunge(book)" in src, (
-            "`book` must be detached (guarded expunge) before the commit so "
-            "expire_on_commit can't strand the loaded attributes (D3)"
+        assert "_DeletedBookFileRef(deleted_book_id, deleted_book_path)" in src, (
+            "the cleanup must receive a plain-value stand-in (id + path)"
+        )
+        assert "deleted_book_path = book.path" in src, (
+            "book.path must be captured as a plain value before the DB delete"
+        )
+
+    def test_no_orm_book_access_after_the_db_delete(self):
+        src = self._body()
+        after = src.split("delete_whole_book(deleted_book_id, book)", 1)[1]
+        assert "book.id" not in after, (
+            "no `book.id` (ORM access on the now-detached/expired object) is "
+            "allowed after delete_whole_book — use the captured deleted_book_id "
+            "(D3, Greptile #399)"
         )
 
     def test_file_cleanup_failure_is_logged_not_raised(self):

@@ -39,6 +39,22 @@ _HERE = pathlib.Path(__file__).resolve().parent
 REPO_ROOT = _HERE.parents[1]
 
 
+@pytest.fixture(autouse=True)
+def _isolate_sys_modules():
+    """The shared stub harness clears real cps/flask/sqlalchemy modules and
+    installs stubs in their place. Restore sys.modules afterwards so test
+    files that run later on the same xdist worker import the real packages
+    (this bit test_kobo_android_app_compat on CI: 'cps' is not a package)."""
+    saved = sys.modules.copy()
+    yield
+    for name in list(sys.modules):
+        if name not in saved:
+            del sys.modules[name]
+    for name, module in saved.items():
+        if sys.modules.get(name) is not module:
+            sys.modules[name] = module
+
+
 def _harness():
     """Load the shared duplicates stub harness from its test module."""
     path = _HERE / "test_duplicate_delete_index_maintenance.py"

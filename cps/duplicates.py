@@ -42,10 +42,14 @@ log = logger.create()
 # still present) before either commits its delete, then delete the same "loser"
 # twice / fight over which book to keep. This module-level lock makes that
 # re-fetch a sufficient, mis-fire-proof idempotency check: a serialized later run
-# observes get_book -> None for an already-deleted book and skips it. Under gevent
-# threading.Lock is monkey-patched to a greenlet-aware lock, so greenlet request
-# handlers serialize against the worker thread correctly. Preview (dry_run=True)
-# is read-only and never acquires this lock.
+# observes get_book -> None for an already-deleted book and skips it. NOTE:
+# gevent.monkey.patch_all is NOT called here, so this is a real threading.Lock
+# and TaskDuplicateScan is a real OS thread. A request handler runs as a gevent
+# greenlet on the hub thread; if it contends for the lock while the worker thread
+# holds it, acquire() blocks the hub but releases the GIL, so the worker finishes
+# and releases — a bounded wait, never a deadlock (and any in-progress resolution
+# already occupies the hub today, since its file/DB work doesn't yield). Preview
+# (dry_run=True) is read-only and never acquires this lock.
 _AUTO_RESOLVE_LOCK = threading.Lock()
 
 

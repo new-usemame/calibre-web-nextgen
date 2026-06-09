@@ -171,17 +171,35 @@ class TestD2ResolutionSerialized:
             "the destructive auto-resolution body (D2 double-delete)"
         )
 
-    def test_acquire_is_guarded_by_not_dry_run(self):
+    def test_acquire_is_non_blocking_and_guarded_by_not_dry_run(self):
         src = _func_src("auto_resolve_duplicates")
-        assert re.search(r"if not dry_run:\s*\n\s*_AUTO_RESOLVE_LOCK\.acquire\(\)", src), (
-            "the lock must be acquired ONLY on the not-dry_run (destructive) path "
-            "— dry_run previews are read-only and must stay concurrent (D2)"
+        # Acquire only on the destructive path, and NON-BLOCKING (blocking=False)
+        # so a contended acquire on the gevent hub greenlet can't stall the loop.
+        assert re.search(
+            r"if not dry_run:\s*\n\s*lock_held\s*=\s*_AUTO_RESOLVE_LOCK\.acquire\(blocking=False\)",
+            src,
+        ), (
+            "auto_resolve_duplicates must acquire _AUTO_RESOLVE_LOCK non-blockingly "
+            "(blocking=False) only on the not-dry_run path — a blocking acquire on "
+            "the gevent hub greenlet would stall every in-flight HTTP request (D2)"
         )
-        assert "lock_held = True" in src
+
+    def test_declines_cleanly_when_lock_already_held(self):
+        src = _func_src("auto_resolve_duplicates")
+        # If another resolution holds the lock, return early (decline) rather than
+        # block or fall through into the delete loop — one resolution at a time,
+        # no double-delete, no UI freeze (D2).
+        m = re.search(r"if not lock_held:(.*?)\n\s*for group in duplicate_groups:", src, re.S)
+        assert m, "the could-not-acquire branch must be handled before the delete loop"
+        decline = m.group(1)
+        assert "return" in decline and "in_progress" in decline, (
+            "a contended resolution must return early with an in_progress marker, "
+            "not block or fall through into the destructive loop (D2)"
+        )
 
     def test_lock_acquired_before_the_destructive_loop(self):
         src = _func_src("auto_resolve_duplicates")
-        acq = src.find("_AUTO_RESOLVE_LOCK.acquire()")
+        acq = src.find("_AUTO_RESOLVE_LOCK.acquire(")
         loop = src.find("for group in duplicate_groups:")
         assert acq != -1 and loop != -1, "acquire + the resolution loop must both exist"
         assert acq < loop, (

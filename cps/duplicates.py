@@ -41,15 +41,16 @@ log = logger.create()
 # two runs can both pass the per-book re-fetch guard (calibre_db.get_book ->
 # still present) before either commits its delete, then delete the same "loser"
 # twice / fight over which book to keep. This module-level lock makes that
-# re-fetch a sufficient, mis-fire-proof idempotency check: a serialized later run
-# observes get_book -> None for an already-deleted book and skips it. NOTE:
-# gevent.monkey.patch_all is NOT called here, so this is a real threading.Lock
-# and TaskDuplicateScan is a real OS thread. A request handler runs as a gevent
-# greenlet on the hub thread; if it contends for the lock while the worker thread
-# holds it, acquire() blocks the hub but releases the GIL, so the worker finishes
-# and releases — a bounded wait, never a deadlock (and any in-progress resolution
-# already occupies the hub today, since its file/DB work doesn't yield). Preview
-# (dry_run=True) is read-only and never acquires this lock.
+# re-fetch a sufficient, mis-fire-proof idempotency check: whichever caller holds
+# the lock does the deletes; a concurrent caller declines (its duplicates are
+# handled by the holder's same snapshot or the next scan). NOTE: gevent.monkey.
+# patch_all is NOT called here, so this is a real threading.Lock and
+# TaskDuplicateScan is a real OS thread. A request handler runs as a gevent
+# greenlet on the hub thread, so the contended caller uses a NON-BLOCKING
+# acquire(blocking=False) and returns immediately when the lock is held — a
+# blocking acquire there would stall the whole event loop (every in-flight HTTP
+# request) for the holder's entire run. Preview (dry_run=True) is read-only and
+# never acquires this lock.
 _AUTO_RESOLVE_LOCK = threading.Lock()
 
 
@@ -1705,13 +1706,29 @@ def auto_resolve_duplicates(strategy='newest', dry_run=False, user_id=None, trig
         cwa_db = CWA_DB()
         
         # D2 (data-safety): enter the destructive critical section. Acquire only
-        # on the not-dry_run path (previews are read-only and stay concurrent),
-        # and hold the lock across the WHOLE loop so every per-book re-fetch +
-        # delete runs under serialization — a concurrent resolution waits here,
-        # then re-fetches and sees already-deleted losers as gone (no re-delete).
+        # on the not-dry_run path (previews are read-only and stay concurrent).
+        # NON-BLOCKING acquire: if another resolution already holds the lock
+        # (manual execute_resolution racing the background TaskDuplicateScan
+        # auto-resolve), do NOT block. Under gevent (no monkey-patch) a blocking
+        # acquire on the request greenlet's hub thread would stall EVERY in-flight
+        # HTTP request for the holder's entire run. Decline cleanly instead — one
+        # resolution at a time, no double-delete, no event-loop stall. The skipped
+        # run's duplicates are picked up by the winner (same snapshot) or the next
+        # scan, so nothing is lost. The lock is held across the WHOLE loop so every
+        # per-book re-fetch + delete runs under serialization.
         if not dry_run:
-            _AUTO_RESOLVE_LOCK.acquire()
-            lock_held = True
+            lock_held = _AUTO_RESOLVE_LOCK.acquire(blocking=False)
+            if not lock_held:
+                log.info("[cwa-duplicates] Auto-resolution already in progress; skipping this run to avoid a conflicting delete")
+                return {
+                    'success': True,
+                    'resolved_count': 0,
+                    'deleted_count': 0,
+                    'kept_count': 0,
+                    'errors': [],
+                    'message': 'A duplicate resolution is already in progress; this run was skipped to avoid a conflicting delete.',
+                    'in_progress': True,
+                }
 
         for group in duplicate_groups:
             try:

@@ -1816,22 +1816,47 @@ def auto_resolve_duplicates(strategy='newest', dry_run=False, user_id=None, trig
                             shutil.copytree(book_path, backup_path)
                             log.info("[cwa-duplicates] Backed up book %s to %s", book.id, backup_path)
                         
-                        print(f"[cwa-duplicates-auto] Deleting book {book.id} from library...", flush=True)
-                        # Delete from Calibre library (bypass user permission check for automatic resolution)
+                        # D3/D11 (data-safety): commit the DB deletes FIRST, remove files LAST.
+                        # The old order deleted files (helper.delete_book) BEFORE the DB commit, so a
+                        # failure in delete_whole_book / the metadata.db commit left the files gone but
+                        # the Books row surviving — a phantom book that still shows in the library and
+                        # 404s when opened, unrecoverable without the backup. DB-first means a DB
+                        # failure here leaves the book fully intact (files + rows): the per-book except
+                        # below records an error and the duplicate stays resolvable on the next run.
+                        deleted_book_id = book.id
+                        deleted_book_title = book.title
+                        # Force-load the attributes the file deletion reads AFTER the DB delete:
+                        # delete_book_file needs book.path; delete_book_gdrive walks book.data. Once
+                        # delete_whole_book's bulk Books.delete() + the commit run, `book` becomes a
+                        # detached instance and a lazy load would raise — so populate them while live.
+                        _ = book.path
+                        _ = list(book.data)
+
+                        print(f"[cwa-duplicates-auto] Cleaning up database for book {deleted_book_id}...", flush=True)
+                        from cps.editbooks import delete_whole_book
+                        delete_whole_book(deleted_book_id, book)  # book live here — reads its relationships
+
+                        # The bulk Books.delete() inside delete_whole_book detaches `book` via
+                        # synchronize_session; guard the expunge in case it is already detached, so the
+                        # commit's expire_on_commit can't strand the attributes loaded above.
+                        try:
+                            calibre_db.session.expunge(book)
+                        except Exception:
+                            pass
+                        calibre_db.session.commit()
+
+                        # Files-last: a failure here is recoverable (the row is already gone; the
+                        # backup + the orphaned files can be reclaimed), so log it — do NOT raise.
+                        print(f"[cwa-duplicates-auto] Deleting book {deleted_book_id} files from disk...", flush=True)
                         from cps import helper
                         delete_result, delete_error = helper.delete_book(book, config.get_book_path(), book_format="")
-                        
                         if not delete_result:
-                            raise Exception(f"Delete failed: {delete_error}")
-                        
-                        print(f"[cwa-duplicates-auto] Cleaning up database for book {book.id}...", flush=True)
-                        # Clean up database references
-                        from cps.editbooks import delete_whole_book
-                        delete_whole_book(book.id, book)
-                        
-                        calibre_db.session.commit()
-                        deleted_ids.append(book.id)
-                        log.info("[cwa-duplicates] Deleted duplicate book %s: %s", book.id, book.title)
+                            log.warning("[cwa-duplicates] Book %s removed from the database but file "
+                                        "cleanup failed: %s (files remain on disk; backup under %s)",
+                                        deleted_book_id, delete_error, backup_dir)
+
+                        deleted_ids.append(deleted_book_id)
+                        log.info("[cwa-duplicates] Deleted duplicate book %s: %s", deleted_book_id, deleted_book_title)
                         
                         print(f"[cwa-duplicates-auto] Cancelling tasks for book {book.id}...", flush=True)
                         # Cancel any pending tasks for this book

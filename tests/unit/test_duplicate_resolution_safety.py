@@ -221,3 +221,51 @@ class TestD2ResolutionSerialized:
             "release must happen exactly once (in finally); a stray second "
             "release on an unlocked lock raises RuntimeError"
         )
+
+
+class TestD3FilesDeletedAfterDbCommit:
+    """D3/D11 (data-safety): the resolution loop must commit the DB deletes
+    (delete_whole_book + calibre_db.session.commit) BEFORE removing files
+    (helper.delete_book). The old order deleted files first, so a DB-commit
+    failure left a phantom book — the Books row survives but its files are gone,
+    so it shows in the library and 404s on open, unrecoverable without the
+    backup. The behavioural proof is the live cwn-local repro (clean run: no
+    DetachedInstanceError from the post-commit file delete, files+rows gone;
+    injected commit failure: book fully intact). These pins lock the ordering.
+    """
+
+    def _body(self):
+        return _func_src("auto_resolve_duplicates")
+
+    def test_db_commit_precedes_file_delete(self):
+        src = self._body()
+        commit = src.find("calibre_db.session.commit()")
+        file_del = src.find("helper.delete_book(book, config.get_book_path()")
+        assert commit != -1 and file_del != -1, "commit + file-delete must both exist in the loop"
+        assert commit < file_del, (
+            "delete_whole_book + calibre_db.session.commit() must run BEFORE "
+            "helper.delete_book, so a DB failure can't leave a phantom book whose "
+            "files are already gone (D3/D11)"
+        )
+
+    def test_file_attrs_forceloaded_and_object_detached_before_commit(self):
+        src = self._body()
+        assert "_ = book.path" in src and "list(book.data)" in src, (
+            "book.path (delete_book_file) and book.data (delete_book_gdrive) must be "
+            "force-loaded before the DB delete detaches/expires `book` (D3)"
+        )
+        assert "expunge(book)" in src, (
+            "`book` must be detached (guarded expunge) before the commit so "
+            "expire_on_commit can't strand the loaded attributes (D3)"
+        )
+
+    def test_file_cleanup_failure_is_logged_not_raised(self):
+        src = self._body()
+        assert 'raise Exception(f"Delete failed' not in src, (
+            "a post-DB-commit file cleanup failure must be logged, not raised — "
+            "raising would falsely report the already-completed DB delete as failed "
+            "and skip the audit bookkeeping (D3)"
+        )
+        assert "removed from the database but file" in src, (
+            "the files-last path must log a warning on a file-cleanup failure"
+        )

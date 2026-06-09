@@ -14,6 +14,7 @@ from functools import wraps
 import hashlib
 import json
 import os
+import threading
 import time
 from shutil import copyfile
 
@@ -30,6 +31,22 @@ from cwa_db import CWA_DB
 
 duplicates = Blueprint('duplicates', __name__)
 log = logger.create()
+
+# D2 (data-safety): serialize the DESTRUCTIVE auto-resolution body. Calibre-Web
+# runs as a single process (gevent WSGIServer or tornado — see cps/server.py),
+# so both entry points that delete books reach auto_resolve_duplicates(dry_run=
+# False) in THIS process: execute_resolution() on an HTTP request greenlet/thread
+# and TaskDuplicateScan.run() on the worker thread. Each carries its own
+# pre-computed (possibly stale) duplicate-group snapshot. Without serialization
+# two runs can both pass the per-book re-fetch guard (calibre_db.get_book ->
+# still present) before either commits its delete, then delete the same "loser"
+# twice / fight over which book to keep. This module-level lock makes that
+# re-fetch a sufficient, mis-fire-proof idempotency check: a serialized later run
+# observes get_book -> None for an already-deleted book and skips it. Under gevent
+# threading.Lock is monkey-patched to a greenlet-aware lock, so greenlet request
+# handlers serialize against the worker thread correctly. Preview (dry_run=True)
+# is read-only and never acquires this lock.
+_AUTO_RESOLVE_LOCK = threading.Lock()
 
 
 def _duplicate_scan_transiently_pending():
@@ -1597,10 +1614,14 @@ def auto_resolve_duplicates(strategy='newest', dry_run=False, user_id=None, trig
             'preview': list of dicts (if dry_run=True) with 'group', 'kept_book', 'deleted_books'
     """
     try:
+        # D2 (data-safety): track whether THIS invocation holds the destructive-
+        # resolution lock, so the finally releases it exactly once. Defined first
+        # so the finally can never reference it before assignment.
+        lock_held = False
         import time
         start_time = time.time()
-        
-        log.info("[cwa-duplicates] Starting auto-resolution (strategy=%s, dry_run=%s, trigger=%s, pre_scanned=%s)", 
+
+        log.info("[cwa-duplicates] Starting auto-resolution (strategy=%s, dry_run=%s, trigger=%s, pre_scanned=%s)",
                  strategy, dry_run, trigger_type, duplicate_groups is not None)
         print(f"[cwa-duplicates] Auto-resolve starting: strategy={strategy}, dry_run={dry_run}, trigger={trigger_type}, " 
               f"pre_scanned={duplicate_groups is not None}", flush=True)
@@ -1679,6 +1700,15 @@ def auto_resolve_duplicates(strategy='newest', dry_run=False, user_id=None, trig
         
         cwa_db = CWA_DB()
         
+        # D2 (data-safety): enter the destructive critical section. Acquire only
+        # on the not-dry_run path (previews are read-only and stay concurrent),
+        # and hold the lock across the WHOLE loop so every per-book re-fetch +
+        # delete runs under serialization — a concurrent resolution waits here,
+        # then re-fetches and sees already-deleted losers as gone (no re-delete).
+        if not dry_run:
+            _AUTO_RESOLVE_LOCK.acquire()
+            lock_held = True
+
         for group in duplicate_groups:
             try:
                 # Select book to keep
@@ -1879,7 +1909,13 @@ def auto_resolve_duplicates(strategy='newest', dry_run=False, user_id=None, trig
         # (DetachedInstanceError) and can abort a delete partway through a group.
         # The session lifecycle is owned by the Flask request teardown and by
         # TaskDuplicateScan.run()'s own finally — not by this function.
-        pass
+        #
+        # D2 (data-safety): release the destructive-resolution lock iff this
+        # invocation acquired it (not dry_run). Released in finally so an
+        # exception anywhere in the loop can't strand the lock and deadlock every
+        # future resolution.
+        if lock_held:
+            _AUTO_RESOLVE_LOCK.release()
 
 
 def merge_duplicate_group(book_to_keep, books_to_merge):

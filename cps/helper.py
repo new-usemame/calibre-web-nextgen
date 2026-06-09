@@ -1254,7 +1254,8 @@ def save_cover_from_url(url, book_path):
             requests.exceptions.HTTPError,
             requests.exceptions.InvalidURL,
             requests.exceptions.ConnectionError,
-            requests.exceptions.Timeout) as ex:
+            requests.exceptions.Timeout,
+            requests.exceptions.TooManyRedirects) as ex:
         # "Invalid host" can be the result of a redirect response
         log.error(u'Cover Download Error %s', ex)
         return False, _("Error Downloading Cover")

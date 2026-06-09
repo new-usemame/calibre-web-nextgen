@@ -80,8 +80,14 @@ class TestCustomReadColumnMirrorMatchesWebPath:
 
     def test_uses_calibre_db_and_cc_classes(self, kosync):
         src = inspect.getsource(kosync._mark_custom_read_column)
-        assert "calibre_db.get_filtered_book" in src, (
-            "must read the book via calibre_db.get_filtered_book like the web path"
+        assert "calibre_db.get_book" in src, (
+            "must read the book via the unfiltered calibre_db.get_book"
+        )
+        assert "calibre_db.get_filtered_book(" not in src, (
+            "must NOT use get_filtered_book: kosync requests carry no flask-login "
+            "user, so current_user is the ANONYMOUS user and get_filtered_book "
+            "would apply anonymous content/language restrictions — filtering the "
+            "book to None and silently dropping the read marker"
         )
         assert "custom_column_" in src, (
             "must address the custom column via getattr(book, 'custom_column_'+id)"

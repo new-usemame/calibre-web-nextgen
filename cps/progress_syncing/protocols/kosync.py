@@ -489,7 +489,15 @@ def _mark_custom_read_column(book_id: int) -> None:
     from ... import calibre_db, db  # lazy: calibre_db instance + reflected cc_classes
     cfg = config.config_read_column
     try:
-        book = calibre_db.get_filtered_book(book_id, True)
+        # get_book, not get_filtered_book: kosync auths via headers, so flask-login's
+        # current_user is the ANONYMOUS user here — get_filtered_book would apply the
+        # anonymous content/language/tag restrictions (and the restricted-column error
+        # path even calls flash()), silently filtering the book to None and dropping
+        # the marker. The syncing user's access was already established by the sync flow.
+        book = calibre_db.get_book(book_id)
+        if book is None:
+            log.error("kosync read-status: book %s not found in calibre database", book_id)
+            return
         read_status = getattr(book, 'custom_column_' + str(cfg))
         if len(read_status):
             read_status[0].value = True

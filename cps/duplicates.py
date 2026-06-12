@@ -6,18 +6,21 @@
 
 from flask import Blueprint, jsonify, request, abort
 from flask_babel import gettext as _
-from sqlalchemy import func, and_, case
+from sqlalchemy import func, and_, case, or_
 from sqlalchemy.sql.expression import true, false
 from sqlalchemy.orm import joinedload
 from datetime import datetime, timezone
 from functools import wraps
 import hashlib
 import json
+import re
+import unicodedata
 import os
+import threading
 import time
 from shutil import copyfile
 
-from . import db, calibre_db, logger, ub, csrf, config, helper
+from . import db, calibre_db, logger, ub, csrf, config, helper, user_book_data
 from .services.worker import WorkerThread, STAT_FINISH_SUCCESS, STAT_FAIL, STAT_ENDED, STAT_CANCELLED
 from .admin import admin_required  
 from .usermanagement import login_required_if_no_ano
@@ -30,6 +33,42 @@ from cwa_db import CWA_DB
 
 duplicates = Blueprint('duplicates', __name__)
 log = logger.create()
+
+# D2 (data-safety): serialize the DESTRUCTIVE auto-resolution body. Calibre-Web
+# runs as a single process (gevent WSGIServer or tornado — see cps/server.py),
+# so both entry points that delete books reach auto_resolve_duplicates(dry_run=
+# False) in THIS process: execute_resolution() on an HTTP request greenlet/thread
+# and TaskDuplicateScan.run() on the worker thread. Each carries its own
+# pre-computed (possibly stale) duplicate-group snapshot. Without serialization
+# two runs can both pass the per-book re-fetch guard (calibre_db.get_book ->
+# still present) before either commits its delete, then delete the same "loser"
+# twice / fight over which book to keep. This module-level lock makes that
+# re-fetch a sufficient, mis-fire-proof idempotency check: whichever caller holds
+# the lock does the deletes; a concurrent caller declines (its duplicates are
+# handled by the holder's same snapshot or the next scan). NOTE: gevent.monkey.
+# patch_all is NOT called here, so this is a real threading.Lock and
+# TaskDuplicateScan is a real OS thread. A request handler runs as a gevent
+# greenlet on the hub thread, so the contended caller uses a NON-BLOCKING
+# acquire(blocking=False) and returns immediately when the lock is held — a
+# blocking acquire there would stall the whole event loop (every in-flight HTTP
+# request) for the holder's entire run. Preview (dry_run=True) is read-only and
+# never acquires this lock.
+_AUTO_RESOLVE_LOCK = threading.Lock()
+
+
+class _DeletedBookFileRef:
+    """Plain-value stand-in for a just-deleted Book, used by the files-last
+    cleanup in auto_resolve_duplicates so it never reads an expired/detached ORM
+    instance (D3, Greptile #399). delete_whole_book runs intermediate commits
+    (custom-column deletes) and a bulk Books.delete() that expire + detach the
+    real `book`; helper.delete_book(book_format="") only needs .id and .path
+    (both delete_book_file and the Google-Drive whole-book branch), so we capture
+    those as plain values before the DB delete and hand the cleanup this object."""
+    __slots__ = ("id", "path")
+
+    def __init__(self, book_id, path):
+        self.id = book_id
+        self.path = path
 
 
 def _duplicate_scan_transiently_pending():
@@ -89,23 +128,38 @@ def admin_or_edit_required(f):
     return decorated_function
 
 
+def normalize_text_for_duplicates(value, default=""):
+    """Shared text normalization for every duplicate-keying surface (D6).
+
+    Unicode NFC first (an NFD 'Café' from macOS filenames or some metadata
+    sources hashed differently from the NFC 'Café' a user typed — real
+    duplicates were invisible), then collapse internal whitespace ('The  Book'
+    vs 'The Book'), then lowercase + strip. generate_group_hash,
+    normalize_title_for_duplicates, and duplicate_index.build_book_key_parts
+    all route through here so the three keying surfaces can never drift.
+    """
+    text = value if value is not None and str(value) else default
+    text = unicodedata.normalize('NFC', str(text))
+    text = re.sub(r'\s+', ' ', text)
+    return text.lower().strip()
+
+
 def generate_group_hash(title, author):
     """Generate MD5 hash for a duplicate group based on title and author
-    
+
     Args:
         title: Book title (will be normalized)
         author: Primary author name (will be normalized)
-        
+
     Returns:
         32-character MD5 hash string
     """
-    # Normalize inputs - lowercase, strip whitespace
-    normalized_title = (title or "untitled").lower().strip()
-    normalized_author = (author or "unknown").lower().strip()
-    
+    normalized_title = normalize_text_for_duplicates(title, default="untitled")
+    normalized_author = normalize_text_for_duplicates(author, default="unknown")
+
     # Create composite key
     composite = f"{normalized_title}|{normalized_author}"
-    
+
     # Generate MD5 hash
     return hashlib.md5(composite.encode('utf-8')).hexdigest()
 
@@ -116,9 +170,9 @@ def normalize_title_for_duplicates(title, primary_author=None):
     If the title starts with the primary author (e.g., "Homer, the Iliad"),
     strip the leading author prefix to avoid false negatives.
     """
-    normalized = (title or "untitled").lower().strip()
+    normalized = normalize_text_for_duplicates(title, default="untitled")
     if primary_author:
-        author_norm = str(primary_author).lower().strip()
+        author_norm = normalize_text_for_duplicates(primary_author)
         author_prefix = f"{author_norm}, "
         if normalized.startswith(author_prefix):
             normalized = normalized[len(author_prefix):].strip()
@@ -277,6 +331,22 @@ def get_unresolved_duplicate_count(user_id=None):
         return 0
 
 
+def _stable_group_key(books):
+    """Best-effort stable duplicate_key for a legacy-path group (D5).
+
+    The index path carries the key straight from cwa_duplicate_book_keys; the
+    legacy SQL/Python fallback paths recompute it from the group's first book
+    through the same single key-computation entry point so dismissals keyed on
+    duplicate_key apply regardless of which scan path produced the group.
+    """
+    try:
+        from cps.duplicate_index import build_duplicate_key
+        return build_duplicate_key(books[0], CWA_DB().cwa_settings)
+    except Exception as e:
+        log.warning("[cwa-duplicates] Could not compute stable group key: %s", e)
+        return None
+
+
 def filter_dismissed_groups(duplicate_groups, user_id=None):
     """Filter dismissed duplicate groups for a given user."""
     if not duplicate_groups:
@@ -290,13 +360,47 @@ def filter_dismissed_groups(duplicate_groups, user_id=None):
         return duplicate_groups
 
     try:
-        dismissed_groups = ub.session.query(ub.DismissedDuplicateGroup.group_hash)\
+        dismissed_rows = ub.session.query(ub.DismissedDuplicateGroup)\
             .filter(ub.DismissedDuplicateGroup.user_id == user_id)\
             .all()
-        dismissed_hashes = {row[0] for row in dismissed_groups}
-        if not dismissed_hashes:
+        if not dismissed_rows:
             return duplicate_groups
-        return [group for group in duplicate_groups if group.get('group_hash') not in dismissed_hashes]
+        # D5: duplicate_key (stable SHA-256 grouping identity) is the match of
+        # record. group_hash derives from display title/author of whichever
+        # book sorts first, so a new ingest or metadata edit changed it and
+        # dismissed groups resurfaced — it remains only for rows written
+        # before the migration (NULL duplicate_key).
+        live_keys = {g.get('duplicate_key') for g in duplicate_groups if g.get('duplicate_key')}
+        dismissed_keys = {row.duplicate_key for row in dismissed_rows if row.duplicate_key}
+        # Rows needing (re-)keying: pre-migration rows (no key) AND rows whose
+        # stored key matches no live group — a NORMALIZATION_VERSION bump
+        # rotates every duplicate_key (v1→v2, D6), and without re-keying those
+        # dismissals would silently stop matching after the index rebuilds.
+        legacy_rows = [row for row in dismissed_rows
+                       if not row.duplicate_key or row.duplicate_key not in live_keys]
+        legacy_hashes = {row.group_hash for row in legacy_rows}
+
+        # Lazy backfill: a pre-migration row whose hash still matches a live
+        # group learns that group's duplicate_key, surviving future drift.
+        if legacy_hashes:
+            backfilled = False
+            by_hash = {g.get('group_hash'): g.get('duplicate_key')
+                       for g in duplicate_groups if g.get('duplicate_key')}
+            for row in legacy_rows:
+                key = by_hash.get(row.group_hash)
+                if key and key != row.duplicate_key:
+                    row.duplicate_key = key
+                    dismissed_keys.add(key)
+                    backfilled = True
+            if backfilled:
+                try:
+                    ub.session.commit()
+                except Exception:
+                    ub.session.rollback()
+
+        return [group for group in duplicate_groups
+                if not ((group.get('duplicate_key') and group.get('duplicate_key') in dismissed_keys)
+                        or group.get('group_hash') in legacy_hashes)]
     except Exception as e:
         log.error("[cwa-duplicates] Error filtering dismissed groups: %s", str(e))
         return duplicate_groups
@@ -458,8 +562,15 @@ def find_duplicate_books(include_dismissed=False, user_id=None):
     if scan_method == 'python':
         method_to_use = 'python'
     elif scan_method == 'sql':
-        # SQL-only is available but still experimental
-        method_to_use = 'sql' if not use_format else 'hybrid'
+        # D9: SQL-only *grouping* is retired — it diverged from the Python/
+        # index grouping (one row per co-author via the authors JOIN put a
+        # co-authored book in multiple groups; no author-prefix title strip),
+        # so the same library produced different group sets depending on an
+        # admin toggle. SQL remains as the hybrid PREFILTER (candidate IDs),
+        # with grouping always done by the single Python/index implementation.
+        log.info("[cwa-duplicates] scan_method='sql': SQL-only grouping is retired; "
+                 "using hybrid (SQL prefilter + Python grouping)")
+        method_to_use = 'hybrid'
     elif scan_method == 'hybrid':
         method_to_use = 'hybrid'
     else:  # 'auto'
@@ -473,12 +584,7 @@ def find_duplicate_books(include_dismissed=False, user_id=None):
     print(f"[cwa-duplicates] Using duplicate detection criteria: title={use_title}, author={use_author}, language={use_language}, series={use_series}, publisher={use_publisher}, format={use_format}", flush=True)
     
     # Call appropriate method
-    if method_to_use == 'sql':
-        duplicate_groups = find_duplicate_books_sql(
-            use_title, use_author, use_language, use_series, use_publisher,
-            include_dismissed, user_id
-        )
-    elif method_to_use == 'hybrid':
+    if method_to_use == 'hybrid':
         # Use SQL as a prefilter to get candidate book IDs, then Python for robust grouping
         candidate_ids = find_duplicate_candidate_ids_sql(use_title, use_author, user_id=user_id)
         if candidate_ids is None:
@@ -605,201 +711,6 @@ def find_duplicate_candidate_ids_sql(use_title, use_author, user_id=None, min_bo
 
     log.debug("[cwa-duplicates] Hybrid prefilter returned %s candidate books", len(candidate_ids))
     return candidate_ids
-
-
-def find_duplicate_books_sql(use_title, use_author, use_language, use_series, use_publisher,
-                              include_dismissed=False, user_id=None):
-    """SQL-based duplicate detection using GROUP BY - experimental/WIP
-    
-    NOTE: This is experimental code, disabled by default. Needs refinement:
-    - Multi-author books create duplicate rows (handled by DISTINCT but not ideal)
-    - Relies on COALESCE for NULL handling which may not match Python behavior exactly
-    - Not thoroughly tested across all criteria combinations
-    
-    Use Python method (default) for production until this is properly tested.
-    
-    Args:
-        use_title, use_author, use_language, use_series, use_publisher: Boolean flags for criteria
-        include_dismissed: If False, filter out dismissed groups
-        user_id: User ID for dismissed filtering
-    
-    Returns:
-        List of duplicate group dictionaries
-    """
-    print("[cwa-duplicates] Using SQL-based duplicate detection", flush=True)
-    
-    # Build dynamic GROUP BY clause based on criteria
-    group_by_fields = []
-    select_fields = []
-    
-    if use_title:
-        group_by_fields.append(func.lower(db.Books.title))
-        select_fields.append(func.lower(db.Books.title).label('norm_title'))
-    
-    if use_author:
-        group_by_fields.append(func.lower(db.Authors.name))
-        select_fields.append(func.lower(db.Authors.name).label('norm_author'))
-    
-    if use_language:
-        # Use COALESCE to handle NULL languages (books without language)
-        group_by_fields.append(func.coalesce(func.lower(db.Languages.lang_code), 'unknown'))
-        select_fields.append(func.coalesce(func.lower(db.Languages.lang_code), 'unknown').label('norm_language'))
-    
-    if use_series:
-        # Use COALESCE to handle NULL series (books without series)
-        group_by_fields.append(func.coalesce(func.lower(db.Series.name), 'no_series'))
-        select_fields.append(func.coalesce(func.lower(db.Series.name), 'no_series').label('norm_series'))
-    
-    if use_publisher:
-        # Use COALESCE to handle NULL publishers (books without publisher)
-        group_by_fields.append(func.coalesce(func.lower(db.Publishers.name), 'unknown_publisher'))
-        select_fields.append(func.coalesce(func.lower(db.Publishers.name), 'unknown_publisher').label('norm_publisher'))
-    
-    # Add count and aggregated book IDs
-    # Use DISTINCT because LEFT JOINs can create duplicate rows for books with multiple languages/series/publishers
-    select_fields.extend([
-        func.count(func.distinct(db.Books.id)).label('book_count'),
-        func.group_concat(func.distinct(db.Books.id)).label('book_ids_str')
-    ])
-    
-    # Build query starting from Books table with explicit joins
-    query = calibre_db.session.query(*select_fields).select_from(db.Books)
-    
-    # Join required tables based on criteria
-    # Note: Books with multiple authors/languages/etc will create multiple rows - handled by DISTINCT in count
-    if use_author:
-        # Join to get author (books_authors_link has no ordering column, Python uses first from relationship)
-        query = query.join(db.books_authors_link, db.Books.id == db.books_authors_link.c.book)\
-                     .join(db.Authors, db.books_authors_link.c.author == db.Authors.id)
-    
-    if use_language:
-        # LEFT JOIN to include books without languages (handled by COALESCE)
-        query = query.outerjoin(db.books_languages_link, db.Books.id == db.books_languages_link.c.book)\
-                     .outerjoin(db.Languages, db.books_languages_link.c.lang_code == db.Languages.id)
-    
-    if use_series:
-        # LEFT JOIN to include books without series (handled by COALESCE)
-        query = query.outerjoin(db.books_series_link, db.Books.id == db.books_series_link.c.book)\
-                     .outerjoin(db.Series, db.books_series_link.c.series == db.Series.id)
-    
-    if use_publisher:
-        # LEFT JOIN to include books without publishers (handled by COALESCE)
-        query = query.outerjoin(db.books_publishers_link, db.Books.id == db.books_publishers_link.c.book)\
-                     .outerjoin(db.Publishers, db.books_publishers_link.c.publisher == db.Publishers.id)
-    
-    # Apply common filters for user permissions
-    query = query.filter(get_common_filters(user_id=user_id))
-    
-    # Group by selected criteria
-    query = query.group_by(*group_by_fields)
-    
-    # Only get groups with 2+ books (duplicates)
-    query = query.having(func.count(func.distinct(db.Books.id)) > 1)
-    
-    # Execute query
-    try:
-        results = query.all()
-        print(f"[cwa-duplicates] SQL query returned {len(results)} duplicate groups", flush=True)
-    except Exception as e:
-        log.error("[cwa-duplicates] SQL query failed: %s, falling back to Python method", str(e))
-        print(f"[cwa-duplicates] SQL query failed: {str(e)}, falling back to Python method", flush=True)
-        return find_duplicate_books_python(
-            use_title, use_author, use_language, use_series, use_publisher, False,
-            include_dismissed, user_id
-        )
-    
-    # Process results into duplicate groups
-    duplicate_groups = []
-    
-    for result in results:
-        # Parse book IDs from group_concat result
-        book_ids_str = result.book_ids_str
-        book_ids = [int(bid) for bid in book_ids_str.split(',')]
-        
-        # Load full book objects for these IDs with eager loading.
-        # Batch the IN filter so a pathologically large group cannot exceed
-        # SQLite's bound-parameter limit (see _fetch_books_in_chunks).
-        books_base = (calibre_db.session.query(db.Books)
-                      .options(joinedload(db.Books.data))
-                      .options(joinedload(db.Books.authors))
-                      .filter(get_common_filters(user_id=user_id)))
-        books = _fetch_books_in_chunks(books_base, book_ids)
-        # Re-apply ORDER BY timestamp DESC (NULLs last) across batches.
-        # tz-safe key: mixed naive/aware timestamps otherwise raise
-        # "can't compare offset-naive and offset-aware datetimes" — the DB
-        # ORDER BY tolerated it, Python's sort does not.
-        books.sort(key=lambda b: _timestamp_or_default(b.timestamp, _AWARE_MIN),
-                   reverse=True)
-        
-        if len(books) < 2:
-            continue  # Safety check
-        
-        # Prepare display data
-        for book in books:
-            # Ensure we have ordered authors
-            if not hasattr(book, 'ordered_authors') or not book.ordered_authors:
-                book.ordered_authors = calibre_db.order_authors([book])
-            
-            # Handle potential missing authors
-            if book.ordered_authors and len(book.ordered_authors) > 0:
-                book.author_names = ', '.join([author.name.replace('|', ',') for author in book.ordered_authors if author.name])
-            else:
-                book.author_names = 'Unknown'
-            
-            # Add cover URL
-            if hasattr(book, 'has_cover') and book.has_cover:
-                book.cover_url = f"/cover/{book.id}"
-            else:
-                book.cover_url = "/static/generic_cover.svg"
-        
-        # Get safe title and author for display
-        display_title = books[0].title if books[0].title else 'Untitled'
-        display_author = 'Unknown'
-        if hasattr(books[0], 'author_names') and books[0].author_names:
-            display_author = books[0].author_names.split(',')[0].strip()
-        
-        # Generate group hash for dismiss tracking
-        group_hash = generate_group_hash(display_title, display_author)
-        
-        duplicate_groups.append({
-            'title': display_title,
-            'author': display_author,
-            'count': len(books),
-            'books': books,
-            'group_hash': group_hash
-        })
-        
-        print(f"[cwa-duplicates] Found duplicate group: '{display_title}' by {display_author} ({len(books)} copies) - IDs: {book_ids}", flush=True)
-        log.info("[cwa-duplicates] Found duplicate group: '%s' by %s (%s copies) - IDs: %s", 
-                display_title, display_author, len(books), book_ids)
-    
-    # Filter out dismissed groups if requested
-    if not include_dismissed and user_id:
-        try:
-            dismissed_hashes = set()
-            dismissed_groups = ub.session.query(ub.DismissedDuplicateGroup.group_hash)\
-                .filter(ub.DismissedDuplicateGroup.user_id == user_id)\
-                .all()
-            dismissed_hashes = {row[0] for row in dismissed_groups}
-            
-            if dismissed_hashes:
-                original_count = len(duplicate_groups)
-                duplicate_groups = [group for group in duplicate_groups 
-                                  if group['group_hash'] not in dismissed_hashes]
-                filtered_count = original_count - len(duplicate_groups)
-                if filtered_count > 0:
-                    print(f"[cwa-duplicates] Filtered out {filtered_count} dismissed groups for user {user_id}", flush=True)
-                    log.info("[cwa-duplicates] Filtered out %s dismissed groups for user %s", 
-                            filtered_count, user_id)
-        except Exception as e:
-            log.error("[cwa-duplicates] Error filtering dismissed groups: %s", str(e))
-    
-    # Sort by title, then author for consistent display
-    duplicate_groups.sort(key=lambda x: (x['title'].lower(), x['author'].lower()))
-    
-    print(f"[cwa-duplicates] Found {len(duplicate_groups)} duplicate groups total", flush=True)
-    
-    return duplicate_groups
 
 
 # SQLite caps host parameters per statement at SQLITE_MAX_VARIABLE_NUMBER
@@ -978,7 +889,8 @@ def find_duplicate_books_python(use_title, use_author, use_language, use_series,
                 'author': display_author,
                 'count': len(books),
                 'books': books,
-                'group_hash': group_hash
+                'group_hash': group_hash,
+                'duplicate_key': _stable_group_key(books)
             })
             
             book_ids = [book.id for book in books]
@@ -986,36 +898,22 @@ def find_duplicate_books_python(use_title, use_author, use_language, use_series,
             log.info("[cwa-duplicates] Found duplicate group: '%s' by %s (%s copies) - IDs: %s", 
                     display_title, display_author, len(books), book_ids)
     
-    # Filter out dismissed groups if requested
+    # Filter out dismissed groups if requested — single implementation (D5):
+    # filter_dismissed_groups matches on the stable duplicate_key with a
+    # group_hash fallback for pre-migration rows.
     if not include_dismissed and user_id:
-        try:
-            dismissed_hashes = set()
-            dismissed_groups = ub.session.query(ub.DismissedDuplicateGroup.group_hash)\
-                .filter(ub.DismissedDuplicateGroup.user_id == user_id)\
-                .all()
-            dismissed_hashes = {row[0] for row in dismissed_groups}
-            
-            if dismissed_hashes:
-                original_count = len(duplicate_groups)
-                duplicate_groups = [group for group in duplicate_groups 
-                                  if group['group_hash'] not in dismissed_hashes]
-                filtered_count = original_count - len(duplicate_groups)
-                if filtered_count > 0:
-                    print(f"[cwa-duplicates] Filtered out {filtered_count} dismissed groups for user {user_id}", flush=True)
-                    log.info("[cwa-duplicates] Filtered out %s dismissed groups for user %s", 
-                            filtered_count, user_id)
-        except Exception as e:
-            log.error("[cwa-duplicates] Error filtering dismissed groups: %s", str(e))
-    
+        duplicate_groups = filter_dismissed_groups(duplicate_groups, user_id=user_id)
+
     # Sort by title, then author for consistent display
     duplicate_groups.sort(key=lambda x: (x['title'].lower(), x['author'].lower()))
-    
+
     print(f"[cwa-duplicates] Found {len(duplicate_groups)} duplicate groups total", flush=True)
-    
+
     return duplicate_groups
 
 
-def get_common_filters(user_id=None, allow_show_archived=False, return_all_languages=False):
+def get_common_filters(user_id=None, allow_show_archived=False, return_all_languages=False,
+                       allow_show_hidden=False):
     """Build common filters using either current_user or a specific user_id.
 
     Falls back to no-op filters if user context is unavailable.
@@ -1023,7 +921,8 @@ def get_common_filters(user_id=None, allow_show_archived=False, return_all_langu
     try:
         if user_id is None:
             return calibre_db.common_filters(allow_show_archived=allow_show_archived,
-                                             return_all_languages=return_all_languages)
+                                             return_all_languages=return_all_languages,
+                                             allow_show_hidden=allow_show_hidden)
     except Exception:
         # No request context; fall back to permissive filter
         return true()
@@ -1042,6 +941,18 @@ def get_common_filters(user_id=None, allow_show_archived=False, return_all_langu
             archived_filter = db.Books.id.notin_(archived_book_ids)
         else:
             archived_filter = true()
+
+        # D10: mirror calibre_db.common_filters' UserHiddenBook exclusion. The
+        # user explicitly hid these books; without this they reappeared in
+        # their duplicate scan and could be fed to destructive auto-resolve.
+        if not allow_show_hidden:
+            hidden_books = (ub.session.query(ub.UserHiddenBook)
+                            .filter(ub.UserHiddenBook.user_id == int(user.id))
+                            .all())
+            hidden_book_ids = [hidden.book_id for hidden in hidden_books]
+            hidden_filter = db.Books.id.notin_(hidden_book_ids)
+        else:
+            hidden_filter = true()
 
         if user.filter_language() == "all" or return_all_languages:
             lang_filter = true()
@@ -1071,7 +982,8 @@ def get_common_filters(user_id=None, allow_show_archived=False, return_all_langu
             neg_content_cc_filter = false()
 
         return and_(lang_filter, pos_content_tags_filter, ~neg_content_tags_filter,
-                    pos_content_cc_filter, ~neg_content_cc_filter, archived_filter)
+                    pos_content_cc_filter, ~neg_content_cc_filter, archived_filter,
+                    hidden_filter)
     except Exception:
         return true()
 
@@ -1218,6 +1130,27 @@ def dismiss_duplicate_scan_setup_notice():
         return jsonify({"success": False, "error": str(e)}), 500
 
 
+def _resolve_duplicate_key_for_hash(group_hash, user_id):
+    """Map a UI group_hash to the group's stable duplicate_key (D5).
+
+    The dismiss/undismiss routes are addressed by group_hash (what the page's
+    buttons carry), but the dismissal of record is keyed on duplicate_key so
+    it survives display-data drift. Resolve against the current groups,
+    dismissed included (undismiss targets a dismissed group).
+    """
+    try:
+        from cps.duplicate_index import get_duplicate_groups_from_index
+        groups = get_duplicate_groups_from_index(
+            CWA_DB().cwa_settings, include_dismissed=True, user_id=user_id)
+        for group in groups:
+            if group.get('group_hash') == group_hash:
+                return group.get('duplicate_key')
+    except Exception as e:
+        log.warning("[cwa-duplicates] Could not resolve duplicate_key for hash %s: %s",
+                    group_hash, e)
+    return None
+
+
 @duplicates.route("/duplicates/dismiss/<group_hash>", methods=['POST'])
 @login_required_if_no_ano
 @admin_or_edit_required
@@ -1231,23 +1164,37 @@ def dismiss_duplicate_group(group_hash):
         JSON response with success status and new count
     """
     try:
-        # Check if already dismissed
-        existing = ub.session.query(ub.DismissedDuplicateGroup)\
-            .filter(ub.DismissedDuplicateGroup.user_id == current_user.id)\
-            .filter(ub.DismissedDuplicateGroup.group_hash == group_hash)\
-            .first()
-        
+        duplicate_key = _resolve_duplicate_key_for_hash(group_hash, current_user.id)
+
+        # Check if already dismissed — by stable key first (D5), then by the
+        # transitional hash for pre-migration rows.
+        query = ub.session.query(ub.DismissedDuplicateGroup)\
+            .filter(ub.DismissedDuplicateGroup.user_id == current_user.id)
+        existing = None
+        if duplicate_key:
+            existing = query.filter(
+                ub.DismissedDuplicateGroup.duplicate_key == duplicate_key).first()
+        if not existing:
+            existing = query.filter(
+                ub.DismissedDuplicateGroup.group_hash == group_hash).first()
+
         if existing:
+            # Backfill the stable key onto a pre-migration row.
+            if duplicate_key and not existing.duplicate_key:
+                existing.duplicate_key = duplicate_key
+                ub.session.commit()
             return jsonify({
                 'success': True,
                 'message': _('Duplicate group already dismissed'),
                 'count': get_unresolved_duplicate_count()
             })
-        
-        # Create dismissal record
+
+        # Create dismissal record keyed on the stable duplicate_key (D5);
+        # group_hash is kept for the UI routes and pre-migration matching.
         dismissal = ub.DismissedDuplicateGroup(
             user_id=current_user.id,
-            group_hash=group_hash
+            group_hash=group_hash,
+            duplicate_key=duplicate_key
         )
         ub.session.add(dismissal)
         ub.session.commit()
@@ -1286,12 +1233,18 @@ def undismiss_duplicate_group(group_hash):
         JSON response with success status and new count
     """
     try:
-        # Find and delete dismissal record
+        # Find and delete the dismissal record — match the stable key when the
+        # group resolves to one (D5), plus the hash for pre-migration rows or
+        # groups whose display data has since drifted.
+        duplicate_key = _resolve_duplicate_key_for_hash(group_hash, current_user.id)
+        conditions = [ub.DismissedDuplicateGroup.group_hash == group_hash]
+        if duplicate_key:
+            conditions.append(ub.DismissedDuplicateGroup.duplicate_key == duplicate_key)
         deleted = ub.session.query(ub.DismissedDuplicateGroup)\
             .filter(ub.DismissedDuplicateGroup.user_id == current_user.id)\
-            .filter(ub.DismissedDuplicateGroup.group_hash == group_hash)\
-            .delete()
-        
+            .filter(or_(*conditions))\
+            .delete(synchronize_session=False)
+
         ub.session.commit()
         
         if deleted:
@@ -1597,10 +1550,14 @@ def auto_resolve_duplicates(strategy='newest', dry_run=False, user_id=None, trig
             'preview': list of dicts (if dry_run=True) with 'group', 'kept_book', 'deleted_books'
     """
     try:
+        # D2 (data-safety): track whether THIS invocation holds the destructive-
+        # resolution lock, so the finally releases it exactly once. Defined first
+        # so the finally can never reference it before assignment.
+        lock_held = False
         import time
         start_time = time.time()
-        
-        log.info("[cwa-duplicates] Starting auto-resolution (strategy=%s, dry_run=%s, trigger=%s, pre_scanned=%s)", 
+
+        log.info("[cwa-duplicates] Starting auto-resolution (strategy=%s, dry_run=%s, trigger=%s, pre_scanned=%s)",
                  strategy, dry_run, trigger_type, duplicate_groups is not None)
         print(f"[cwa-duplicates] Auto-resolve starting: strategy={strategy}, dry_run={dry_run}, trigger={trigger_type}, " 
               f"pre_scanned={duplicate_groups is not None}", flush=True)
@@ -1679,6 +1636,31 @@ def auto_resolve_duplicates(strategy='newest', dry_run=False, user_id=None, trig
         
         cwa_db = CWA_DB()
         
+        # D2 (data-safety): enter the destructive critical section. Acquire only
+        # on the not-dry_run path (previews are read-only and stay concurrent).
+        # NON-BLOCKING acquire: if another resolution already holds the lock
+        # (manual execute_resolution racing the background TaskDuplicateScan
+        # auto-resolve), do NOT block. Under gevent (no monkey-patch) a blocking
+        # acquire on the request greenlet's hub thread would stall EVERY in-flight
+        # HTTP request for the holder's entire run. Decline cleanly instead — one
+        # resolution at a time, no double-delete, no event-loop stall. The skipped
+        # run's duplicates are picked up by the winner (same snapshot) or the next
+        # scan, so nothing is lost. The lock is held across the WHOLE loop so every
+        # per-book re-fetch + delete runs under serialization.
+        if not dry_run:
+            lock_held = _AUTO_RESOLVE_LOCK.acquire(blocking=False)
+            if not lock_held:
+                log.info("[cwa-duplicates] Auto-resolution already in progress; skipping this run to avoid a conflicting delete")
+                return {
+                    'success': True,
+                    'resolved_count': 0,
+                    'deleted_count': 0,
+                    'kept_count': 0,
+                    'errors': [],
+                    'message': 'A duplicate resolution is already in progress; this run was skipped to avoid a conflicting delete.',
+                    'in_progress': True,
+                }
+
         for group in duplicate_groups:
             try:
                 # Select book to keep
@@ -1750,12 +1732,23 @@ def auto_resolve_duplicates(strategy='newest', dry_run=False, user_id=None, trig
                     except Exception as e:
                         log.error("[cwa-duplicates] Error merging books for group '%s': %s", group.get('title', 'unknown'), e)
                         result['errors'].append(f"Group '{group.get('title', 'unknown')}': merge failed: {str(e)}")
+                        # D8: drop anything the failed merge left pending in the
+                        # shared session, or the next group's commit persists it.
+                        try:
+                            calibre_db.session.rollback()
+                        except Exception:
+                            pass
                         continue
                 
                 # Backup and delete each duplicate
                 for book in books_to_delete:
                     try:
-                        print(f"[cwa-duplicates-auto] Starting deletion of book {book.id}...", flush=True)
+                        # Capture identity as plain values up front so the per-book except and the
+                        # post-DB-delete bookkeeping never read the ORM `book` (delete_whole_book +
+                        # its commit expire/detach it — Greptile #399).
+                        deleted_book_id = book.id
+                        deleted_book_title = book.title
+                        print(f"[cwa-duplicates-auto] Starting deletion of book {deleted_book_id}...", flush=True)
                         
                         # Backup book files
                         book_path = os.path.join(config.config_calibre_dir, book.path)
@@ -1765,53 +1758,80 @@ def auto_resolve_duplicates(strategy='newest', dry_run=False, user_id=None, trig
                             shutil.copytree(book_path, backup_path)
                             log.info("[cwa-duplicates] Backed up book %s to %s", book.id, backup_path)
                         
-                        print(f"[cwa-duplicates-auto] Deleting book {book.id} from library...", flush=True)
-                        # Delete from Calibre library (bypass user permission check for automatic resolution)
-                        from cps import helper
-                        delete_result, delete_error = helper.delete_book(book, config.get_book_path(), book_format="")
-                        
-                        if not delete_result:
-                            raise Exception(f"Delete failed: {delete_error}")
-                        
-                        print(f"[cwa-duplicates-auto] Cleaning up database for book {book.id}...", flush=True)
-                        # Clean up database references
+                        # D3/D11 (data-safety): commit the DB deletes FIRST, remove files LAST.
+                        # The old order deleted files (helper.delete_book) BEFORE the DB commit, so a
+                        # failure in delete_whole_book / the metadata.db commit left the files gone but
+                        # the Books row surviving — a phantom book that still shows in the library and
+                        # 404s when opened, unrecoverable without the backup. DB-first means a DB
+                        # failure here leaves the book fully intact (files + rows): the per-book except
+                        # below records an error and the duplicate stays resolvable on the next run.
+                        # Capture the relative path as a plain value: the files-last cleanup must NOT
+                        # read the ORM `book` after the DB delete. delete_whole_book runs intermediate
+                        # commits for custom-column deletes (editbooks.py 1367/1374/1380) and ends with
+                        # a bulk Books.delete(), all of which expire + detach `book` — so reading it in
+                        # helper.delete_book would raise DetachedInstanceError on any library that uses
+                        # custom columns (Greptile #399). A whole-book cleanup reads only .id and .path.
+                        deleted_book_path = book.path
+
+                        # D4: move the user's data on this loser (annotations,
+                        # reading progress, Kobo state, shelf membership…) to
+                        # the kept book BEFORE deleting — for every strategy,
+                        # not just 'merge'. A keep-newest resolution otherwise
+                        # silently deletes highlights made on the older copy.
+                        user_book_data.migrate_user_book_data(deleted_book_id, book_to_keep_id)
+                        ub.session_commit()
+
+                        print(f"[cwa-duplicates-auto] Cleaning up database for book {deleted_book_id}...", flush=True)
                         from cps.editbooks import delete_whole_book
-                        delete_whole_book(book.id, book)
-                        
+                        delete_whole_book(deleted_book_id, book)  # book live here — reads its relationships
                         calibre_db.session.commit()
-                        deleted_ids.append(book.id)
-                        log.info("[cwa-duplicates] Deleted duplicate book %s: %s", book.id, book.title)
+
+                        # Files-last: a failure here is recoverable (the row is already gone; the
+                        # backup + the orphaned files can be reclaimed), so log it — do NOT raise. The
+                        # cleanup gets a plain stand-in, never the now-detached ORM object.
+                        print(f"[cwa-duplicates-auto] Deleting book {deleted_book_id} files from disk...", flush=True)
+                        from cps import helper
+                        delete_result, delete_error = helper.delete_book(
+                            _DeletedBookFileRef(deleted_book_id, deleted_book_path),
+                            config.get_book_path(), book_format="")
+                        if not delete_result:
+                            log.warning("[cwa-duplicates] Book %s removed from the database but file "
+                                        "cleanup failed: %s (files remain on disk; backup under %s)",
+                                        deleted_book_id, delete_error, backup_dir)
+
+                        deleted_ids.append(deleted_book_id)
+                        log.info("[cwa-duplicates] Deleted duplicate book %s: %s", deleted_book_id, deleted_book_title)
                         
-                        print(f"[cwa-duplicates-auto] Cancelling tasks for book {book.id}...", flush=True)
+                        print(f"[cwa-duplicates-auto] Cancelling tasks for book {deleted_book_id}...", flush=True)
                         # Cancel any pending tasks for this book
                         try:
                             from cps.services.worker import WorkerThread
                             worker = WorkerThread.get_instance()
                             if worker:
-                                cancelled_count = worker.cancel_tasks_for_book(book.id)
+                                cancelled_count = worker.cancel_tasks_for_book(deleted_book_id)
                                 if cancelled_count > 0:
-                                    log.info("[cwa-duplicates] Cancelled %d pending task(s) for deleted book %s", 
-                                            cancelled_count, book.id)
-                                    print(f"[cwa-duplicates-auto] Cancelled {cancelled_count} pending task(s) for book {book.id}", 
+                                    log.info("[cwa-duplicates] Cancelled %d pending task(s) for deleted book %s",
+                                            cancelled_count, deleted_book_id)
+                                    print(f"[cwa-duplicates-auto] Cancelled {cancelled_count} pending task(s) for book {deleted_book_id}",
                                           flush=True)
                         except Exception as cancel_ex:
-                            log.warning("[cwa-duplicates] Failed to cancel tasks for book %s: %s", book.id, cancel_ex)
-                        
-                        print(f"[cwa-duplicates-auto] Cancelling scheduled jobs for book {book.id}...", flush=True)
+                            log.warning("[cwa-duplicates] Failed to cancel tasks for book %s: %s", deleted_book_id, cancel_ex)
+
+                        print(f"[cwa-duplicates-auto] Cancelling scheduled jobs for book {deleted_book_id}...", flush=True)
                         # Cancel any scheduled jobs (auto-send, etc.) for this book
                         try:
-                            cancelled_scheduled = cwa_db.scheduled_cancel_for_book(book.id)
+                            cancelled_scheduled = cwa_db.scheduled_cancel_for_book(deleted_book_id)
                             if cancelled_scheduled > 0:
-                                log.info("[cwa-duplicates] Cancelled %d scheduled job(s) for deleted book %s", 
-                                        cancelled_scheduled, book.id)
+                                log.info("[cwa-duplicates] Cancelled %d scheduled job(s) for deleted book %s",
+                                        cancelled_scheduled, deleted_book_id)
                         except Exception as schedule_ex:
-                            log.warning("[cwa-duplicates] Failed to cancel scheduled jobs for book %s: %s", book.id, schedule_ex)
-                        
-                        print(f"[cwa-duplicates-auto] Book {book.id} deletion complete", flush=True)
-                        
+                            log.warning("[cwa-duplicates] Failed to cancel scheduled jobs for book %s: %s", deleted_book_id, schedule_ex)
+
+                        print(f"[cwa-duplicates-auto] Book {deleted_book_id} deletion complete", flush=True)
+
                     except Exception as e:
-                        log.error("[cwa-duplicates] Error deleting book %s: %s", book.id, e)
-                        result['errors'].append(f"Failed to delete book {book.id}: {str(e)}")
+                        log.error("[cwa-duplicates] Error deleting book %s: %s", deleted_book_id, e)
+                        result['errors'].append(f"Failed to delete book {deleted_book_id}: {str(e)}")
                 
                 if deleted_ids:
                     try:
@@ -1871,16 +1891,31 @@ def auto_resolve_duplicates(strategy='newest', dry_run=False, user_id=None, trig
         return result
         
     finally:
-        # Always cleanup sessions
-        try:
-            if calibre_db.session is not None:
-                calibre_db.session.close()
-        except Exception:
-            pass
+        # Do NOT close calibre_db.session here (data-safety, D1). It is a shared
+        # module-level (scoped) session used by BOTH the HTTP worker and the
+        # TaskDuplicateScan thread. Closing it from this utility — which runs from
+        # request contexts (preview/execute-resolution) AND the background scan —
+        # detaches objects mid-operation for any concurrent context
+        # (DetachedInstanceError) and can abort a delete partway through a group.
+        # The session lifecycle is owned by the Flask request teardown and by
+        # TaskDuplicateScan.run()'s own finally — not by this function.
+        #
+        # D2 (data-safety): release the destructive-resolution lock iff this
+        # invocation acquired it (not dry_run). Released in finally so an
+        # exception anywhere in the loop can't strand the lock and deadlock every
+        # future resolution.
+        if lock_held:
+            _AUTO_RESOLVE_LOCK.release()
 
 
 def merge_duplicate_group(book_to_keep, books_to_merge):
-    """Merge formats from duplicate books into the target book."""
+    """Merge file formats from duplicate books into the target book.
+
+    Per-user data (annotations, reading progress, Kobo state, shelf
+    membership…) is migrated separately in the resolution deletion loop —
+    for EVERY strategy, not just 'merge' — via
+    user_book_data.migrate_user_book_data (D4).
+    """
     if not book_to_keep or not books_to_merge:
         return
 
@@ -1894,22 +1929,55 @@ def merge_duplicate_group(book_to_keep, books_to_merge):
         author_name = to_book.authors[0].name
     to_name = helper.get_valid_filename(to_book.title, chars=96) + ' - ' + helper.get_valid_filename(author_name, chars=96)
 
+    # D8: stage + validate every copy BEFORE touching disk or the session.
+    # Two failure modes this prevents:
+    #   1. A target file on disk but not in to_book.data (prior partial
+    #      failure, manual/calibre edit) passed the format guard and was
+    #      silently overwritten — the kept book's file destroyed.
+    #   2. A mid-loop copy failure left appended-but-uncommitted Data rows in
+    #      the shared session; the resolution loop's next commit persisted the
+    #      orphans. Validate-all, copy-all, append+commit once — and on any
+    #      failure roll the session back and remove the files we copied.
+    staged = []
+    seen_formats = set(existing_formats)
     for source in books_to_merge:
         from_book = calibre_db.get_book(source.id)
         if not from_book:
             continue
         for element in from_book.data:
-            if element.format not in existing_formats:
-                filepath_new = os.path.normpath(os.path.join(config.get_book_path(),
-                                                             to_book.path,
-                                                             to_name + "." + element.format.lower()))
-                filepath_old = os.path.normpath(os.path.join(config.get_book_path(),
-                                                             from_book.path,
-                                                             element.name + "." + element.format.lower()))
-                copyfile(filepath_old, filepath_new)
-                to_book.data.append(db.Data(to_book.id,
-                                            element.format,
-                                            element.uncompressed_size,
-                                            to_name))
-                existing_formats.append(element.format)
-    calibre_db.session.commit()
+            if element.format in seen_formats:
+                continue
+            filepath_new = os.path.normpath(os.path.join(config.get_book_path(),
+                                                         to_book.path,
+                                                         to_name + "." + element.format.lower()))
+            filepath_old = os.path.normpath(os.path.join(config.get_book_path(),
+                                                         from_book.path,
+                                                         element.name + "." + element.format.lower()))
+            if not os.path.isfile(filepath_old):
+                raise ValueError("Merge aborted: source file missing for format %s: %s"
+                                 % (element.format, filepath_old))
+            if os.path.exists(filepath_new):
+                raise ValueError("Merge aborted: target file already exists on disk, "
+                                 "refusing to overwrite: %s" % filepath_new)
+            staged.append((filepath_old, filepath_new, element))
+            seen_formats.add(element.format)
+
+    copied = []
+    try:
+        for filepath_old, filepath_new, element in staged:
+            copyfile(filepath_old, filepath_new)
+            copied.append(filepath_new)
+        for _filepath_old, _filepath_new, element in staged:
+            to_book.data.append(db.Data(to_book.id,
+                                        element.format,
+                                        element.uncompressed_size,
+                                        to_name))
+        calibre_db.session.commit()
+    except Exception:
+        calibre_db.session.rollback()
+        for path in copied:
+            try:
+                os.remove(path)
+            except OSError:
+                pass
+        raise

@@ -23,6 +23,7 @@ from .duplicates import (
     generate_group_hash,
     get_common_filters,
     normalize_title_for_duplicates,
+    normalize_text_for_duplicates,
 )
 
 sys.path.insert(1, "/app/calibre-web-automated/scripts/")
@@ -31,7 +32,7 @@ from cwa_db import CWA_DB
 
 log = logger.create()
 
-NORMALIZATION_VERSION = "duplicate-index-v1"
+NORMALIZATION_VERSION = "duplicate-index-v2"  # v2: NFC + whitespace-collapse normalization (D6)
 MAX_INCREMENTAL_BOOK_IDS = 1000
 DUPLICATE_INDEX_REBUILD_BATCH_SIZE = 250
 INGEST_BATCH_DIRTY_FILE = "/config/cwa_ingest_batch_dirty"
@@ -138,10 +139,10 @@ def build_book_key_parts(book, settings):
     # leading primary-author prefix, unlike the old Python fallback's no-author mode.
     return BookKeyParts(
         normalized_title=normalize_title_for_duplicates(title, primary_author),
-        normalized_author=primary_author.lower().strip() if primary_author else "unknown",
-        normalized_language=language.lower().strip(),
-        normalized_series=series.lower().strip(),
-        normalized_publisher=publisher.lower().strip(),
+        normalized_author=normalize_text_for_duplicates(primary_author, default="unknown"),
+        normalized_language=normalize_text_for_duplicates(language, default="unknown"),
+        normalized_series=normalize_text_for_duplicates(series, default="no_series"),
+        normalized_publisher=normalize_text_for_duplicates(publisher, default="unknown_publisher"),
         format_signature=format_signature,
     )
 
@@ -164,8 +165,30 @@ def _enabled_key_values(parts: BookKeyParts, settings):
     return values
 
 
-def build_duplicate_key(book, settings):
-    return _hash_json(_enabled_key_values(build_book_key_parts(book, settings), settings))
+def build_duplicate_key(book, settings, parts=None):
+    # D7 (data-safety): a book must have the REAL metadata for every enabled
+    # criterion to be a duplicate candidate. build_book_key_parts substitutes
+    # sentinels ("untitled" / "unknown") for missing fields, so two distinct
+    # books that both lack a title (or both lack an author) would otherwise
+    # collapse to the same key and auto-resolve could DELETE one. Give such
+    # incomplete-metadata books a per-book-unique key so they are "duplicates of
+    # only themselves" — never grouped, never auto-deleted. (Sentinels remain
+    # fine for display; they just must not be dedup keys.) This is the SINGLE
+    # key-computation entry point: the index writers (upsert_book_keys /
+    # rebuild_duplicate_index) call it, so the guard is on the actual write path.
+    criteria = get_effective_duplicate_criteria(settings)
+    if criteria.get("title") and not getattr(book, "title", None):
+        return _hash_json([("incomplete-no-title", str(getattr(book, "id", id(book))))])
+    # _primary_author returns the literal "unknown" sentinel (never falsy) when
+    # the book has no authors or a nameless first author — detect THAT, not the
+    # truthiness of the return value.
+    if criteria.get("author") and (
+        not getattr(book, "authors", None) or _primary_author(book) == "unknown"
+    ):
+        return _hash_json([("incomplete-no-author", str(getattr(book, "id", id(book))))])
+    if parts is None:
+        parts = build_book_key_parts(book, settings)
+    return _hash_json(_enabled_key_values(parts, settings))
 
 
 def _book_query(book_ids=None):
@@ -233,7 +256,7 @@ def upsert_book_keys(book_ids: Iterable[int], settings):
     updated = 0
     for book in books:
         parts = build_book_key_parts(book, settings)
-        duplicate_key = _hash_json(_enabled_key_values(parts, settings))
+        duplicate_key = build_duplicate_key(book, settings, parts)
         cwa_db.cur.execute(
             """
             INSERT INTO cwa_duplicate_book_keys (
@@ -288,7 +311,7 @@ def rebuild_duplicate_index(settings, progress_callback=None):
             if book is None:
                 continue
             parts = build_book_key_parts(book, settings)
-            duplicate_key = _hash_json(_enabled_key_values(parts, settings))
+            duplicate_key = build_duplicate_key(book, settings, parts)
             key_rows.append(
                 (book.id, *parts.as_db_tuple(), duplicate_key, fingerprint)
             )
@@ -388,7 +411,7 @@ def _decorate_books_for_group(books):
         book.cover_url = f"/cover/{book.id}" if getattr(book, "has_cover", None) else "/static/generic_cover.svg"
 
 
-def _group_from_books(books):
+def _group_from_books(books, duplicate_key=None):
     books.sort(key=lambda book: _timestamp_or_default(book.timestamp, _AWARE_MIN), reverse=True)
     _decorate_books_for_group(books)
     display_title = books[0].title if books[0].title else "Untitled"
@@ -400,18 +423,22 @@ def _group_from_books(books):
         "author": display_author,
         "count": len(books),
         "books": books,
+        # group_hash derives from DISPLAY data and drifts when an ingest or a
+        # metadata edit changes books[0] — kept for the UI routes only.
+        # duplicate_key is the stable identity dismissals match on (D5).
         "group_hash": generate_group_hash(display_title, display_author),
+        "duplicate_key": duplicate_key,
     }
 
 
 def get_duplicate_groups_from_index(settings, include_dismissed=False, user_id=None, candidate_book_ids=None):
     duplicate_groups = []
-    for _duplicate_key, book_ids_str, _count in _duplicate_key_rows(settings, candidate_book_ids=candidate_book_ids):
+    for duplicate_key, book_ids_str, _count in _duplicate_key_rows(settings, candidate_book_ids=candidate_book_ids):
         book_ids = [int(book_id) for book_id in book_ids_str.split(",") if book_id]
         books = _load_books_by_ids(book_ids, user_id=user_id)
         if len(books) < 2:
             continue
-        duplicate_groups.append(_group_from_books(books))
+        duplicate_groups.append(_group_from_books(books, duplicate_key=duplicate_key))
 
     duplicate_groups.sort(key=lambda group: (group["title"].lower(), group["author"].lower()))
     if not include_dismissed:

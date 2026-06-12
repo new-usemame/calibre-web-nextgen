@@ -515,7 +515,7 @@ def _load_duplicates_route_module(
     _clear_modules()
     _RouteCwaDB.cache_data = {"scan_pending": not baseline_valid, "duplicate_groups": [], "last_scanned_book_id": 55 if baseline_valid else 0}
     cps = _install_stub("cps")
-    for name in ("db", "calibre_db", "ub", "config", "helper"):
+    for name in ("db", "calibre_db", "ub", "config", "helper", "user_book_data"):
         module = _install_stub(f"cps.{name}")
         setattr(cps, name, module)
     logger = _install_stub("cps.logger", {"create": lambda: _Logger()})
@@ -573,7 +573,7 @@ def _load_duplicates_route_module(
         },
     )
     _install_stub("flask_babel", {"gettext": lambda text, **kwargs: text % kwargs if kwargs else text})
-    _install_stub("sqlalchemy", {"func": object(), "and_": lambda *args, **kwargs: None, "case": lambda *args, **kwargs: None})
+    _install_stub("sqlalchemy", {"func": object(), "and_": lambda *args, **kwargs: None, "case": lambda *args, **kwargs: None, "or_": lambda *args, **kwargs: None})
     _install_stub("sqlalchemy.sql")
     _install_stub("sqlalchemy.sql.expression", {"true": True, "false": False})
     _install_stub("sqlalchemy.orm", {"joinedload": lambda *args, **kwargs: None})

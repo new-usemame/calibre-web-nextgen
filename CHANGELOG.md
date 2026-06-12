@@ -17,6 +17,12 @@ is for things you can see or feel when running the app.
 ## [Unreleased]
 
 ### Added
+- You can now write your own message for the emails the server sends with a
+  book. Edit Email Server Settings has a new "Email Message Body" box; whatever
+  you type there replaces the default "This Email has been sent via
+  Calibre-Web NextGen." on books sent to an eReader and on test emails. Write
+  it in any language, add a link to your library, keep it short — leave the box
+  blank to keep the original wording. (Requested by @iroQuai in #428)
 - Magic Shelves can now filter on your Calibre custom columns. The rule
   builder lists every queryable custom column — text, numbers, yes/no,
   dates, ratings, and fixed-choice columns (which get a proper dropdown of

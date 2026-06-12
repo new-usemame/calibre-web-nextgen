@@ -16,7 +16,41 @@ is for things you can see or feel when running the app.
 
 ## [Unreleased]
 
+### Added
+- Magic Shelves can now filter on your Calibre custom columns. The rule
+  builder lists every queryable custom column — text, numbers, yes/no,
+  dates, ratings, and fixed-choice columns (which get a proper dropdown of
+  their allowed values) — so shelves like "Mood is cozy" or "Page Count
+  over 400" just work, including the "is empty / is not empty" operators.
+  (PR #387 by @8bitgentleman)
+- You can now open the same library in Calibre desktop while the server is
+  running. Set `NETWORK_SHARE_MODE=true` plus the new
+  `DESKTOP_COMPAT_MODE=true` and the server releases its database lock
+  between web requests, so Calibre desktop opens the library instead of
+  crashing or hanging; edits you make there show up in the web UI on the
+  next page load. Occasional desktop use is the intent — heavy simultaneous
+  use of both slows the web UI rather than corrupting anything. See the
+  README's "Calibre desktop coexistence" section for trade-offs.
+  (PR #386 by @8bitgentleman)
+
+### Changed
+- Loading spinners are crisp at any size and follow your theme's color. The
+  old animated GIFs (admin Restart/Status dialogs, settings save flashes, the
+  book reader, and the PDF viewer) rendered pixelated and ignored your theme;
+  they're replaced by a smooth CSS ring that matches the theme's primary
+  color, centers correctly everywhere, and slows down rather than freezing
+  when your system asks for reduced motion. (PR #384 by @jbelascoain)
+
 ### Fixed
+- Calibre plugin and configuration loading is now reliable when you opt in
+  with `CWA_CALIBRE_USER_PLUGINS=true`. The image used to set a misspelled
+  environment variable (`CALIBRE_CONFIG_DIR`) that Calibre simply ignores, so
+  Calibre invocations could fall back to a nonexistent home directory and
+  miss plugins installed under `/config/.config/calibre/plugins`. The opt-in
+  now sets Calibre's documented `CALIBRE_CONFIG_DIRECTORY` on every Calibre
+  subprocess it covers (ingest, conversion, cover enforcement, metadata
+  embed). Plugin loading stays off unless you opt in. (Diagnosed by
+  @jasonobrien in #434)
 - **LubimyCzytac.pl metadata search returned "no results" for every book.**
   The Polish catalog redesigned its site, so the provider's search and book-page
   parsing no longer matched anything — searches came back empty even though the

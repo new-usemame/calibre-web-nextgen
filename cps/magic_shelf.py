@@ -347,6 +347,97 @@ def build_filter_from_rule(rule, user_id=None):
     if not all([field_name, operator_name]):
         return None
 
+    # Handle dynamic custom column fields (id: 'custom_column_<N>')
+    if field_name and field_name.startswith('custom_column_'):
+        try:
+            cc_id = int(field_name[len('custom_column_'):])
+        except ValueError:
+            return None
+
+        if cc_id not in db.cc_classes:
+            log.warning(f"Custom column {cc_id} not found in cc_classes")
+            return None
+
+        cc_rel_name = f'custom_column_{cc_id}'
+        if not hasattr(db.Books, cc_rel_name):
+            log.warning(f"Books model has no relationship '{cc_rel_name}'")
+            return None
+
+        cc_class = db.cc_classes[cc_id]
+        column = cc_class.value
+        rel = getattr(db.Books, cc_rel_name)
+
+        # Coerce value to match the column's Python type before filtering
+        from . import calibre_db
+        cc_col = calibre_db.session.get(db.CustomColumns, cc_id)
+        if cc_col:
+            if cc_col.datatype == 'bool' and value is not None:
+                try:
+                    value = bool(int(value))
+                except (ValueError, TypeError):
+                    pass
+            elif cc_col.datatype == 'datetime':
+                if isinstance(value, str):
+                    try:
+                        value = datetime.strptime(value, '%Y-%m-%d')
+                    except ValueError:
+                        log.warning(f"Invalid date value '{value}' for custom column {cc_id}")
+                        return None
+                elif isinstance(value, list):
+                    parsed = []
+                    for v in value:
+                        try:
+                            parsed.append(datetime.strptime(v, '%Y-%m-%d'))
+                        except (ValueError, TypeError):
+                            log.warning(f"Invalid date value '{v}' for custom column {cc_id}")
+                            return None
+                    value = parsed
+            elif cc_col.datatype == 'enumeration':
+                # The empty/not-empty operators carry no value — don't let
+                # enum validation reject their None and kill the filter
+                # before the operator dispatch below.
+                value_free_ops = ('is_empty', 'is_null', 'is_not_empty', 'is_not_null')
+                if operator_name not in value_free_ops:
+                    try:
+                        allowed = set(cc_col.get_display_dict().get('enum_values', []))
+                    except Exception:
+                        allowed = set()
+                    if allowed:
+                        values_to_check = value if isinstance(value, list) else [value]
+                        for v in values_to_check:
+                            if v not in allowed:
+                                log.warning(f"Invalid enum value '{v}' for custom column {cc_id}")
+                                return None
+
+        negated_ops = {
+            'not_equal': 'equal',
+            'not_contains': 'contains',
+            'not_begins_with': 'begins_with',
+            'not_ends_with': 'ends_with',
+            'not_in': 'in',
+            'not_between': 'between',
+        }
+        try:
+            if operator_name in ('is_empty', 'is_null'):
+                return ~rel.any()
+            elif operator_name in ('is_not_empty', 'is_not_null'):
+                return rel.any()
+            elif operator_name in negated_ops:
+                base_op = OPERATOR_MAP.get(negated_ops[operator_name])
+                if not base_op:
+                    return None
+                filter_expr = base_op(column, value)
+                return ~rel.any(filter_expr) if filter_expr is not None else None
+            else:
+                operator = OPERATOR_MAP.get(operator_name)
+                if not operator:
+                    return None
+                filter_expr = operator(column, value)
+                return rel.any(filter_expr) if filter_expr is not None else None
+        except Exception as e:
+            log.error(f"Error building filter for custom column {cc_id}: {e}", exc_info=True)
+            return None
+
     field_info = FIELD_MAP.get(field_name)
     if not field_info:
         return None
@@ -544,6 +635,9 @@ def build_query_from_rules(rules_json, user_id=None):
 def get_book_ids_for_magic_shelf(shelf_id, sort_order=None, sort_param='stored', bypass_cache=False):
     """Return ordered book IDs for a magic shelf without loading book objects."""
     try:
+        from . import calibre_db
+        if calibre_db._desktop_compat:
+            bypass_cache = True
         if not bypass_cache and current_user.is_authenticated:
             cache = ub.session.query(ub.MagicShelfCache).filter_by(
                 shelf_id=shelf_id,
@@ -566,7 +660,7 @@ def get_book_ids_for_magic_shelf(shelf_id, sort_order=None, sort_param='stored',
         all_ids = [book_id for (book_id,) in query.with_entities(db.Books.id).all()]
         total_count = len(all_ids)
 
-        if current_user.is_authenticated:
+        if current_user.is_authenticated and not bypass_cache:
             ub.session.query(ub.MagicShelfCache).filter_by(
                 shelf_id=shelf_id,
                 user_id=current_user.id,

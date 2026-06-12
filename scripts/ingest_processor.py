@@ -736,7 +736,7 @@ _CONVERSION_FAILURE_GUIDANCE = {
         "Calibre can only convert it when an ACSM-capable plugin (e.g. the ACSM Input "
         "plugin) is installed. Your options: (1) set CWA_CALIBRE_USER_PLUGINS=true and "
         "place the ACSM Input plugin zip in /config/.config/calibre/plugins (see the "
-        "'Calibre Plugins' section of the README), or (2) open the .acsm in Adobe "
+        "'Calibre plugins' section of the README), or (2) open the .acsm in Adobe "
         "Digital Editions or Calibre desktop to download the actual book, then drop "
         "the downloaded EPUB/PDF into the ingest folder instead. The original file "
         "has been moved to the failed books folder (processed_books/failed)."

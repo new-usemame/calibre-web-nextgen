@@ -17,6 +17,12 @@ is for things you can see or feel when running the app.
 ## [Unreleased]
 
 ### Added
+- Magic Shelves can now filter on your Calibre custom columns. The rule
+  builder lists every queryable custom column — text, numbers, yes/no,
+  dates, ratings, and fixed-choice columns (which get a proper dropdown of
+  their allowed values) — so shelves like "Mood is cozy" or "Page Count
+  over 400" just work, including the "is empty / is not empty" operators.
+  (PR #387 by @8bitgentleman)
 - You can now open the same library in Calibre desktop while the server is
   running. Set `NETWORK_SHARE_MODE=true` plus the new
   `DESKTOP_COMPAT_MODE=true` and the server releases its database lock
@@ -26,6 +32,14 @@ is for things you can see or feel when running the app.
   use of both slows the web UI rather than corrupting anything. See the
   README's "Calibre desktop coexistence" section for trade-offs.
   (PR #386 by @8bitgentleman)
+
+### Changed
+- Loading spinners are crisp at any size and follow your theme's color. The
+  old animated GIFs (admin Restart/Status dialogs, settings save flashes, the
+  book reader, and the PDF viewer) rendered pixelated and ignored your theme;
+  they're replaced by a smooth CSS ring that matches the theme's primary
+  color, centers correctly everywhere, and slows down rather than freezing
+  when your system asks for reduced motion. (PR #384 by @jbelascoain)
 
 ### Fixed
 - Calibre plugin and configuration loading is now reliable when you opt in

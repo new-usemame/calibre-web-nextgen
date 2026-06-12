@@ -125,6 +125,20 @@ def apply_https_runtime_config():
         log.info(f"SESSION_COOKIE_SECURE set to {app.config['SESSION_COOKIE_SECURE']} (Standard/LDAP login)")
 
 
+# Last-logged (total, visible) magic-shelf counts per user_id; the
+# before_request hook fires on every request (incl. UI polling), so the
+# DEBUG line is deduped to once per change (cf. _AUTHOR_SORT_DRIFT_WARNED).
+_MAGIC_SHELF_COUNTS_LOGGED = {}
+
+
+def _log_magic_shelf_counts(user_id, total_shelves, visible_shelves):
+    shelf_counts = (total_shelves, visible_shelves)
+    if _MAGIC_SHELF_COUNTS_LOGGED.get(user_id) != shelf_counts:
+        _MAGIC_SHELF_COUNTS_LOGGED[user_id] = shelf_counts
+        log.debug(f"Found {total_shelves} total magic shelves for user {user_id}, "
+                  f"{visible_shelves} visible after filtering")
+
+
 def create_app():
     if csrf:
         csrf.init_app(app)
@@ -301,9 +315,9 @@ def create_app():
                         ub.MagicShelf.user_id == current_user.id
                     )
                 ).all()
-                
-                log.debug(f"Found {len(g.magic_shelves_access)} total magic shelves for user {current_user.id} before filtering")
-                
+
+                total_shelves = len(g.magic_shelves_access)
+
                 # Filter out hidden items
                 from . import magic_shelf
                 filtered_shelves = []
@@ -338,7 +352,9 @@ def create_app():
                     filtered_shelves.append(shelf)
                 
                 g.magic_shelves_access = filtered_shelves
-                log.debug(f"Filtered to {len(filtered_shelves)} visible magic shelves for user {current_user.id}")
+
+                # Deduplicated — this hook fires on every request
+                _log_magic_shelf_counts(current_user.id, total_shelves, len(filtered_shelves))
 
                 # Magic Shelf Count Caching
                 if 'magic_shelf_counts' not in session:

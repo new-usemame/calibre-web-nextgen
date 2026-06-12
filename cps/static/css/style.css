@@ -405,6 +405,13 @@ fieldset[disabled] .btn-primary.active {
 .css-spinner {
   width: 48px;
   height: 48px;
+  /* Self-center: the flash blocks (config_db / config_edit / cwa_settings)
+   * wrap the spinner in `.text-center` parents, which only center inline
+   * content — a block-level div needs auto margins or it hugs the left
+   * edge of the alert. Inside the `.spinner` flex wrappers auto margins
+   * are equivalent to justify-content: center, so both contexts agree. */
+  margin-left: auto;
+  margin-right: auto;
   border: 5px solid rgba(128, 128, 128, 0.25);
   border-top-color: var(--color-primary, #45b29d);
   border-radius: 50%;

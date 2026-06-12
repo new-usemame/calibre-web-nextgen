@@ -1,9 +1,9 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
-"""Regression tests for the pure-CSS spinner introduced in PR #382.
+"""Regression tests for the pure-CSS spinner introduced in PR #384.
 
 Background: PR #326 proposed replacing loading-icon.gif with a larger
 (250×250) gif. That was blocked because the bare <img> tags rendered at
-native resolution. PR #382 replaces ALL loading gifs with a pure-CSS
+native resolution. PR #384 replaces ALL loading gifs with a pure-CSS
 .css-spinner ring: no image file involved, crisp at any DPI, theme-aware
 via --color-primary, and prefers-reduced-motion aware.
 
@@ -65,6 +65,20 @@ class TestCssSpinnerContract:
         assert w and h, f".css-spinner must declare width and height; got: {body!r}"
         assert 16 <= int(w.group(1)) <= 96, f"width should be 16–96px; got {w.group(1)}px"
         assert 16 <= int(h.group(1)) <= 96, f"height should be 16–96px; got {h.group(1)}px"
+
+    def test_style_css_spinner_self_centers(self, style_css):
+        """The flash blocks (config_db / config_edit / cwa_settings) put the
+        spinner inside `.text-center` parents, which only center INLINE
+        content. A block-level .css-spinner therefore needs auto horizontal
+        margins (or it hugs the alert's left edge)."""
+        body = _spinner_block(style_css, ".css-spinner")
+        centered = (
+            re.search(r"margin-left:\s*auto", body)
+            and re.search(r"margin-right:\s*auto", body)
+        ) or re.search(r"margin:[^;]*auto", body) or "inline-block" in body
+        assert centered, (
+            f".css-spinner must self-center (auto margins or inline-block); got: {body!r}"
+        )
 
     def test_style_css_spinner_uses_primary_color(self, style_css):
         body = _spinner_block(style_css, ".css-spinner")

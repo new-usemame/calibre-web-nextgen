@@ -914,9 +914,6 @@ class CalibreDB:
                     ccdict['value'] = Column(String)
                 if row.datatype in ['float', 'int', 'bool', 'datetime', 'comments']:
                     ccdict['book'] = Column(Integer, ForeignKey('books.id'))
-                if row.datatype in ['text', 'enumeration']:
-                    ccdict['name'] = property(lambda self: self.value)
-                    ccdict['sort'] = None
                 cc_classes[row.id] = type(str('custom_column_' + str(row.id)), (Base,), ccdict)
 
         for cc_id in cc_ids:

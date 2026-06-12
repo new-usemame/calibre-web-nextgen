@@ -16,6 +16,17 @@ is for things you can see or feel when running the app.
 
 ## [Unreleased]
 
+### Added
+- You can now open the same library in Calibre desktop while the server is
+  running. Set `NETWORK_SHARE_MODE=true` plus the new
+  `DESKTOP_COMPAT_MODE=true` and the server releases its database lock
+  between web requests, so Calibre desktop opens the library instead of
+  crashing or hanging; edits you make there show up in the web UI on the
+  next page load. Occasional desktop use is the intent — heavy simultaneous
+  use of both slows the web UI rather than corrupting anything. See the
+  README's "Calibre desktop coexistence" section for trade-offs.
+  (PR #386 by @8bitgentleman)
+
 ### Fixed
 - Calibre plugin and configuration loading is now reliable when you opt in
   with `CWA_CALIBRE_USER_PLUGINS=true`. The image used to set a misspelled

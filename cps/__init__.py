@@ -420,6 +420,7 @@ def create_app():
 
     @app.before_request
     def _desktop_compat_fresh_snapshot():
+        from flask import request
         # Rollback ends the SERIALIZABLE snapshot so the next query sees Calibre desktop's writes.
         if not calibre_db._desktop_compat or request.endpoint == 'static':
             return

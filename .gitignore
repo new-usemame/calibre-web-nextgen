@@ -210,13 +210,6 @@ cython_debug/
 # Dev instance files for testing in the same folder
 instance/
 
-# Local test infrastructure (dev-only, contains live credentials/state)
-dev-config/
-docker-compose.yml.local-test
-
-# macOS metadata
-.DS_Store
-
 # Runtime migration markers created by cwa-init / ub.py.run_cwa_migrations
 # inside CONFIG_DIR. These appear under repo/ when a developer points
 # CONFIG_DIR at the repo root for local container runs; they're per-

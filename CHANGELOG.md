@@ -55,6 +55,13 @@ is for things you can see or feel when running the app.
   when your system asks for reduced motion. (PR #384 by @jbelascoain)
 
 ### Fixed
+- Turning on DEBUG logging no longer fills docker logs with repeating Magic
+  Shelf messages. The "Found N total magic shelves", per-shelf "Hiding...",
+  and "Filtered to N visible" lines fired on every request — an open browser
+  tab meant the same block every ~3 seconds. They're now a single line that
+  only appears when your shelf setup actually changes, with the hidden
+  shelves named in it. (Fix by @KucharczykL in #443; reported by @SpookyUSAF
+  in #445 and on CWA as #1060)
 - Calibre plugin and configuration loading is now reliable when you opt in
   with `CWA_CALIBRE_USER_PLUGINS=true`. The image used to set a misspelled
   environment variable (`CALIBRE_CONFIG_DIR`) that Calibre simply ignores, so

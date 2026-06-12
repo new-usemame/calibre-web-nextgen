@@ -16,6 +16,200 @@ is for things you can see or feel when running the app.
 
 ## [Unreleased]
 
+### Fixed
+- Calibre plugin and configuration loading is now reliable when you opt in
+  with `CWA_CALIBRE_USER_PLUGINS=true`. The image used to set a misspelled
+  environment variable (`CALIBRE_CONFIG_DIR`) that Calibre simply ignores, so
+  Calibre invocations could fall back to a nonexistent home directory and
+  miss plugins installed under `/config/.config/calibre/plugins`. The opt-in
+  now sets Calibre's documented `CALIBRE_CONFIG_DIRECTORY` on every Calibre
+  subprocess it covers (ingest, conversion, cover enforcement, metadata
+  embed). Plugin loading stays off unless you opt in. (Diagnosed by
+  @jasonobrien in #434)
+
+## [v4.0.161] - 2026-06-12
+
+### Fixed
+- Hardcover progress sync no longer dies on books without a chosen edition.
+  Reading on a KOReader/Kobo device synced progress to the library fine, but
+  the push to Hardcover failed every time with `'NoneType' object has no
+  attribute 'get'` — typically when the book's entry on Hardcover has no
+  edition picked, or when Hardcover rejects a status change. The sync now
+  handles those responses, logs Hardcover-side errors with a full traceback,
+  and tells you when a book needs an edition selected on Hardcover for
+  page-based progress. (#433, reported by @SpookyUSAF)
+- Search now opens on phones. Tapping the search icon in the top bar did
+  nothing on mobile (most visibly in Safari on iOS) — the icon was covered by
+  the header bar, so the tap never reached the search box, and the box never
+  appeared. Tapping the icon now opens the search field as expected. Desktop is
+  unchanged. (#425, reported by @getthething)
+- On phones, the book detail page no longer shows an oversized, off-center
+  cover. The cover used to render wider than its column and sit left of center
+  (on the caliBlur theme), pushing the description far down the page. It now
+  caps to its column and centers, and the title/spacing on narrow screens are
+  tightened so the description sits closer to the top. (#288, reported with a
+  screenshot by @iroQuai)
+
+## [v4.0.160] - 2026-06-10
+
+### Security
+- Closed a cross-site scripting hole in the comic (CBR/CBZ) reader. The reader
+  ran your saved page bookmark through JavaScript's `eval()`, so a bookmark
+  value that contained code — which any logged-in account could store for a
+  comic — would execute when the reader page opened. Bookmarks are now read
+  strictly as a page number.
+
+### Fixed
+- The metadata search dialog now lists providers in the order you set under
+  Settings, instead of alphabetically. Whatever provider order you configure
+  for automatic metadata fetching is now also the order the search popup shows
+  and ranks results in, so your preferred source appears first.
+- Adding several books at once to a Kobo-synced shelf now syncs them to
+  Hardcover, just like adding one book does. Before, only single adds reached
+  Hardcover — "add all" from search results, multi-select adds, and
+  add-series-to-shelf silently skipped it. The sync now runs as a background
+  task (visible under Tasks, cancellable), so adding a long series doesn't
+  hold the page open on an external service — and single adds respond faster
+  for the same reason.
+- The experimental "SQL" duplicate-scan mode no longer produces different (and
+  sometimes wrong) results than the default mode. It grouped co-authored books
+  into multiple duplicate groups at once and skipped a title normalization the
+  default scan applies, so the same library showed different duplicates
+  depending on an admin toggle. That mode now uses the same single grouping
+  engine as everything else, keeping SQL only as the fast candidate prefilter.
+- Books you've hidden no longer show up in your duplicate scan. The Duplicates
+  page respected your language, tag, and archive filters but not your hidden
+  list, so hidden books reappeared there and could even be swept into
+  duplicate auto-resolution.
+- Duplicate detection now catches copies whose titles differ only in unicode
+  form or spacing. A "Café" imported from a Mac (decomposed accents) and a
+  "Café" typed by hand, or "The  Book" with a double space, counted as
+  different books and never showed up as duplicates. All duplicate matching
+  now normalizes accents and whitespace first; the duplicate index rebuilds
+  itself on first scan after the update, and your existing dismissals carry
+  over automatically.
+- Dismissed duplicate groups stay dismissed. Adding another copy of a book or
+  editing its title changed the group's internal label, so groups you had
+  dismissed popped back onto the Duplicates page (and could re-enter
+  auto-resolve). Dismissals are now tied to the group's stable identity and
+  survive new ingests and metadata edits; existing dismissals are upgraded
+  automatically the first time they match. Two different groups that happened
+  to share a display title also no longer share one dismissal.
+- Merging duplicate books can no longer overwrite one of the kept book's
+  files. If a file with the merge target's name was already on disk (from an
+  earlier partial failure or a manual edit), the merge silently copied over
+  it; it now refuses that group with a clear error and leaves every file
+  untouched. A merge that fails partway also cleans up after itself instead
+  of leaving stray copied files or phantom format entries behind.
+- Finishing a book in KOReader now marks it read on the website when you use a
+  custom "read" column. If your admin set a Calibre custom column as the read
+  marker (a stock option under Feature Configuration), KOReader completions
+  only wrote the built-in read list, so the book page checkmark stayed empty.
+  The sync now also sets the custom column — and only ever sets it: re-opening
+  a finished book never silently un-reads it.
+- Automatic metadata fetch now actually downloads covers. The "update cover"
+  option existed but did nothing — books imported with auto-fetch on never got
+  their cover updated. Covers now download through the same safe path as the
+  manual editor (size limits, image checks, server-side request protections),
+  respect the per-book cover lock, and in "smart application" mode only fill in
+  a missing cover, never replace one you have. (#404, confirmed by @beanscg)
+- Downloading a cover by URL (manual editor and auto-fetch alike) no longer
+  destroys the existing cover when the server misbehaves: a redirect stub or an
+  error page served with an image content-type used to get saved as the cover
+  file. The download now follows redirects properly (cover CDNs like Open
+  Library's redirect every image) and verifies the bytes are really an image
+  before anything is overwritten.
+- Shelf reorder: the giant white sort icon (a down arrow with lines) that sat on
+  top of the first covers on wide screens is gone. It was a leftover decoration
+  from the old list-style reorder page — the theme drew it in what used to be
+  empty space, and the new cover grid now fills that space. The wider your
+  browser window, the bigger the icon got. (#320, reported with screenshots by
+  @SpookyUSAF — the covers themselves were already the right size; this was the
+  last piece.)
+- Resolving duplicate books no longer loses your highlights, notes, reading
+  progress, or shelf placement. When duplicates were merged or resolved, only
+  the book files moved to the kept copy — anything you'd done on the removed
+  copy (annotations, read status, Kobo reading position, shelf membership)
+  silently disappeared. All of it now follows the kept book, whichever
+  resolve strategy you use. Deleting a book and deleting a user also clean up
+  everything that belongs to them now (deleted accounts previously left their
+  annotations and annotation-backup files behind).
+- Deleting a book no longer risks leaving a broken "ghost" entry if something
+  fails partway through. Previously the book's files were removed before the
+  library database was updated, so an error in between could leave an entry that
+  still shows in your library but won't open. The database is now updated first
+  and the files removed last, so a failure leaves the book fully intact. (Mirrors
+  the same data-safety fix already made for duplicate resolution.)
+- Shelf reorder covers: the stylesheet that keeps the covers at the normal
+  thumbnail size now loads from the page head, alongside every other stylesheet,
+  instead of from the page body. A body-loaded stylesheet link can be dropped by
+  some reverse proxies, which left the covers oversized on an otherwise-correct
+  page — the case @SpookyUSAF kept hitting on caliBlur even after v4.0.158/159.
+  (#320 follow-up, reported by @SpookyUSAF)
+- Automatic metadata fetch (the admin "auto metadata fetch" option, off by
+  default) no longer overwrites a book's correct author, ISBN, series,
+  publication date or rating with a wrong match's. Previously, with auto-fetch
+  on, importing a book could silently replace good metadata with a random
+  foreign edition's — and the "smart application" mode that's meant to only fill
+  gaps didn't actually protect those fields. Now it prefers the edition whose
+  ISBN matches your book, and smart mode never overwrites a value you already
+  have (it only fills what's missing). Open Library is also now part of the
+  default provider order.
+
+## [v4.0.159] – 2026-06-09
+
+### Added
+- You can now add books to a shelf right from the shelf page. A new **Add Books**
+  button opens a searchable picker — type to find books in your library, tick the
+  ones you want, and add them all at once. Books already on the shelf show as
+  "Already on this shelf" so you can't add duplicates, and it works on phone and
+  desktop. Especially handy for filling a brand-new empty shelf.
+
+### Fixed
+- Resolving duplicate books no longer risks leaving a book in a broken,
+  half-deleted state if something fails partway through. Previously the files
+  were removed before the library database was updated, so an error in between
+  could leave a "ghost" book that still showed in your library but wouldn't open.
+  The database is now updated first and the files removed last, so a failure
+  leaves the book fully intact and the duplicate is simply re-resolved next time.
+- Resolving duplicate books is now safe even if a duplicate scan happens to run
+  at the same moment. Before, the two could collide — deleting the same book
+  twice, leaving a duplicate only half-removed, or throwing a brief error that
+  left the library inconsistent. Now only one resolution runs at a time and the
+  other steps aside, so your books stay intact.
+- Duplicate detection no longer treats books that are *missing* a title or
+  author as duplicates of each other. Two unrelated books that both happen to
+  have no title (or no author) used to collapse together as a "duplicate" — and
+  could then be offered up for deletion. They're now kept separate; only books
+  with real matching metadata are grouped.
+- Resolving duplicate books is more reliable: the resolver no longer closes a
+  shared database connection mid-operation, which could cause errors or a
+  half-finished cleanup when the library was being used at the same time.
+- The shelf reorder screen's cover-size fix now reaches more setups: the covers
+  were still showing oversized for some users on v4.0.158 (e.g. behind certain
+  reverse proxies). The styling moved out of the page into a regular stylesheet
+  and now sizes covers on its own, so they stay at the normal thumbnail size
+  regardless of theme or proxy. (#320 follow-up, reported by @SpookyUSAF)
+- On phones, the menu (hamburger) button is now on the **left**, the same side
+  the navigation drawer slides out from — so the button and the menu it opens
+  line up. Tapping it opens the menu; tapping outside still closes it.
+- On phones, the select and settings buttons above a book list now sit on the
+  right (matching the desktop layout), so tapping the gear opens its menu on
+  screen instead of off the left edge where it was getting cut off.
+- Pages no longer occasionally fall back to the old, deprecated light theme —
+  including error pages. That fallback could happen when a request hit a snag
+  while loading, and it was the underlying cause of display glitches like the
+  oversized shelf-reorder covers (#320). The dark theme is now enforced even on
+  error pages and requests that are interrupted before they finish loading.
+
+## [v4.0.158] – 2026-06-08
+
+### Fixed
+- The shelf reorder screen now shows covers at the normal thumbnail size
+  instead of blown-up "large icon" size, and the Back button lines up under
+  the covers with proper spacing above it. (#320 follow-up, reported by
+  @droM4X and @SpookyUSAF)
+
 ## [v4.0.157] – 2026-06-07
 
 ### Added

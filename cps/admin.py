@@ -33,6 +33,7 @@ from sqlalchemy.exc import IntegrityError, OperationalError, InvalidRequestError
 from sqlalchemy.sql.expression import func, or_, text
 
 from . import constants, logger, helper, services, cli_param, apply_https_runtime_config
+from . import user_book_data
 from . import db, calibre_db, ub, web_server, config, updater_thread, gdriveutils, \
     kobo_sync_status, schedule
 from .helper import check_valid_domain, send_test_mail, reset_password, generate_password_hash, check_email, \
@@ -98,6 +99,16 @@ def admin_required(f):
 
 @admi.before_app_request
 def before_request():
+    # Theme enforcement (must be FIRST). The light/default theme is fully
+    # deprecated; caliBlur (dark) is the only supported theme. Force it before
+    # any other work in this handler: the unguarded config reads and the DB
+    # autoconfig/recovery block below can raise, and two @app.before_request
+    # handlers in cps/__init__.py run before this one. If any of them fails the
+    # theme would otherwise stay unset, and templates ({% if g.current_theme == 1 %})
+    # silently fall back to the deprecated default theme on the rendered (error)
+    # page. That gap is how default-theme-only display bugs (e.g. #320's
+    # oversized shelf-reorder covers) reached users. Single source of truth.
+    g.current_theme = 1
     # Safety net: if not configured but metadata.db now exists at default location, auto-set without redirect loop
     if not config.db_configured:
         try:
@@ -144,14 +155,6 @@ def before_request():
     # `config` global is Flask's app.config, not cps.config — see PR #335
     # lessons. Using a `g.` attribute mirrors `g.allow_anonymous` above.
     g.user_hide_enabled = bool(getattr(config, 'config_user_hide_enabled', False))
-    # Theme enforcement: light theme fully deprecated, force caliBlur (dark) in runtime
-    try:
-        g.current_theme = getattr(current_user, 'theme', config.config_theme)
-        if current_user.is_anonymous and not hasattr(current_user, 'theme'):
-            g.current_theme = config.config_theme
-    except Exception:
-        g.current_theme = getattr(config, 'config_theme', 1)
-    g.current_theme = 1
     g.config_authors_max = config.config_authors_max
     if '/static/' not in request.path and not config.db_configured and \
         request.endpoint not in ('admin.ajax_db_config',
@@ -2341,14 +2344,11 @@ def _db_configuration_update_helper():
         # if db changed -> delete shelfs, delete download books, delete read books, kobo sync...
         if db_change:
             log.info("Calibre Database changed, all Calibre-Web NextGen info related to old Database gets deleted")
-            ub.session.query(ub.Downloads).delete()
-            ub.session.query(ub.ArchivedBook).delete()
-            ub.session.query(ub.ReadBook).delete()
-            ub.session.query(ub.BookShelf).delete()
-            ub.session.query(ub.Bookmark).delete()
-            ub.session.query(ub.KoboReadingState).delete()
-            ub.session.query(ub.KoboStatistics).delete()
-            ub.session.query(ub.KoboSyncedBooks).delete()
+            # The old hand-written delete list here missed annotations and
+            # half the Kobo state children; the single enumerator gets all
+            # of it (D4). Book ids from the old library mean nothing in the
+            # new one, so the backup snapshots go too.
+            user_book_data.purge_user_book_data()
             helper.delete_thumbnail_cache()
             ub.session_commit()
             # deleted visibilities based on custom column and tags
@@ -2676,23 +2676,19 @@ def _delete_user(content):
     if ub.session.query(ub.User).filter(ub.User.role.op('&')(constants.ROLE_ADMIN) == constants.ROLE_ADMIN,
                                         ub.User.id != content.id).count():
         if content.name != "Guest":
-            # Delete all books in shelfs belonging to user, all shelfs of user, downloadstat of user, read status
-            # and user itself
-            ub.session.query(ub.ReadBook).filter(content.id == ub.ReadBook.user_id).delete()
-            ub.session.query(ub.Downloads).filter(content.id == ub.Downloads.user_id).delete()
+            # Per-user-book rows (read status, downloads, bookmarks,
+            # annotations + their on-disk backup files, Kobo state…) go
+            # through the single enumerator (D4). The old hand-written list
+            # here left the user's annotation rows and backup gzips behind
+            # (PII surviving the account deletion).
+            user_book_data.purge_user_book_data(user_id=content.id)
+            # User-scoped (not per-book) rows + the user itself stay here.
             for us in ub.session.query(ub.Shelf).filter(content.id == ub.Shelf.user_id):
                 ub.session.query(ub.BookShelf).filter(us.id == ub.BookShelf.shelf).delete()
             ub.session.query(ub.Shelf).filter(content.id == ub.Shelf.user_id).delete()
-            ub.session.query(ub.Bookmark).filter(content.id == ub.Bookmark.user_id).delete()
             ub.session.query(ub.User).filter(ub.User.id == content.id).delete()
-            ub.session.query(ub.ArchivedBook).filter(ub.ArchivedBook.user_id == content.id).delete()
             ub.session.query(ub.RemoteAuthToken).filter(ub.RemoteAuthToken.user_id == content.id).delete()
             ub.session.query(ub.User_Sessions).filter(ub.User_Sessions.user_id == content.id).delete()
-            ub.session.query(ub.KoboSyncedBooks).filter(ub.KoboSyncedBooks.user_id == content.id).delete()
-            # delete KoboReadingState and all it's children
-            kobo_entries = ub.session.query(ub.KoboReadingState).filter(ub.KoboReadingState.user_id == content.id).all()
-            for kobo_entry in kobo_entries:
-                ub.session.delete(kobo_entry)
             ub.session_commit()
             log.info("User {} deleted".format(content.name))
             return _("User '%(nick)s' deleted", nick=content.name)

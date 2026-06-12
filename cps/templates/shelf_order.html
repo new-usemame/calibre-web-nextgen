@@ -1,5 +1,16 @@
 {% import 'image.html' as image %}
 {% extends "layout.html" %}
+{# Load the reorder grid styles from the document HEAD (fork #320, @SpookyUSAF):
+   the cover-sizing rule MUST reach the browser, and the only difference between
+   the core stylesheets (which always apply for this reporter) and this page's
+   sheet was that this one's <link> sat in the <body>. A body-placed stylesheet
+   link is valid HTML but some reverse proxies / security middleware strip or
+   ignore <link> elements found in the body as "injected", which left the covers
+   unsized and oversized on an otherwise-styled (caliBlur) page. Loading it here,
+   in the same <head> block as cwa.css/caliBlur.css, removes that difference. #}
+{% block header %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/shelf_reorder.css') }}">
+{% endblock %}
 {% block body %}
   {# Deliberately NOT the discover wrapper class: main.js runs isotope on
      every `.discover .row` that contains .book cards. Isotope absolutely-
@@ -51,17 +62,16 @@
         </div>
       {% endfor %}
     </div>
-    <a href="{{ url_for('shelf.show_shelf', shelf_id=shelf.id) }}" id="shelf_back" class="btn btn-default">{{_('Back')}}</a>
+    {# Back button in its own grid row so it inherits the same left gutter as
+       the cover columns on every theme — caliBlur and the default theme resolve
+       the row's negative margin differently, so a bare sibling lands 15px left
+       of the covers on one and flush on the other (fork #320 @droM4X). #}
+    <div class="row reorder-back-row">
+      <div class="col-xs-12">
+        <a href="{{ url_for('shelf.show_shelf', shelf_id=shelf.id) }}" id="shelf_back" class="btn btn-default">{{_('Back')}}</a>
+      </div>
+    </div>
   </div>
-  <style>
-    /* Reorder affordances: grab cursor, drop ghost, keyboard focus ring. */
-    #reorder-grid .reorder-item { cursor: grab; user-select: none; -webkit-user-select: none; }
-    #reorder-grid .reorder-item:active { cursor: grabbing; }
-    #reorder-grid .reorder-item:focus { outline: 2px solid #45b29d; outline-offset: 2px; }
-    #reorder-grid .reorder-ghost { opacity: 0.4; }
-    #reorder-grid .reorder-chosen { transform: scale(1.03); }
-    #reorder-status.reorder-error { color: #d9534f; cursor: pointer; font-weight: bold; }
-  </style>
 {% endblock %}
 
 {% block js %}

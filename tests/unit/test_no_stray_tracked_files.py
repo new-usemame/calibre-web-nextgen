@@ -32,3 +32,18 @@ def test_no_stray_junk_files_at_repo_root():
         f"to a bad path (e.g. a shell redirect to an empty variable). Remove "
         f"the file(s) and fix the step that produced them."
     )
+
+
+@pytest.mark.unit
+def test_init_db_thread_refuses_unset_app_db_path(monkeypatch):
+    """The writer that produced the #440 junk file: with ``ub.app_DB_path``
+    unset, ``init_db_thread()`` used to build ``sqlite:///None`` and SQLite
+    created a phantom DB file named ``None`` in the cwd — silently absorbing
+    real writes (annotation backups) on top of littering the tree. It must
+    fail loudly instead."""
+    from cps import ub
+
+    monkeypatch.setattr(ub, "app_DB_path", None)
+    with pytest.raises(RuntimeError, match="app_DB_path"):
+        ub.init_db_thread()
+    assert not (REPO_ROOT / "None").is_file()

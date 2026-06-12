@@ -61,6 +61,20 @@ is for things you can see or feel when running the app.
   click will do — checkbox for "mark as read", unchecked box for "mark as
   unread" — and updates after each click. (#319 follow-up, reported by
   @droM4X)
+- Turning on DEBUG logging no longer fills docker logs with repeating Magic
+  Shelf messages. The "Found N total magic shelves", per-shelf "Hiding...",
+  and "Filtered to N visible" lines fired on every request — an open browser
+  tab meant the same block every ~3 seconds. They're now a single line that
+  only appears when your shelf setup actually changes, with the hidden
+  shelves named in it. (Fix by @KucharczykL in #443; reported by @SpookyUSAF
+  in #445 and on CWA as #1060)
+- Hardcover progress sync now survives Hardcover deleting or merging a book.
+  If your book's saved Hardcover ID no longer exists ("We weren't able to
+  find that book. Was it deleted?" in the logs), the sync looks up the
+  book's current ID from its edition or slug and retries instead of
+  giving up. When nothing can be looked up, the log now tells you the fix
+  (refresh the book's metadata) instead of only the raw API error.
+  (Follow-up to #433, reported by @SpookyUSAF)
 - Calibre plugin and configuration loading is now reliable when you opt in
   with `CWA_CALIBRE_USER_PLUGINS=true`. The image used to set a misspelled
   environment variable (`CALIBRE_CONFIG_DIR`) that Calibre simply ignores, so

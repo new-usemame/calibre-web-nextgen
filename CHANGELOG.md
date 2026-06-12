@@ -23,6 +23,13 @@ is for things you can see or feel when running the app.
   Calibre-Web NextGen." on books sent to an eReader and on test emails. Write
   it in any language, add a link to your library, keep it short — leave the box
   blank to keep the original wording. (Requested by @iroQuai in #428)
+- Admins can now style their instance with their own CSS. A new Custom CSS
+  box under Admin → Edit UI Configuration injects your rules into every page
+  as the last stylesheet, so they override the built-in themes — recolor the
+  navbar, tweak spacing, adjust for your screen, all without editing source,
+  and it survives upgrades because it lives in the database. The box is
+  admin-only and can't accidentally break the page layout. (Issue #323 by
+  @olskar)
 - Magic Shelves can now filter on your Calibre custom columns. The rule
   builder lists every queryable custom column — text, numbers, yes/no,
   dates, ratings, and fixed-choice columns (which get a proper dropdown of
@@ -57,6 +64,12 @@ is for things you can see or feel when running the app.
   subprocess it covers (ingest, conversion, cover enforcement, metadata
   embed). Plugin loading stays off unless you opt in. (Diagnosed by
   @jasonobrien in #434)
+- **LubimyCzytac.pl metadata search returned "no results" for every book.**
+  The Polish catalog redesigned its site, so the provider's search and book-page
+  parsing no longer matched anything — searches came back empty even though the
+  site was reachable. Search now finds books again, and publisher, description,
+  language, rating and publication date populate correctly on the metadata
+  screen. Reported by @sltvtr (#431).
 
 ## [v4.0.161] - 2026-06-12
 

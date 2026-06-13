@@ -16,6 +16,14 @@ is for things you can see or feel when running the app.
 
 ## [Unreleased]
 
+### Fixed
+- Editing a book whose author shares a name with another author after accents
+  are stripped (for example "George Pólya" alongside "George Polya", or two
+  Chinese names that romanize the same way) no longer fails with a database
+  error. Previously any metadata change to such a book — even just adding a
+  cover — was rejected. Reported on Calibre-Web by @annProg, @apetresc and
+  @wnmurphy.
+
 ## [v4.0.162] - 2026-06-13
 
 ### Added

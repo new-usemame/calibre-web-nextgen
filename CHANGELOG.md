@@ -17,6 +17,13 @@ is for things you can see or feel when running the app.
 ## [Unreleased]
 
 ### Added
+- The KOReader sync plugin can now be kept up to date with the Updates Manager
+  plugin (updatesmanager.koplugin) instead of hand-copying files onto your
+  device. The plugin now reports its version where Updates Manager looks for
+  it, and every release ships a ready-to-install `cwasync.koplugin.zip` on the
+  GitHub release page — extract it into KOReader's `plugins` folder, or point
+  Updates Manager at this repository to install updates from the KOReader
+  menu. (Requested by @filiporlo in #400)
 - You can now write your own message for the emails the server sends with a
   book. Edit Email Server Settings has a new "Email Message Body" box; whatever
   you type there replaces the default "This Email has been sent via

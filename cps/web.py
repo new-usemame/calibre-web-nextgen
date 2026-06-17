@@ -271,7 +271,13 @@ def _reader_setting_int(value, lo, hi):
 def sanitize_reader_settings(payload):
     """Reduce an arbitrary POST body to the known reader settings with safe
     values, so a crafted payload can never store junk on the user row. Unknown
-    keys and out-of-range / ill-typed values are dropped."""
+    keys and out-of-range / ill-typed values are dropped.
+
+    SECURITY: read_book() injects this dict verbatim into a <script> via Jinja's
+    ``| safe`` (no HTML escaping). Every value stored here MUST stay a closed
+    enum, a clamped int, or a bool — never store free text, or that inject
+    becomes a stored-XSS sink.
+    """
     if not isinstance(payload, dict):
         return {}
     out = {}

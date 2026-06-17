@@ -16,6 +16,67 @@ is for things you can see or feel when running the app.
 
 ## [Unreleased]
 
+### Added
+- **Tap the left or right side of the page to turn pages in the web reader.**
+  The page is split down the middle — tap (or click) the right half to go
+  forward, the left half to go back. Swiping left/right still works. Two
+  annoyances are fixed along the way: a stray finger-wobble no longer flips the
+  page, and selecting text to highlight no longer turns the page out from under
+  you.
+- **Your reader display settings now follow you across devices.** Theme, font,
+  font size, page layout and the new text-margin setting are saved to your
+  account, so a book you open on your phone looks the way you set it on your
+  laptop — previously these lived only in one browser and didn't travel.
+- **Adjustable text margins in the reader.** A new slider in the reader's
+  Settings trims the side whitespace to fit more text per line, or widens it —
+  whatever's comfortable to read.
+- You can now **star your favorite books**. Tap the star on a book's page — or
+  the star on its cover anywhere in the grid — to favorite it; favorited books
+  show a gold star on the cover. Use the new **Favorites** entry in the sidebar
+  to see just your starred books. Favorites are private to your own account.
+- The **Published Date** field now accepts just a **year**. When you edit a
+  book you can type `2020` (or `2020-05`) instead of clicking through the date
+  picker for the full day — the missing month and day default to January 1st.
+  Handy for the many books that only carry a publication year. Thanks to
+  @huperaisan for the suggestion.
+
+### Changed
+- On the **main books list**, your **starred books now float to the top**, so
+  your favorites are the first thing you see in the full library (the Favorites
+  sidebar entry still shows them on their own). Within the starred group your
+  chosen sort order still applies. Only the main list is affected — author,
+  series, category and search views keep their usual order.
+- **Duplicate detection catches more real duplicates.** Books that differ only
+  by accents (Café vs Cafe) or punctuation (The Book! vs The Book) are now
+  recognized as the same. It stays deliberately careful not to merge genuinely
+  different books — "Dune" vs "Dune: Messiah" and "Volume 1" vs "Volume 2" stay
+  separate — so nothing distinct gets wrongly flagged for removal.
+- The **Magic Shelf editor** is easier to use on a phone. The rule builder and
+  the Kobo-sync / OPDS / public option cards were being squeezed into a narrow
+  strip with big wasted margins; they now use much more of the screen width, and
+  each rule's field/operator/value controls stack full-width instead of
+  clustering. A typo that mis-sized the rule's field dropdown is fixed too
+  (helps desktop).
+- In the **web reader**, long-pressing or right-clicking text no longer pops up
+  the browser's own menu competing with the highlight popup — the in-app
+  highlight menu is the one that shows. (On iOS Safari, Apple's built-in
+  text-selection menu still appears alongside it; that one can't be switched off
+  from a web page.)
+- The **reader's Settings panel** has a cleaner layout — clearly labelled
+  sections, live value readouts on the font-size and margin sliders, and bigger
+  touch targets that fit comfortably on a phone.
+- The **book details page** is easier to read, especially on phones. The big
+  empty margins that boxed in the cover and info are gone — you get noticeably
+  more width for the title, tags and description — and the page is tidier
+  overall. The star rating now shows clean stars instead of a stray white box.
+  On wider screens the cover and details sit side-by-side from 1024px up
+  (previously only above 1400px), so desktops and landscape tablets use the
+  width instead of stranding the cover alone in the middle.
+- The book details page now has a clear **Read** button right under the cover —
+  the full width of the cover — as the obvious way to start reading in your
+  browser. The small "read" icon was removed from the row of action buttons so
+  that row is less cluttered.
+
 ### Fixed
 - Books that a download client adds by **hardlink** into a subfolder of the
   ingest directory are now picked up automatically. Apps like Readarr and
@@ -26,6 +87,38 @@ is for things you can see or feel when running the app.
   acts on a completed hardlink (a file that already has its full contents),
   while still leaving an in-progress download to finish writing before it is
   ingested. Reported by @stuhby.
+- A book you're in the middle of reading no longer **disappears from the
+  "Currently Reading" shelf** just because it has no language set. If you've
+  picked a preferred language in your account, the shelf used to silently hide
+  any in-progress book missing language metadata — which often hit PDFs while
+  EPUBs (which usually carry a language) stayed visible, even though the book's
+  own page still showed your reading progress. The progress shelves now ignore
+  the language preference, so everything you're actually reading shows up. Your
+  other library filters (hidden, archived, tag restrictions) are unaffected.
+  Thanks to @chloeroform for the report.
+- On a phone, tapping the **Search** box (or other text fields) no longer zooms
+  the page in. iOS Safari zooms toward any field whose text is smaller than 16px;
+  the inputs are now sized so that doesn't happen, while pinch-to-zoom still works
+  normally.
+- The cover editor's **Back** link now returns you to wherever you opened it from —
+  the book's page when you tapped its cover, or the edit screen when you came from
+  there — instead of always jumping to the edit screen. The **Edit metadata** screen
+  also gained a clear **Back to book** link at the top, and on a phone its form is no
+  longer pushed off-screen.
+- On a phone, the **Edit Metadata** page now shows the book's details form first —
+  you can edit the title, author and tags straight away instead of scrolling past
+  the cover. On wider screens the cover and form still sit side-by-side. (Builds on
+  the earlier off-screen-form fix; replaces a brittle fixed-offset layout.)
+
+## [v4.0.165] - 2026-06-16
+
+### Fixed
+- On a desktop browser, the **Fetch Metadata** popup on the Edit Book page no
+  longer runs off the bottom of the screen when a search returns a long list of
+  results — the "Close" button at the bottom stays on screen. Previously the
+  popup grew taller than the window and the only way to dismiss it was the small
+  "X" in the corner; zooming the page out to 80% was the usual workaround.
+  Reported by @sltvtr.
 
 ### Changed
 - The Custom CSS and server announcement banner options moved to the **UI

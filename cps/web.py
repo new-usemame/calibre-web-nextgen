@@ -24,7 +24,7 @@ from .cw_login import login_user, logout_user, current_user
 from flask_limiter import RateLimitExceeded
 from flask_limiter.util import get_remote_address
 from sqlalchemy.exc import IntegrityError, InvalidRequestError, OperationalError
-from sqlalchemy.sql.expression import text, func, false, not_, and_, or_
+from sqlalchemy.sql.expression import text, func, false, not_, and_, or_, case
 from sqlalchemy.orm.attributes import flag_modified
 from sqlalchemy.sql.functions import coalesce
 from werkzeug.datastructures import Headers
@@ -221,6 +221,107 @@ def toggle_archived(book_id):
     # Remove book from syncd books list to force resync (?)
     remove_synced_book(book_id)
     return ""
+
+
+# Per-user favorite / starred books — fork #27. Presence-based toggle: a row in
+# favorite_book exists iff the calling user has starred the book. Returns the
+# resulting state as JSON so the UI can flip the star in place without a reload.
+@web.route("/ajax/togglefavorite/<int:book_id>", methods=['POST'])
+@user_login_required
+def toggle_favorite(book_id):
+    favorite = ub.session.query(ub.FavoriteBook).filter(
+        and_(ub.FavoriteBook.user_id == int(current_user.id),
+             ub.FavoriteBook.book_id == book_id)).first()
+    if favorite:
+        ub.session.delete(favorite)
+        favorited = False
+    else:
+        ub.session.add(ub.FavoriteBook(user_id=int(current_user.id), book_id=book_id))
+        favorited = True
+    ub.session_commit("Book {} favorite bit toggled".format(book_id))
+    return json.dumps({"favorited": favorited})
+
+
+# --- Web-reader per-user display settings -----------------------------------
+# The epub reader's theme / font / font-size / column-spread / reflow / text
+# margin used to live only in the one browser's localStorage, so they never
+# followed a user to their phone or another browser. We persist them under
+# view_settings['reader'] (same JSON column + flag_modified pattern as the
+# books-list view settings) so they sync per-user across devices. Anonymous
+# sessions never reach the save route (@user_login_required) and keep using
+# localStorage as before.
+_READER_THEMES = {"lightTheme", "darkTheme", "sepiaTheme", "blackTheme"}
+_READER_FONTS = {"default", "Yahei", "SimSun", "KaiTi", "Arial"}
+_READER_SPREADS = {"spread", "nonespread"}
+
+
+def _reader_setting_int(value, lo, hi):
+    """Coerce a slider value to an int clamped to [lo, hi]; None if not numeric.
+    Booleans are rejected first (isinstance(True, int) is True) so a JSON
+    ``true`` can't slip through as 1."""
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, (int, float)):
+        return max(lo, min(hi, int(value)))
+    if isinstance(value, str) and value.strip().lstrip("-").isdigit():
+        return max(lo, min(hi, int(value.strip())))
+    return None
+
+
+def sanitize_reader_settings(payload):
+    """Reduce an arbitrary POST body to the known reader settings with safe
+    values, so a crafted payload can never store junk on the user row. Unknown
+    keys and out-of-range / ill-typed values are dropped.
+
+    SECURITY: read_book() injects this dict verbatim into a <script> via Jinja's
+    ``| safe`` (no HTML escaping). Every value stored here MUST stay a closed
+    enum, a clamped int, or a bool — never store free text, or that inject
+    becomes a stored-XSS sink.
+    """
+    if not isinstance(payload, dict):
+        return {}
+    out = {}
+    if payload.get("theme") in _READER_THEMES:
+        out["theme"] = payload["theme"]
+    if payload.get("font") in _READER_FONTS:
+        out["font"] = payload["font"]
+    if payload.get("spread") in _READER_SPREADS:
+        out["spread"] = payload["spread"]
+    font_size = _reader_setting_int(payload.get("fontSize"), 75, 200)
+    if font_size is not None:
+        out["fontSize"] = font_size
+    margin = _reader_setting_int(payload.get("margin"), 0, 80)
+    if margin is not None:
+        out["margin"] = margin
+    reflow = payload.get("reflow")
+    if isinstance(reflow, bool):
+        out["reflow"] = reflow
+    elif isinstance(reflow, str):
+        out["reflow"] = reflow.strip().lower() == "true"
+    return out
+
+
+@web.route("/ajax/readersettings", methods=['POST'])
+@user_login_required
+def save_reader_settings():
+    """Persist the web reader's per-user display settings so they follow the
+    user across devices instead of living only in one browser's localStorage."""
+    try:
+        payload = json.loads(request.data or b"{}")
+    except (ValueError, TypeError):
+        return json.dumps({"saved": False}), 400, {"Content-Type": "application/json"}
+    cleaned = sanitize_reader_settings(payload)
+    if current_user.view_settings is None:
+        current_user.view_settings = {}
+    current_user.view_settings["reader"] = cleaned
+    try:
+        flag_modified(current_user, "view_settings")
+        ub.session.commit()
+    except Exception as exc:
+        ub.session.rollback()
+        log.error("Could not save reader settings for user %s: %s", current_user.id, exc)
+        return json.dumps({"saved": False}), 500, {"Content-Type": "application/json"}
+    return json.dumps({"saved": True, "reader": cleaned})
 
 
 # Per-user hidden books — fork issue #64. Hide removes the book from index
@@ -483,6 +584,27 @@ def cwa_get_num_books_in_library() -> int:
         return 0
 
 
+def _favorites_first_order():
+    """ORDER-BY term that floats the calling user's starred books to the top,
+    or None when there's nothing to float (anonymous, or no favorites). Used
+    only by the main library list below — the Favorites sidebar view shows
+    starred books alone; this surfaces them within the *full* list. It is NOT
+    applied to the author / series / category / search / shelf views, which keep
+    their own ordering. Favorites live in app.db and books in metadata.db (they
+    can't be JOINed), so we fetch the favorite ids first and feed them to a CASE
+    on the metadata.db query."""
+    if not current_user.is_authenticated:
+        return None
+    rows = ub.session.query(ub.FavoriteBook.book_id).filter(
+        ub.FavoriteBook.user_id == int(current_user.id)).all()
+    fav_ids = [row[0] for row in rows]
+    if not fav_ids:
+        return None
+    # 0 sorts before 1 -> favorites first; the user's chosen sort then orders
+    # within each group.
+    return case((db.Books.id.in_(fav_ids), 0), else_=1)
+
+
 def render_books_list(data, sort_param, book_id, page):
     order = get_sort_function(sort_param, data)
     if data == "rated":
@@ -513,6 +635,8 @@ def render_books_list(data, sort_param, book_id, page):
         return render_language_books(page, book_id, order)
     elif data == "archived":
         return render_archived_books(page, order)
+    elif data == "favorites":
+        return render_favorite_books(page, order)
     elif data in ("hidden", "hidden_books"):
         # The 'hidden_books' alias exists because render_hidden_books sets
         # the body CSS class to 'hidden_books' (not 'hidden' — Bootstrap's
@@ -535,7 +659,14 @@ def render_books_list(data, sort_param, book_id, page):
         return render_magic_shelf(book_id, sort_param, page)
     else:
         website = data or "newest"
-        entries, random, pagination = calibre_db.fill_indexpage(page, 0, db.Books, True, order[0],
+        # #34: float the user's starred books to the top of the main library
+        # list. Scoped to this branch only — the other views above keep their
+        # own ordering untouched.
+        book_order = list(order[0])
+        favorites_first = _favorites_first_order()
+        if favorites_first is not None:
+            book_order = [favorites_first] + book_order
+        entries, random, pagination = calibre_db.fill_indexpage(page, 0, db.Books, True, book_order,
                                                                 True, config.config_read_column,
                                                                 db.books_series_link,
                                                                 db.Books.id == db.books_series_link.c.book,
@@ -955,6 +1086,31 @@ def render_archived_books(page, sort_param):
 
     name = _('Archived Books') + ' (' + str(len(archived_book_ids)) + ')'
     page_name = "archived"
+    return render_title_template('index.html', random=random, entries=entries, pagination=pagination,
+                                 title=name, page=page_name, order=sort_param[1])
+
+
+def render_favorite_books(page, sort_param):
+    """List the current user's favorited / starred books — fork #27. Mirrors
+    render_archived_books: pull the starred book_ids from app.db (ub), then
+    filter the metadata.db listing to those ids."""
+    order = sort_param[0] or []
+    favorite_books = (ub.session.query(ub.FavoriteBook)
+                      .filter(ub.FavoriteBook.user_id == int(current_user.id))
+                      .all())
+    favorite_book_ids = [fav.book_id for fav in favorite_books]
+
+    favorite_filter = db.Books.id.in_(favorite_book_ids)
+
+    entries, random, pagination = calibre_db.fill_indexpage_with_archived_books(page, db.Books,
+                                                                                0,
+                                                                                favorite_filter,
+                                                                                order,
+                                                                                True,
+                                                                                True, config.config_read_column)
+
+    name = _('Favorite Books') + ' (' + str(len(favorite_book_ids)) + ')'
+    page_name = "favorites"
     return render_title_template('index.html', random=random, entries=entries, pagination=pagination,
                                  title=name, page=page_name, order=sort_param[1])
 
@@ -3310,8 +3466,16 @@ def read_book(book_id, book_format):
 
     if book_format.lower() in ("epub", "kepub"):
         log.debug("Start epub reader for %d (%s)", book_id, book_format.lower())
+        # Per-user reader display settings (theme/font/size/spread/reflow/margin)
+        # so the reader boots with the user's saved choices instead of waiting
+        # for a localStorage read. Anonymous users get {} and fall back to
+        # localStorage. See save_reader_settings() + reader-settings.js.
+        reader_settings = {}
+        if current_user.is_authenticated:
+            reader_settings = (getattr(current_user, "view_settings", None) or {}).get("reader", {}) or {}
         return render_title_template('read.html', bookid=book_id, title=book.title,
                                      bookmark=bookmark, kosync_progress=kosync_progress,
+                                     reader_settings=json.dumps(reader_settings),
                                      book_format=book_format.lower())
     elif book_format.lower() == "pdf":
         log.debug("Start pdf reader for %d", book_id)
@@ -3432,6 +3596,14 @@ def show_book(book_id):
                 ub.UserHiddenBook.book_id == int(book_id),
             ).first() is not None
 
+        # Per-user favorite / starred state — fork #27.
+        is_favorited = False
+        if not current_user.is_anonymous:
+            is_favorited = ub.session.query(ub.FavoriteBook).filter(
+                ub.FavoriteBook.user_id == int(current_user.id),
+                ub.FavoriteBook.book_id == int(book_id),
+            ).first() is not None
+
         # Fork #276 (@magdalar): admin checkboxes for sending to OTHER
         # users' kindle_mail addresses (family eReader management). Only
         # admins see other users' emails — those are PII otherwise.
@@ -3460,6 +3632,7 @@ def show_book(book_id):
                                      kosync_progress=kosync_progress,
                                      kosync_progress_timestamp=kosync_progress_timestamp,
                                      is_hidden=is_hidden,
+                                     is_favorited=is_favorited,
                                      other_users_with_kindle=other_users_with_kindle,
                                      page="book")
     else:

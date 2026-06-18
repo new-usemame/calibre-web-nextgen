@@ -16,6 +16,8 @@ is for things you can see or feel when running the app.
 
 ## [Unreleased]
 
+## [v4.0.167] - 2026-06-18
+
 ### Added
 - You can now **support Calibre-Web NextGen's development** directly — the
   project has its own [Ko-fi](https://ko-fi.com/calibrewebnextgen), linked from the

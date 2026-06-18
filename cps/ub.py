@@ -318,6 +318,7 @@ class OAuthProvider(Base):
     oauth_token_url = Column(String, default=None)
     oauth_userinfo_url = Column(String, default=None)
     oauth_admin_group = Column(String, default=None)
+    oauth_default_role = Column(SmallInteger, default=0)
     metadata_url = Column(String, default=None)  # For OIDC auto-discovery
     scope = Column(String, default="openid profile email")  # Customizable OAuth scopes
     username_mapper = Column(String, default="preferred_username")  # JWT field for username
@@ -1495,6 +1496,7 @@ def migrate_oauth_provider_table(engine, _session):
         ("oauth_token_url", "String DEFAULT NULL"),
         ("oauth_userinfo_url", "String DEFAULT NULL"),
         ("oauth_admin_group", "String DEFAULT NULL"),
+        ("oauth_default_role", "SmallInteger DEFAULT 0"),
         ("metadata_url", "String DEFAULT NULL"),
         ("scope", "String DEFAULT 'openid profile email'"),
         ("username_mapper", "String DEFAULT 'preferred_username'"),

@@ -531,6 +531,21 @@
             <small class="form-text text-muted">{{_('JWT field to extract email from')}}</small>
           </div>
           <div class="form-group">
+            <label for="config_generic_oauth_group_claim">{{_('OAuth Group Claim')}}</label>
+            <input type="text" class="form-control" id="config_generic_oauth_group_claim" name="config_generic_oauth_group_claim" value="{% if generic.get('oauth_group_claim') != None %}{{ generic['oauth_group_claim'] }}{% else %}groups{% endif %}" autocomplete="off" placeholder="groups">
+            <div class="help-block">{{_('OIDC claim containing group names. The claim may be a list, or a comma- or space-separated string.')}}</div>
+          </div>
+          <div class="form-group">
+            <input type="checkbox" id="config_generic_oauth_require_group" name="config_generic_oauth_require_group" {% if generic.get('oauth_require_group') %}checked{% endif %}>
+            <label for="config_generic_oauth_require_group">{{_('Require OAuth Group Membership')}}</label>
+            <div class="help-block">{{_('When enabled, Generic OAuth users must be a member of at least one allowed group before a user account is created or logged in.')}}</div>
+          </div>
+          <div class="form-group">
+            <label for="config_generic_oauth_allowed_groups">{{_('OAuth Allowed Groups')}}</label>
+            <input type="text" class="form-control" id="config_generic_oauth_allowed_groups" name="config_generic_oauth_allowed_groups" value="{% if generic.get('oauth_allowed_groups') != None %}{{ generic['oauth_allowed_groups'] }}{% endif %}" autocomplete="off" placeholder="calibre-user, calibre-admin">
+            <div class="help-block">{{_('Comma- or space-separated OAuth groups allowed to log in via Generic OAuth. Leave empty only if group membership is not required.')}}</div>
+          </div>          
+          <div class="form-group">
             <label for="config_generic_oauth_admin_group">{{_('OAuth group for Admin')}}</label>
             <input type="text" class="form-control" id="config_generic_oauth_admin_group" name="config_generic_oauth_admin_group" value="{% if generic.get('oauth_admin_group') != None %}{{ generic['oauth_admin_group'] }}{% endif %}" autocomplete="off">
             <div class="help-block">{{_('Name of the OAuth group that grants admin privileges. Leave empty to disable group-based admin management, or use the global setting in Security Settings for more control.')}}</div>

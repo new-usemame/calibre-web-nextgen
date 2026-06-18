@@ -1638,6 +1638,19 @@ def _configuration_oauth_helper(to_save):
             if to_save["config_generic_oauth_admin_group"] != element["oauth_admin_group"]:
                 reboot_required = True
                 update["oauth_admin_group"] = to_save["config_generic_oauth_admin_group"]
+
+            if to_save.get("config_generic_oauth_group_claim", "groups") != element.get("oauth_group_claim", "groups"):
+                reboot_required = True
+                update["oauth_group_claim"] = to_save.get("config_generic_oauth_group_claim", "groups")
+
+            if to_save.get("config_generic_oauth_allowed_groups", "") != element.get("oauth_allowed_groups", ""):
+                reboot_required = True
+                update["oauth_allowed_groups"] = to_save.get("config_generic_oauth_allowed_groups", "")
+
+            require_group = "config_generic_oauth_require_group" in to_save
+            if require_group != bool(element.get("oauth_require_group")):
+                reboot_required = True
+                update["oauth_require_group"] = require_group
         else:
             if to_save["config_" + str(element['id']) + "_oauth_client_id"] != element["oauth_client_id"]:
                 reboot_required = True

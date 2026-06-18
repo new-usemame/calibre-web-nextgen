@@ -7,6 +7,7 @@ Built on **[Calibre-Web-Automated](https://github.com/crocodilestick/Calibre-Web
 [![Latest release](https://img.shields.io/github/v/release/new-usemame/Calibre-Web-NextGen)](https://github.com/new-usemame/Calibre-Web-NextGen/releases/latest)
 [![Container](https://img.shields.io/badge/ghcr.io-calibre--web--nextgen-blue?logo=docker)](https://github.com/new-usemame/Calibre-Web-NextGen/pkgs/container/calibre-web-nextgen)
 [![Open issues](https://img.shields.io/github/issues/new-usemame/Calibre-Web-NextGen)](https://github.com/new-usemame/Calibre-Web-NextGen/issues)
+[![Support monthly on Ko-fi](https://img.shields.io/badge/Ko--fi-Subscribe%20monthly-FF5E5B?logo=kofi&logoColor=white)](https://ko-fi.com/calibrewebnextgen)
 
 ---
 
@@ -26,6 +27,7 @@ Library, settings, users, OAuth tokens, and KOReader sync state are preserved. S
 - **Bug?** [File it here.](https://github.com/new-usemame/Calibre-Web-NextGen/issues/new?template=bug_report.md)
 - **Feature idea?** [Open a request.](https://github.com/new-usemame/Calibre-Web-NextGen/issues/new?template=feature_request.md) Anything goes, no checklist required — even half-formed ideas are welcome and help prioritize what to look at next.
 - **New here?** See [Quick start](#quick-start) below.
+- **Want to back the work?** [**Subscribe monthly on Ko-fi**](https://ko-fi.com/calibrewebnextgen) — recurring support funds ongoing development. One-time tips welcome too.
 - **Setting up with an AI assistant** (Claude, ChatGPT, etc.)? Point it at [`AI_README.md`](AI_README.md) — a setup guide written for the assistant to follow, verify, and hand back to you working.
 
 ---

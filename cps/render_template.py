@@ -148,8 +148,13 @@ def get_sidebar_config(kwargs=None):
     # back to the alphabetical fetch above when no view_settings.shelves.order
     # is stored. Function-scope import to avoid circular cps.shelf ↔
     # cps.render_template at module load.
-    from .shelf import sort_shelves_for_user
+    from .shelf import sort_shelves_for_user, _shelf_book_count
     sort_shelves_for_user(g.shelves_access, current_user)
+    # Fork #499 (@jasonxbergman): the sidebar badge must exclude the current
+    # user's archived books so it matches the shelf view (which runs through
+    # common_filters). Attach the archive-aware count for the template to read.
+    for _shelf in g.shelves_access:
+        _shelf.book_count = _shelf_book_count(_shelf, current_user)
 
     # Per-book shelf membership for cover badges. One query for all
     # accessible shelves' rows; lookups in templates are O(1).

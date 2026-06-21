@@ -16,6 +16,15 @@ is for things you can see or feel when running the app.
 
 ## [Unreleased]
 
+### Fixed
+- **Right-click on an image in the epub reader now offers "Save image as"
+  again.** The reader was swallowing the right-click (and Android long-press)
+  menu on everything so the in-app highlight popup could be the way you select
+  text — but that also blocked the browser's own menu on illustrations, so you
+  couldn't save a picture. Images now get their native menu back (including the
+  iOS long-press "Save Image"), while right-clicking text still opens the
+  highlight popup. Reported by @sambong.
+
 ## [v4.0.168] - 2026-06-19
 
 ### Fixed

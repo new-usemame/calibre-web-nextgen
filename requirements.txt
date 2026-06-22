@@ -71,7 +71,7 @@ html2text>=2020.1.16,<2025.2.26
 python-dateutil>=2.1,<2.10.0
 beautifulsoup4>=4.0.1,<4.14.0
 faust-cchardet>=2.1.18,<2.1.20
-py7zr>=0.15.0,<0.21.0
+py7zr>=1.0.0,<2.0.0  # 1.x pulls pyppmd>=1.3.1 which ships cp313 wheels; the old <0.21 cap forced pyppmd 1.1.1 (no cp313 wheel) -> sdist build fail on the Py3.13 base image
 mutagen>=1.40.0,<1.50.0
 
 # Comics

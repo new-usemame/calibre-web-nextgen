@@ -32,6 +32,12 @@ is for things you can see or feel when running the app.
   timestamp every 30 minutes even when nothing changed, which made the sync
   re-send the entire shelf. It now only re-sends when the shelf's contents
   actually change. Reported by @Glennza1962 and @bigbold1023.
+- **The epub reader's Settings panel no longer gets cut off on short browser
+  windows.** On a window shorter than the panel — common on a NAS admin tab — the
+  Theme row at the top and the Font, Spread and Reflow options at the bottom were
+  clipped off-screen with no way to scroll to them. The panel now caps its height
+  and scrolls internally at every window size, so every setting stays reachable.
+  Reported by @sambong.
 
 ## [v4.0.168] - 2026-06-19
 

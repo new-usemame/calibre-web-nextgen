@@ -32,6 +32,13 @@ is for things you can see or feel when running the app.
   timestamp every 30 minutes even when nothing changed, which made the sync
   re-send the entire shelf. It now only re-sends when the shelf's contents
   actually change. Reported by @Glennza1962 and @bigbold1023.
+- **Right-click on an image in the epub reader now offers "Save image as"
+  again.** The reader was swallowing the right-click (and Android long-press)
+  menu on everything so the in-app highlight popup could be the way you select
+  text — but that also blocked the browser's own menu on illustrations, so you
+  couldn't save a picture. Images now get their native menu back (including the
+  iOS long-press "Save Image"), while right-clicking text still opens the
+  highlight popup. Reported by @sambong.
 - **The epub reader's Settings panel no longer gets cut off on short browser
   windows.** On a window shorter than the panel — common on a NAS admin tab — the
   Theme row at the top and the Font, Spread and Reflow options at the bottom were

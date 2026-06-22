@@ -16,6 +16,14 @@ is for things you can see or feel when running the app.
 
 ## [Unreleased]
 
+### Changed
+- Simplified Chinese (`zh_Hans`): more of the interface now appears in Chinese —
+  279 menu, button and message strings that previously fell back to English are
+  translated. Thanks to @GSAlex.
+- Spanish (`es`): 76 strings that were showing in English — or, in a few cases,
+  the wrong Spanish phrase — now read correctly. This covers the duplicate-book
+  tools, OAuth sign-in messages and several admin labels. Thanks to @HaruIjima-kun.
+
 ### Fixed
 - **Right-click on an image in the epub reader now offers "Save image as"
   again.** The reader was swallowing the right-click (and Android long-press)

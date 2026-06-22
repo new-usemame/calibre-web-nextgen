@@ -16,6 +16,11 @@ is for things you can see or feel when running the app.
 
 ## [Unreleased]
 
+### Changed
+- Simplified Chinese (`zh_Hans`): more of the interface now appears in Chinese —
+  279 menu, button and message strings that previously fell back to English are
+  translated. Thanks to @GSAlex.
+
 ## [v4.0.168] - 2026-06-19
 
 ### Fixed

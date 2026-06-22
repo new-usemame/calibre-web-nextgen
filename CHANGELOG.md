@@ -25,6 +25,13 @@ is for things you can see or feel when running the app.
   tools, OAuth sign-in messages and several admin labels. Thanks to @HaruIjima-kun.
 
 ### Fixed
+- **Kobo no longer re-downloads your whole magic shelf on every sync.** If you
+  synced magic (smart) shelves to a Kobo, books kept dropping back to
+  "Download"/"Unread" and losing your place — every sync unless you synced twice
+  back-to-back. The shelf's membership cache was being re-stamped with a new
+  timestamp every 30 minutes even when nothing changed, which made the sync
+  re-send the entire shelf. It now only re-sends when the shelf's contents
+  actually change. Reported by @Glennza1962 and @bigbold1023.
 - **Right-click on an image in the epub reader now offers "Save image as"
   again.** The reader was swallowing the right-click (and Android long-press)
   menu on everything so the in-app highlight popup could be the way you select

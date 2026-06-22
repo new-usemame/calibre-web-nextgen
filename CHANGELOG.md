@@ -16,6 +16,14 @@ is for things you can see or feel when running the app.
 
 ## [Unreleased]
 
+### Changed
+- Simplified Chinese (`zh_Hans`): more of the interface now appears in Chinese —
+  279 menu, button and message strings that previously fell back to English are
+  translated. Thanks to @GSAlex.
+- Spanish (`es`): 76 strings that were showing in English — or, in a few cases,
+  the wrong Spanish phrase — now read correctly. This covers the duplicate-book
+  tools, OAuth sign-in messages and several admin labels. Thanks to @HaruIjima-kun.
+
 ### Fixed
 - **The epub reader's Settings panel no longer gets cut off on short browser
   windows.** On a window shorter than the panel — common on a NAS admin tab — the

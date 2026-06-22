@@ -78,7 +78,7 @@
            value readouts, touch-friendly controls, and a layout that fits small
            screens. Scoped to #settings-modal so the rest of the reader chrome
            is untouched. */
-        #settings-modal .md-content { max-width: 440px; }
+        #settings-modal .md-content { max-width: 440px; max-height: 86vh; overflow-y: auto; }
         #settings-modal h3 { margin: 0 0 0.8em; }
         #settings-modal .rs-section { padding: 0.8em 0; border-top: 1px solid rgba(127,127,127,0.22); }
         #settings-modal .rs-section:first-of-type { border-top: 0; padding-top: 0; }
@@ -91,7 +91,7 @@
         #settings-modal .rs-check { display: flex; align-items: flex-start; gap: 8px; cursor: pointer; margin: 0; }
         #settings-modal .rs-check input { width: 18px; height: 18px; margin-top: 1px; flex: none; }
         @media (max-width: 600px) {
-            #settings-modal .md-content { max-width: 92vw; max-height: 86vh; overflow-y: auto; }
+            #settings-modal .md-content { max-width: 92vw; }
         }
     </style>
     <div class="modal md-effect-1" id="settings-modal">

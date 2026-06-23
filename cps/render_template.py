@@ -148,8 +148,13 @@ def get_sidebar_config(kwargs=None):
     # back to the alphabetical fetch above when no view_settings.shelves.order
     # is stored. Function-scope import to avoid circular cps.shelf ↔
     # cps.render_template at module load.
-    from .shelf import sort_shelves_for_user
+    from .shelf import sort_shelves_for_user, _shelf_book_count
     sort_shelves_for_user(g.shelves_access, current_user)
+    # Fork #499 (@jasonxbergman): the sidebar badge must exclude the current
+    # user's archived books so it matches the shelf view (which runs through
+    # common_filters). Attach the archive-aware count for the template to read.
+    for _shelf in g.shelves_access:
+        _shelf.book_count = _shelf_book_count(_shelf, current_user)
 
     # Per-book shelf membership for cover badges. One query for all
     # accessible shelves' rows; lookups in templates are O(1).
@@ -200,11 +205,25 @@ def cwa_update_available() -> tuple[bool, str, str]:
                 parts.append(int(num) if num else 0)
             return tuple(parts)
 
+        def _is_release_version(value: str) -> bool:
+            # A real release is dotted-numeric ("4.0.170"). Dev / nightly
+            # builds ("DEV_BUILD-dev-247", a git SHA, etc.) are not — their
+            # first segment isn't numeric, so _version_tuple collapses them to
+            # (0, …) and they would falsely read as "older" than the latest
+            # stable tag (a dev box nagged about an update it is ahead of).
+            return value.split(".")[0].isdigit()
+
         current_normalized = _normalize_version(current_version)
         tag_normalized = _normalize_version(tag_name)
 
         if current_normalized in ("", "0.0.0") or tag_normalized in ("", "0.0.0"):
             return False, "0.0.0", "0.0.0"
+
+        # A :dev / unversioned build is intentionally ahead of any tagged
+        # release; comparing it to the latest stable tag is meaningless. Only
+        # compare two real release versions.
+        if not (_is_release_version(current_normalized) and _is_release_version(tag_normalized)):
+            return False, current_version, tag_name
 
         # Only flag an update when the published tag is strictly newer than
         # what's installed; a downgrade or equal version is not an update.
@@ -226,6 +245,27 @@ def get_cwa_last_notification() -> str:
             last_notification = f.read()
     return last_notification
 
+def _format_update_banner_message(current_version: str, latest_version: str) -> str:
+    # Build from a STATIC msgid with named placeholders so pybabel can extract
+    # it and translators can localize it. Interpolating the versions *before*
+    # gettext (the old ``_(f"...")``) made the translation key the runtime
+    # string, so every non-English locale silently fell back to English.
+    return _("Calibre-Web NextGen %(latest)s is available — you're on %(current)s.") % {
+        "latest": latest_version,
+        "current": current_version,
+    }
+
+
+def _format_translation_missing_message(language: str, count: int) -> str:
+    # Static msgid with named placeholders (see _format_update_banner_message):
+    # the old ``_(f"...{language}...{count}...")`` interpolated before gettext,
+    # so pybabel could never extract it and every locale fell back to English.
+    return _("Help improve Calibre-Web NextGen's %(language)s translations — %(count)s strings in your language still need translating.") % {
+        "language": language,
+        "count": count,
+    }
+
+
 # Displays a notification to the user that an update for CWA is available, no matter which page they're on
 # Currently set to only display once per calender day
 def cwa_update_notification() -> None:
@@ -239,8 +279,8 @@ def cwa_update_notification() -> None:
 
         update_available, current_version, tag_name = cwa_update_available()
         if update_available:
-            message = _(f"⚡🚨 Calibre-Web NextGen UPDATE AVAILABLE! 🚨⚡ Current - {current_version} | Newest - {tag_name} | To update, just re-pull the image! This message will only display once per day |")
-            flash(_(message), category="cwa_update")
+            message = _format_update_banner_message(current_version, tag_name)
+            flash(message, category="cwa_update")
             print(f"[cwa-update-notification-service] {message}", flush=True)
 
         with open('/app/cwa_update_notice', 'w') as f:
@@ -296,7 +336,8 @@ def translations_missing_notification() -> None:
                 with open(notice_file, 'r') as f:
                     last_notification = f.read().strip()
             if last_notification != current_date:
-                message = _(f"🌐 Help improve Calibre-Web NextGen's {constants.LANGUAGE_NAMES.get(lang, lang)} translations! {missing_count} strings in your language need translation. ")
+                message = _format_translation_missing_message(
+                    constants.LANGUAGE_NAMES.get(lang, lang), missing_count)
                 flash(message, category="translation_missing")
                 print(f"[translation-notification-service] {message}", flush=True)
                 with open(notice_file, 'w') as f:

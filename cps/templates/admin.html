@@ -258,7 +258,8 @@
             <td>{{cwa_version}} </td>
             <td>
               {% if cwa_is_outdated and cwa_latest_tag %}
-                <i style="color:#cc7b19;">{{_('Update available')}}: <strong>{{cwa_latest_tag}}</strong> — <code>docker pull ghcr.io/new-usemame/calibre-web-nextgen:latest</code></i>
+                <i style="color:#cc7b19;">{{_('Update available')}}: <strong>{{cwa_latest_tag}}</strong></i>
+                <button type="button" class="btn btn-primary btn-xs" data-toggle="modal" data-target="#updateNowDialog" style="margin-left: 8px;">{{ _('Update now') }}</button>
               {% else %}
                 <i>{{_('Current Version')}}</i>
               {% endif %}

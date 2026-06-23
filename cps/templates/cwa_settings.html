@@ -747,6 +747,36 @@
         {{_('When active, you will receive notifications in the Web UI when a new version of NextGen is released')}}
       </p>
 
+      <div id="cwa-autoupdate" style="margin-top: 16px; padding-top: 14px; border-top: 1px solid rgba(128,128,128,0.25);">
+        <strong style="display:block; margin-bottom: 6px;">{{_('Automatic updates')}}</strong>
+        <p class="cwa-settings-tooltip">
+          {{_('New versions ship regularly — often weekly. Calibre-Web NextGen cannot update itself from inside its container (nothing running inside a container can), so a small companion called Watchtower does it for you: it watches for a new image and swaps NextGen in safely, leaving your other containers alone.')}}
+        </p>
+        <p class="cwa-settings-tooltip">
+          {{_('Add these two services to your docker-compose file and run "docker compose up -d". After that you stay up to date automatically — no button to press.')}}
+        </p>
+        <div class="update-cmd">
+          <pre><code>services:
+  calibre-web-nextgen:
+    image: ghcr.io/new-usemame/calibre-web-nextgen:latest
+    labels: ["com.centurylinklabs.watchtower.enable=true"]
+    # ...your existing config
+
+  watchtower:
+    image: nickfedor/watchtower
+    volumes: ["/var/run/docker.sock:/var/run/docker.sock"]
+    command: --label-enable --cleanup --interval 86400
+    restart: unless-stopped</code></pre>
+          <button type="button" class="btn btn-primary btn-sm update-copy-btn" data-copied-label="{{ _('Copied!') }}">{{ _('Copy') }}</button>
+        </div>
+        <p class="cwa-settings-tooltip">
+          {{_('The label means Watchtower only ever touches Calibre-Web NextGen. The 86400 interval checks once a day; "cleanup" removes the old image after each update.')}}
+        </p>
+        <p class="cwa-settings-tooltip">
+          {{_('Running under Podman instead? Native "podman auto-update" works too — a setup guide is coming once we have verified it against this image.')}}
+        </p>
+      </div>
+
       {% if cwa_settings['contribute_translations_notifications'] %}
       <input type="checkbox" id="contribute_translations_notifications" name="contribute_translations_notifications" value="True" checked style="accent-color: var(--color-secondary);" data-toggle="tooltip" data-placement="right" title="Does NOT require restart for changes to take effect">
       {% else %}

@@ -3,6 +3,14 @@
    a container cannot recreate itself, so the update is run by the user's own
    container runtime. We show the right command/steps for their setup and let
    them run one line. See notes/easy-update-autoupdate-design.md. #}
+<style>
+  /* Responsive setup selector: a single non-wrapping row overflowed narrow
+     screens (the right-hand tabs got clipped). Wrap instead, and stack the
+     tabs full-width on phones so every option stays reachable. */
+  #update-setup-selector { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+  #update-setup-selector .btn { border-radius: 4px; }
+  @media (max-width: 480px) { #update-setup-selector .btn { flex: 1 1 100%; } }
+</style>
 <div id="updateNowDialog" class="modal fade" role="dialog" aria-labelledby="updateNowTitle">
   <div class="modal-dialog modal-lg">
     <div class="modal-content">
@@ -14,7 +22,7 @@
         <p>{{ _('Updating pulls the new image and recreates the container. It is quick, and your library, settings and reading progress are safe — they live in your mounted volumes, not in the container.') }}</p>
 
         <p><strong>{{ _('How do you run Calibre-Web NextGen?') }}</strong></p>
-        <div class="btn-group" role="group" aria-label="{{ _('Setup type') }}" id="update-setup-selector">
+        <div class="update-setup-tabs" role="group" aria-label="{{ _('Setup type') }}" id="update-setup-selector">
           <button type="button" class="btn btn-default active" data-update-setup="compose">{{ _('Docker Compose') }}</button>
           <button type="button" class="btn btn-default" data-update-setup="run">{{ _('docker run') }}</button>
           <button type="button" class="btn btn-default" data-update-setup="unraid">{{ _('Unraid') }}</button>

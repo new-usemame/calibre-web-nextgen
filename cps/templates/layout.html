@@ -528,7 +528,9 @@
     <script src="{{ url_for('static', filename='js/libs/jquery.form.min.js') }}"></script>
     <script src="{{ url_for('static', filename='js/uploadprogress.js') }}"> </script>
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    {% if current_user.is_authenticated and current_user.role_admin() %}
     <script src="{{ url_for('static', filename='js/update_now.js') }}"></script>
+    {% endif %}
     {% if g.current_theme == 1 %}
       <script src="{{ url_for('static', filename='js/libs/jquery.visible.min.js') }}"></script>
       <script src="{{ url_for('static', filename='js/libs/compromise.min.js') }}"></script>

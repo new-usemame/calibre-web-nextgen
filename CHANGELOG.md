@@ -32,6 +32,12 @@ is for things you can see or feel when running the app.
   left edge and the slider readouts ("150%", "0px") were clipped at the right.
   The panel now insets its content again, and the "Settings" title keeps its
   full-width bar across the top. Reported by @sambong.
+- **The Duplicate Books page works again behind a reverse proxy on a sub-path.**
+  Behind a proxy mounted on a sub-path, the cover placeholder kept requesting
+  `generic_cover.svg` in an endless loop, and dismissing or resolving a duplicate
+  group failed with "Failed to update duplicate group." Both came from page URLs
+  that dropped the proxy's sub-path prefix; they now carry it. Reported by
+  @chloeroform.
 
 ## [v4.0.169] - 2026-06-22
 

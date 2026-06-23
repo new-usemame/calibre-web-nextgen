@@ -362,7 +362,7 @@ $(document).ready(function() {
         
         // Determine action
         var action = isDismissed ? 'undismiss' : 'dismiss';
-        var endpoint = '/duplicates/' + action + '/' + groupHash;
+        var endpoint = duplicateScanEndpoint('/duplicates/' + action + '/' + groupHash);
         
         // Disable button during request
         btn.prop('disabled', true);
@@ -649,7 +649,7 @@ $(document).ready(function() {
         btn.html('<span class="glyphicon glyphicon-refresh glyphicon-spin"></span> Loading...');
         
         $.ajax({
-            url: '/duplicates/preview-resolution',
+            url: duplicateScanEndpoint('/duplicates/preview-resolution'),
             method: 'POST',
             contentType: 'application/json',
             headers: {
@@ -688,7 +688,7 @@ $(document).ready(function() {
         btn.addClass('disabled').html('<span class="glyphicon glyphicon-refresh glyphicon-spin"></span> Executing...');
         
         $.ajax({
-            url: '/duplicates/execute-resolution',
+            url: duplicateScanEndpoint('/duplicates/execute-resolution'),
             method: 'POST',
             contentType: 'application/json',
             headers: {

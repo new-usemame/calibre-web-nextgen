@@ -216,6 +216,54 @@ The Admin → Settings panel has many optional toggles (auto-convert formats, au
 
 ---
 
+## Updating
+
+Calibre-Web NextGen ships new versions regularly — often weekly. Updating means pulling the new image and recreating the container; your library, settings and reading progress live in the mounted volumes, so they're left untouched.
+
+**Update once, by hand:**
+
+```bash
+docker compose pull calibre-web && docker compose up -d calibre-web
+```
+
+(Use your own service name if it isn't `calibre-web`.)
+
+**Update automatically** with [Watchtower](https://github.com/nicholas-fedor/watchtower) (the maintained fork). Add it alongside CWA and label the CWA service so Watchtower only ever touches this one container — your other containers are left alone:
+
+```yaml
+services:
+  calibre-web:
+    image: ghcr.io/new-usemame/calibre-web-nextgen:latest
+    labels: ["com.centurylinklabs.watchtower.enable=true"]
+    # ...rest of your config
+
+  watchtower:
+    image: nickfedor/watchtower
+    volumes: ["/var/run/docker.sock:/var/run/docker.sock"]
+    command: --label-enable --cleanup --interval 86400   # check daily, remove old images
+    restart: unless-stopped
+```
+
+The in-app **Admin → NextGen Settings → Automatic updates** panel shows these same steps, and the "Update available" banner has an **Update now** button that gives the right command for your setup (Compose, `docker run`, Unraid, Portainer/Synology).
+
+### Running with Podman
+
+Calibre-Web NextGen is a standard OCI image, so it runs under Podman too — same image, no separate build:
+
+```bash
+podman run -d --name calibre-web \
+  -e PUID=1000 -e PGID=1000 -e TZ=America/New_York \
+  -p 8083:8083 \
+  -v /path/to/config:/config \
+  -v /path/to/library:/calibre-library \
+  -v /path/to/ingest:/cwa-book-ingest \
+  ghcr.io/new-usemame/calibre-web-nextgen:latest
+```
+
+Rootless Podman remaps user IDs, so if the container can't write to your volumes, add `--userns=keep-id` (or run it rootful). Podman also has native automatic updates (`podman auto-update`) with rollback — a step-by-step guide is coming once we've verified it against this image.
+
+---
+
 ## Migrating
 
 ### From upstream CWA

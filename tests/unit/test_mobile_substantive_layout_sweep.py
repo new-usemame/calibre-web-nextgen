@@ -106,24 +106,26 @@ def test_book_card_title_wraps_to_two_lines_on_mobile():
     ), "must declare -webkit-line-clamp: 2 !important"
 
 
-def test_alert_cwa_banner_repositioned_top_on_mobile():
-    """The persistent .alert-cwa banner must move from caliBlur's
-    fixed-bottom-50%-width treatment to a top-anchored full-width
-    banner on mobile, so it doesn't overlap book grid content."""
+def test_alert_cwa_toast_stack_repositioned_top_on_mobile():
+    """The persistent .alert-cwa toasts now stack in the .cwa-toast-stack
+    container (base positioning in caliBlur_override.css; layout.html renders
+    it). On mobile the whole stack must move from caliBlur's fixed-bottom-50%
+    treatment to a top-anchored full-width column, so it doesn't overlap book
+    grid content. The positioning moved from the individual toasts to the
+    container."""
     src = MOBILE_CARDS.read_text()
     block = _mobile_block(src, 767)
-    # Selectors must cover both info + danger variants.
-    assert re.search(
-        r"\.alert-(?:info|danger)\.alert-cwa", block,
-    ), "must scope rule to .alert-info.alert-cwa + .alert-danger.alert-cwa"
-    # Must move top down from auto + clear bottom.
-    assert re.search(r"top:\s*\d+px\s*!important", block), (
-        "must set explicit top: Npx (below navbar)"
+    assert block, "mobile media query (max-width:767px) not found in fork-mobile-cards.css"
+    # The stack CONTAINER (not each toast) is re-anchored to top, full width.
+    stack_rule = re.search(r"\.cwa-toast-stack\s*\{[^}]*\}", block, re.DOTALL)
+    assert stack_rule, "must position .cwa-toast-stack in the mobile block"
+    body = stack_rule.group(0)
+    assert re.search(r"top:\s*\d+px\s*!important", body), (
+        ".cwa-toast-stack must set explicit top: Npx (below navbar) on mobile"
     )
-    assert re.search(r"bottom:\s*auto\s*!important", block), (
-        "must clear bottom: auto to override caliBlur's fixed-bottom positioning"
+    assert re.search(r"bottom:\s*auto\s*!important", body), (
+        ".cwa-toast-stack must clear bottom: auto to override the desktop fixed-bottom anchor"
     )
-    # Must clear caliBlur's width:50% so banner spans full width.
-    assert re.search(r"width:\s*auto\s*!important", block), (
-        "must override caliBlur's width: 50% to span full mobile width"
+    assert re.search(r"width:\s*auto\s*!important", body), (
+        ".cwa-toast-stack must span full mobile width (width: auto)"
     )

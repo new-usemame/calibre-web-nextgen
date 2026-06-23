@@ -243,7 +243,10 @@
       </div>
     </div>
 
-    {% for message in get_flashed_messages(with_categories=True) %}
+    {% set cwa_flashes = get_flashed_messages(with_categories=True) %}
+    {# Inline flashes (form errors, info, warnings, success) render in normal
+       flow at the top of the page. #}
+    {% for message in cwa_flashes %}
       {%if message[0] == "error" %}
       <div class="row-fluid text-center" >
         <div id="flash_danger" class="alert alert-danger">{{ message[1] }}</div>
@@ -254,7 +257,25 @@
         <div id="flash_info" class="alert alert-info">{{ message[1] }}</div>
       </div>
       {%endif%}
-      <div id="messageContainer"></div>
+      {%if message[0] == "warning" %}
+      <div class="row-fluid text-center">
+        <div id="flash_warning" class="alert alert-warning">{{ message[1] }}</div>
+      </div>
+      {%endif%}
+      {%if message[0] == "success" %}
+      <div class="row-fluid text-center">
+        <div id="flash_success" class="alert alert-success">{{ message[1] }}</div>
+      </div>
+      {%endif%}
+    {% endfor %}
+    <div id="messageContainer"></div>
+    {# Persistent .alert-cwa popups stack inside one fixed container so they
+       never overlap when more than one fires. caliBlur turns every .alert into
+       a position:fixed toast; rendered loose they all piled onto the same spot
+       (the garbled overlap a user reported). The stack lays them out as a
+       column instead. #}
+    <div class="cwa-toast-stack">
+    {% for message in cwa_flashes %}
       {%if message[0] == "cwa_update" %}
       <div class="row-fluid text-center">
         <div id="flash_info" class="alert alert-info alert-cwa">
@@ -319,17 +340,8 @@
         </div>
       </div>
       {%endif%}
-      {%if message[0] == "warning" %}
-      <div class="row-fluid text-center">
-        <div id="flash_warning" class="alert alert-warning">{{ message[1] }}</div>
-      </div>
-      {%endif%}
-      {%if message[0] == "success" %}
-      <div class="row-fluid text-center">
-        <div id="flash_success" class="alert alert-success">{{ message[1] }}</div>
-      </div>
-      {%endif%}
     {% endfor %}
+    </div>
     {% block flash %}{% endblock %}
     {% if g.current_theme == 1 %}
       <div id="loader" hidden="true">

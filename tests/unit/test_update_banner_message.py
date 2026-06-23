@@ -64,3 +64,32 @@ def test_update_notification_drops_fstring_gettext_antipattern():
     assert '_(f"' not in src and "_(f'" not in src, "f-string inside gettext is not extractable"
     assert "⚡" not in src and "🚨" not in src, "emoji spam must be gone from the banner"
     assert "_format_update_banner_message" in src, "must build the message via the translatable helper"
+
+
+def test_format_translation_missing_message_is_static_translatable(monkeypatch):
+    """Same i18n contract as the update banner: the "translations needed" notice
+    must build from a STATIC msgid (named placeholders), not interpolate the
+    language/count into the gettext key (the old ``_(f"...")``), and be emoji-free."""
+    captured = {}
+
+    def fake_gettext(msgid):
+        captured["msgid"] = msgid
+        return msgid
+
+    monkeypatch.setattr(rt, "_", fake_gettext)
+
+    msg = rt._format_translation_missing_message("German", 42)
+
+    assert "%(language)s" in captured["msgid"]
+    assert "%(count)s" in captured["msgid"]
+    assert "German" not in captured["msgid"]
+    assert "42" not in captured["msgid"]
+    assert "German" in msg and "42" in msg
+    assert "🌐" not in msg
+
+
+def test_translations_missing_notification_drops_fstring_antipattern():
+    src = inspect.getsource(rt.translations_missing_notification)
+    assert '_(f"' not in src and "_(f'" not in src, "f-string inside gettext is not extractable"
+    assert "🌐" not in src, "drop the emoji for tone consistency"
+    assert "_format_translation_missing_message" in src, "route through the translatable helper"

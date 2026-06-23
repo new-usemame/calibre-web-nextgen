@@ -205,11 +205,25 @@ def cwa_update_available() -> tuple[bool, str, str]:
                 parts.append(int(num) if num else 0)
             return tuple(parts)
 
+        def _is_release_version(value: str) -> bool:
+            # A real release is dotted-numeric ("4.0.170"). Dev / nightly
+            # builds ("DEV_BUILD-dev-247", a git SHA, etc.) are not — their
+            # first segment isn't numeric, so _version_tuple collapses them to
+            # (0, …) and they would falsely read as "older" than the latest
+            # stable tag (a dev box nagged about an update it is ahead of).
+            return value.split(".")[0].isdigit()
+
         current_normalized = _normalize_version(current_version)
         tag_normalized = _normalize_version(tag_name)
 
         if current_normalized in ("", "0.0.0") or tag_normalized in ("", "0.0.0"):
             return False, "0.0.0", "0.0.0"
+
+        # A :dev / unversioned build is intentionally ahead of any tagged
+        # release; comparing it to the latest stable tag is meaningless. Only
+        # compare two real release versions.
+        if not (_is_release_version(current_normalized) and _is_release_version(tag_normalized)):
+            return False, current_version, tag_name
 
         # Only flag an update when the published tag is strictly newer than
         # what's installed; a downgrade or equal version is not an update.
@@ -239,6 +253,16 @@ def _format_update_banner_message(current_version: str, latest_version: str) -> 
     return _("Calibre-Web NextGen %(latest)s is available — you're on %(current)s.") % {
         "latest": latest_version,
         "current": current_version,
+    }
+
+
+def _format_translation_missing_message(language: str, count: int) -> str:
+    # Static msgid with named placeholders (see _format_update_banner_message):
+    # the old ``_(f"...{language}...{count}...")`` interpolated before gettext,
+    # so pybabel could never extract it and every locale fell back to English.
+    return _("Help improve Calibre-Web NextGen's %(language)s translations — %(count)s strings in your language still need translating.") % {
+        "language": language,
+        "count": count,
     }
 
 
@@ -312,7 +336,8 @@ def translations_missing_notification() -> None:
                 with open(notice_file, 'r') as f:
                     last_notification = f.read().strip()
             if last_notification != current_date:
-                message = _(f"🌐 Help improve Calibre-Web NextGen's {constants.LANGUAGE_NAMES.get(lang, lang)} translations! {missing_count} strings in your language need translation. ")
+                message = _format_translation_missing_message(
+                    constants.LANGUAGE_NAMES.get(lang, lang), missing_count)
                 flash(message, category="translation_missing")
                 print(f"[translation-notification-service] {message}", flush=True)
                 with open(notice_file, 'w') as f:

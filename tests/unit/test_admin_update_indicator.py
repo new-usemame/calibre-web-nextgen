@@ -74,6 +74,37 @@ class TestUpdateIndicatorHelper:
 
 
 @pytest.mark.unit
+class TestUpdateAvailableDevBuild:
+    """A :dev / unversioned build must NOT show a false "update available".
+
+    The :dev image stamps INSTALLED_VERSION as e.g. "DEV_BUILD-dev-247", which
+    parses to a ``(0,)`` version tuple — so a naive compare against the latest
+    stable tag always reads as "outdated", nagging the canary/dev box about an
+    update it is actually *ahead* of. Real releases must still be compared."""
+
+    def test_dev_build_does_not_flag_update(self, mocker):
+        from cps.render_template import cwa_update_available
+        mocker.patch("cps.constants.INSTALLED_VERSION", "DEV_BUILD-dev-247")
+        mocker.patch("cps.constants.STABLE_VERSION", "v4.0.170")
+        is_newer, _current, _latest = cwa_update_available()
+        assert is_newer is False
+
+    def test_real_release_still_flags_update(self, mocker):
+        from cps.render_template import cwa_update_available
+        mocker.patch("cps.constants.INSTALLED_VERSION", "v4.0.100")
+        mocker.patch("cps.constants.STABLE_VERSION", "v4.0.170")
+        is_newer, _current, _latest = cwa_update_available()
+        assert is_newer is True
+
+    def test_up_to_date_release_does_not_flag(self, mocker):
+        from cps.render_template import cwa_update_available
+        mocker.patch("cps.constants.INSTALLED_VERSION", "v4.0.170")
+        mocker.patch("cps.constants.STABLE_VERSION", "v4.0.170")
+        is_newer, _current, _latest = cwa_update_available()
+        assert is_newer is False
+
+
+@pytest.mark.unit
 class TestAdminRoutePassesIndicator:
     def test_admin_route_source_passes_indicator_kwargs(self):
         """Source-pin: ``admin()`` must include cwa_is_outdated and

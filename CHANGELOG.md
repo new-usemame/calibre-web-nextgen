@@ -16,6 +16,16 @@ is for things you can see or feel when running the app.
 
 ## [Unreleased]
 
+### Fixed
+- **Beta (`:dev`) builds no longer nag about a "false" update.** If you run the
+  beta image, the "update available" banner kept pointing at the latest *stable*
+  release even though a beta build is actually ahead of it. Beta/unversioned
+  builds are now recognised and don't show the banner.
+- **Stacked notices no longer pile up into an unreadable blur.** When more than
+  one pop-up notice showed at once — e.g. the duplicate-scan setup notice plus
+  the update banner — they all floated to the same spot and rendered on top of
+  each other. They now stack neatly in a column.
+
 ## [v4.0.170] - 2026-06-23
 
 ### Added

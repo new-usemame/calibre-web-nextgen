@@ -92,10 +92,11 @@ class TestAdminRoutePassesIndicator:
 @pytest.mark.unit
 class TestAdminTemplateRendersIndicator:
     """Template-source pin: when outdated, the admin.html Version
-    Information row renders 'Update available' with the latest tag and a
-    docker-pull command; otherwise the original 'Current Version' label.
-    We assert against the template source rather than full Jinja rendering
-    so this test stays independent of the Flask app context."""
+    Information row renders 'Update available' with the latest tag and an
+    'Update now' button that opens the guided update modal; otherwise the
+    original 'Current Version' label. We assert against the template source
+    rather than full Jinja rendering so this test stays independent of the
+    Flask app context."""
 
     def test_template_has_outdated_branch(self):
         import os
@@ -108,9 +109,14 @@ class TestAdminTemplateRendersIndicator:
         # The new branch must reference both variables.
         assert "cwa_is_outdated" in template
         assert "cwa_latest_tag" in template
-        # And it must surface the docker-pull command in the user-visible
-        # message so the user knows what to do next.
-        assert "docker pull ghcr.io/new-usemame/calibre-web-nextgen" in template
+        # And it must surface a way to act on the update: the "Update now"
+        # button that opens the guided update modal. This replaced the old
+        # inline `docker pull` command, which was incomplete on its own
+        # (pulling an image does not update a running container) — the modal
+        # now carries the full, setup-aware pull+recreate instructions.
+        # See cps/templates/update_now_modal.html.
+        assert "#updateNowDialog" in template
+        assert "Update now" in template
 
     def test_template_preserves_current_version_fallback(self):
         import os

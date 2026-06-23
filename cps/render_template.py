@@ -231,6 +231,17 @@ def get_cwa_last_notification() -> str:
             last_notification = f.read()
     return last_notification
 
+def _format_update_banner_message(current_version: str, latest_version: str) -> str:
+    # Build from a STATIC msgid with named placeholders so pybabel can extract
+    # it and translators can localize it. Interpolating the versions *before*
+    # gettext (the old ``_(f"...")``) made the translation key the runtime
+    # string, so every non-English locale silently fell back to English.
+    return _("Calibre-Web NextGen %(latest)s is available — you're on %(current)s.") % {
+        "latest": latest_version,
+        "current": current_version,
+    }
+
+
 # Displays a notification to the user that an update for CWA is available, no matter which page they're on
 # Currently set to only display once per calender day
 def cwa_update_notification() -> None:
@@ -244,8 +255,8 @@ def cwa_update_notification() -> None:
 
         update_available, current_version, tag_name = cwa_update_available()
         if update_available:
-            message = _(f"⚡🚨 Calibre-Web NextGen UPDATE AVAILABLE! 🚨⚡ Current - {current_version} | Newest - {tag_name} | To update, just re-pull the image! This message will only display once per day |")
-            flash(_(message), category="cwa_update")
+            message = _format_update_banner_message(current_version, tag_name)
+            flash(message, category="cwa_update")
             print(f"[cwa-update-notification-service] {message}", flush=True)
 
         with open('/app/cwa_update_notice', 'w') as f:

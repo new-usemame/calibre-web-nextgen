@@ -258,7 +258,9 @@
       {%if message[0] == "cwa_update" %}
       <div class="row-fluid text-center">
         <div id="flash_info" class="alert alert-info alert-cwa">
-          {{ message[1] }} <a href="https://github.com/new-usemame/Calibre-Web-NextGen/releases">{{ _('See Changelog') }}</a>
+          {{ message[1] }}
+          <button type="button" class="btn btn-primary btn-xs update-now-banner-btn" data-toggle="modal" data-target="#updateNowDialog">{{ _('Update now') }}</button>
+          <a href="https://github.com/new-usemame/Calibre-Web-NextGen/releases">{{ _('See Changelog') }}</a>
           <button type="button" class="close" data-dismiss="alert" aria-label="Close">
             <span aria-hidden="true">&times;</span>
           </button>
@@ -508,6 +510,9 @@
         </div>
       </div>
     </div>
+    {% if current_user.is_authenticated and current_user.role_admin() %}
+      {% include "update_now_modal.html" %}
+    {% endif %}
     {% block modal %}{% endblock %}
     <!-- jQuery (necessary for Bootstrap's JavaScript plugins) -->
     <script src="{{ url_for('static', filename='js/libs/jquery.min.js') }}"></script>
@@ -523,6 +528,9 @@
     <script src="{{ url_for('static', filename='js/libs/jquery.form.min.js') }}"></script>
     <script src="{{ url_for('static', filename='js/uploadprogress.js') }}"> </script>
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    {% if current_user.is_authenticated and current_user.role_admin() %}
+    <script src="{{ url_for('static', filename='js/update_now.js') }}"></script>
+    {% endif %}
     {% if g.current_theme == 1 %}
       <script src="{{ url_for('static', filename='js/libs/jquery.visible.min.js') }}"></script>
       <script src="{{ url_for('static', filename='js/libs/compromise.min.js') }}"></script>

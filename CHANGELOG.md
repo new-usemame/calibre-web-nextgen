@@ -16,6 +16,16 @@ is for things you can see or feel when running the app.
 
 ## [Unreleased]
 
+### Added
+- **Update from a button instead of hunting for the right Docker command.** When
+  a new version is available, the update banner and the Admin page now show an
+  **Update now** button that gives you the exact one-line command for your setup
+  — Docker Compose, `docker run`, Unraid, or Portainer/Synology — with one-click
+  copy. A new **Automatic updates** section under Admin → NextGen Settings walks
+  you through turning on truly hands-off updates with Watchtower, so new versions
+  install themselves. (Admin only.) The README gains a matching "Updating" guide,
+  including how to run NextGen under Podman.
+
 ### Fixed
 - **The epub reader's Settings panel no longer sits flush against its edges.**
   After the recent settings redesign, the option labels were pressed against the

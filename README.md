@@ -216,6 +216,54 @@ The Admin → Settings panel has many optional toggles (auto-convert formats, au
 
 ---
 
+## Updating
+
+Calibre-Web NextGen ships new versions regularly — often weekly. Updating means pulling the new image and recreating the container; your library, settings and reading progress live in the mounted volumes, so they're left untouched.
+
+**Update once, by hand:**
+
+```bash
+docker compose pull calibre-web && docker compose up -d calibre-web
+```
+
+(Use your own service name if it isn't `calibre-web`.)
+
+**Update automatically** with [Watchtower](https://github.com/nicholas-fedor/watchtower) (the maintained fork). Add it alongside CWA and label the CWA service so Watchtower only ever touches this one container — your other containers are left alone:
+
+```yaml
+services:
+  calibre-web:
+    image: ghcr.io/new-usemame/calibre-web-nextgen:latest
+    labels: ["com.centurylinklabs.watchtower.enable=true"]
+    # ...rest of your config
+
+  watchtower:
+    image: nickfedor/watchtower
+    volumes: ["/var/run/docker.sock:/var/run/docker.sock"]
+    command: --label-enable --cleanup --interval 86400   # check daily, remove old images
+    restart: unless-stopped
+```
+
+The in-app **Admin → NextGen Settings → Automatic updates** panel shows these same steps, and the "Update available" banner has an **Update now** button that gives the right command for your setup (Compose, `docker run`, Unraid, Portainer/Synology).
+
+### Running with Podman
+
+Calibre-Web NextGen is a standard OCI image, so it runs under Podman too — same image, no separate build:
+
+```bash
+podman run -d --name calibre-web \
+  -e PUID=1000 -e PGID=1000 -e TZ=America/New_York \
+  -p 8083:8083 \
+  -v /path/to/config:/config \
+  -v /path/to/library:/calibre-library \
+  -v /path/to/ingest:/cwa-book-ingest \
+  ghcr.io/new-usemame/calibre-web-nextgen:latest
+```
+
+Rootless Podman remaps user IDs, so if the container can't write to your volumes, add `--userns=keep-id` (or run it rootful). Podman also has native automatic updates (`podman auto-update`) with rollback — a step-by-step guide is coming once we've verified it against this image.
+
+---
+
 ## Migrating
 
 ### From upstream CWA
@@ -523,34 +571,34 @@ The interface ships with the locales below. Completion is auto-refreshed on ever
 | Language | Completion | Strings | Fuzzy |
 |---|---|---:|---:|
 | English (source) | 100% | source | — |
-| Hungarian (`hu`) | `██████████████████░░` 92% | 1651/1799 | 112 |
-| German (`de`) | `██████████████████░░` 88% | 1580/1799 | 124 |
-| French (`fr`) | `██████████████████░░` 88% | 1577/1799 | 131 |
-| Japanese (`ja`) | `██████████████████░░` 88% | 1577/1799 | 257 |
-| Spanish (`es`) | `██████████████████░░` 88% | 1576/1799 | 200 |
-| Slovenian (`sl`) | `█████████████████░░░` 86% | 1546/1799 | 331 |
-| Chinese (Simplified, China) (`zh_Hans_CN`) | `█████████████████░░░` 85% | 1535/1799 | 360 |
-| Russian (`ru`) | `██████████████░░░░░░` 72% | 1291/1799 | 478 |
-| Dutch (`nl`) | `██████████████░░░░░░` 71% | 1272/1799 | 301 |
-| Italian (`it`) | `██████████████░░░░░░` 69% | 1234/1799 | 278 |
-| Polish (`pl`) | `██████████████░░░░░░` 69% | 1234/1799 | 283 |
-| Portuguese (Brazil) (`pt_BR`) | `██████████████░░░░░░` 69% | 1234/1799 | 410 |
-| Korean (`ko`) | `██████████████░░░░░░` 68% | 1228/1799 | 278 |
-| Arabic (`ar`) | `████████████░░░░░░░░` 60% | 1088/1799 | 297 |
-| Slovak (`sk`) | `████████████░░░░░░░░` 60% | 1077/1799 | 327 |
-| Portuguese (`pt`) | `████████████░░░░░░░░` 60% | 1076/1799 | 375 |
-| Indonesian (`id`) | `████████████░░░░░░░░` 59% | 1056/1799 | 377 |
-| Galician (`gl`) | `████████████░░░░░░░░` 59% | 1054/1799 | 376 |
-| Chinese (Traditional, Taiwan) (`zh_Hant_TW`) | `███████████░░░░░░░░░` 56% | 1013/1799 | 395 |
-| Swedish (`sv`) | `███████████░░░░░░░░░` 55% | 990/1799 | 405 |
-| Greek (`el`) | `██████████░░░░░░░░░░` 51% | 925/1799 | 418 |
-| Czech (`cs`) | `██████████░░░░░░░░░░` 50% | 905/1799 | 427 |
-| Norwegian (`no`) | `██████████░░░░░░░░░░` 50% | 891/1799 | 460 |
-| Vietnamese (`vi`) | `█████████░░░░░░░░░░░` 45% | 806/1799 | 384 |
-| Finnish (`fi`) | `█████████░░░░░░░░░░░` 43% | 770/1799 | 415 |
-| Turkish (`tr`) | `████████░░░░░░░░░░░░` 39% | 699/1799 | 409 |
-| Ukrainian (`uk`) | `████████░░░░░░░░░░░░` 39% | 699/1799 | 397 |
-| Khmer (`km`) | `██████░░░░░░░░░░░░░░` 32% | 573/1799 | 366 |
+| Hungarian (`hu`) | `██████████████████░░` 91% | 1656/1826 | 117 |
+| German (`de`) | `█████████████████░░░` 87% | 1585/1826 | 129 |
+| French (`fr`) | `█████████████████░░░` 87% | 1582/1826 | 136 |
+| Japanese (`ja`) | `█████████████████░░░` 87% | 1582/1826 | 262 |
+| Spanish (`es`) | `█████████████████░░░` 87% | 1581/1826 | 205 |
+| Slovenian (`sl`) | `█████████████████░░░` 85% | 1551/1826 | 336 |
+| Chinese (Simplified, China) (`zh_Hans_CN`) | `█████████████████░░░` 84% | 1540/1826 | 365 |
+| Russian (`ru`) | `██████████████░░░░░░` 71% | 1294/1826 | 481 |
+| Dutch (`nl`) | `██████████████░░░░░░` 70% | 1275/1826 | 304 |
+| Italian (`it`) | `██████████████░░░░░░` 68% | 1237/1826 | 281 |
+| Polish (`pl`) | `██████████████░░░░░░` 68% | 1237/1826 | 286 |
+| Portuguese (Brazil) (`pt_BR`) | `██████████████░░░░░░` 68% | 1237/1826 | 413 |
+| Korean (`ko`) | `█████████████░░░░░░░` 67% | 1231/1826 | 281 |
+| Arabic (`ar`) | `████████████░░░░░░░░` 60% | 1091/1826 | 300 |
+| Portuguese (`pt`) | `████████████░░░░░░░░` 59% | 1079/1826 | 378 |
+| Slovak (`sk`) | `████████████░░░░░░░░` 59% | 1080/1826 | 330 |
+| Indonesian (`id`) | `████████████░░░░░░░░` 58% | 1059/1826 | 380 |
+| Galician (`gl`) | `████████████░░░░░░░░` 58% | 1057/1826 | 379 |
+| Chinese (Traditional, Taiwan) (`zh_Hant_TW`) | `███████████░░░░░░░░░` 56% | 1016/1826 | 398 |
+| Swedish (`sv`) | `███████████░░░░░░░░░` 54% | 993/1826 | 408 |
+| Greek (`el`) | `██████████░░░░░░░░░░` 51% | 928/1826 | 421 |
+| Czech (`cs`) | `██████████░░░░░░░░░░` 50% | 908/1826 | 430 |
+| Norwegian (`no`) | `██████████░░░░░░░░░░` 49% | 894/1826 | 463 |
+| Vietnamese (`vi`) | `█████████░░░░░░░░░░░` 44% | 809/1826 | 387 |
+| Finnish (`fi`) | `████████░░░░░░░░░░░░` 42% | 773/1826 | 418 |
+| Turkish (`tr`) | `████████░░░░░░░░░░░░` 38% | 702/1826 | 412 |
+| Ukrainian (`uk`) | `████████░░░░░░░░░░░░` 38% | 702/1826 | 400 |
+| Khmer (`km`) | `██████░░░░░░░░░░░░░░` 32% | 575/1826 | 368 |
 <!-- TRANSLATION_STATUS_END -->
 
 ---

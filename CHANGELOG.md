@@ -16,6 +16,13 @@ is for things you can see or feel when running the app.
 
 ## [Unreleased]
 
+### Fixed
+- **The epub reader's Settings panel no longer sits flush against its edges.**
+  After the recent settings redesign, the option labels were pressed against the
+  left edge and the slider readouts ("150%", "0px") were clipped at the right.
+  The panel now insets its content again, and the "Settings" title keeps its
+  full-width bar across the top. Reported by @sambong.
+
 ## [v4.0.169] - 2026-06-22
 
 ### Changed

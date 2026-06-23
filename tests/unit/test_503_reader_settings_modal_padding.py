@@ -46,22 +46,34 @@ def _rule_body(src, selector):
     return src[open_brace + 1 : close_brace]
 
 
+def _is_zero(value):
+    return re.fullmatch(r"-?0(px|em|rem|%)?", value) is not None
+
+
+def _horizontal_values(shorthand):
+    """Return the (right, left) values of a CSS box shorthand (padding/margin),
+    handling all four shorthand arities. The right value is mapped to the left
+    when the shorthand doesn't list a distinct left."""
+    parts = shorthand.split()
+    if len(parts) == 1:  # all sides
+        return parts[0], parts[0]
+    if len(parts) == 2:  # vertical | horizontal
+        return parts[1], parts[1]
+    if len(parts) == 3:  # top | horizontal | bottom
+        return parts[1], parts[1]
+    # top | right | bottom | left
+    return parts[1], parts[3]
+
+
 def _horizontal_padding_present(decl):
-    """True if a `padding:` declaration in `decl` carries a non-zero left/right
-    value (shorthand 1-4 values; vertical-only `0.8em 0` does NOT count)."""
+    """True if a `padding:` declaration in `decl` insets BOTH horizontal edges
+    (shorthand 1-4 values; vertical-only `0.8em 0` does NOT count, and an
+    asymmetric `0 0 0 22px` that leaves one edge flush does NOT count)."""
     m = re.search(r"padding\s*:\s*([^;]+);", decl)
     if not m:
         return False
-    parts = m.group(1).split()
-    if len(parts) == 1:  # all sides
-        horiz = parts[0]
-    elif len(parts) == 2:  # vertical | horizontal
-        horiz = parts[1]
-    elif len(parts) == 3:  # top | horizontal | bottom
-        horiz = parts[1]
-    else:  # top right bottom left
-        horiz = parts[1]
-    return not re.fullmatch(r"0(px|em|rem|%)?", horiz)
+    right, left = _horizontal_values(m.group(1))
+    return not _is_zero(right) and not _is_zero(left)
 
 
 def test_settings_modal_content_has_horizontal_padding():
@@ -77,11 +89,10 @@ def test_settings_modal_title_bleeds_full_width():
     decl = _rule_body(_src(), "#settings-modal h3")
     m = re.search(r"margin\s*:\s*([^;]+);", decl)
     assert m, "#settings-modal h3 must declare a margin"
-    parts = m.group(1).split()
     # Need a negative horizontal margin to pull the title bar back out past the
     # .md-content padding so it keeps hugging the top corners.
-    horiz = parts[1] if len(parts) >= 2 else parts[0]
-    assert horiz.startswith("-"), (
+    right, left = _horizontal_values(m.group(1))
+    assert right.startswith("-") or left.startswith("-"), (
         "#settings-modal h3 must use a negative horizontal margin so its "
         "background title bar spans the full modal width despite the body inset "
         "(#503)"

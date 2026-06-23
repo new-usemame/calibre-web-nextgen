@@ -16,6 +16,8 @@ is for things you can see or feel when running the app.
 
 ## [Unreleased]
 
+## [v4.0.170] - 2026-06-23
+
 ### Added
 - **Update from a button instead of hunting for the right Docker command.** When
   a new version is available, the update banner and the Admin page now show an

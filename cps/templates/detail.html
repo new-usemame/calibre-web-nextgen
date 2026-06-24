@@ -839,6 +839,17 @@
                                 {% endif %}
                             {% endfor %}
                         </p>
+                        {# Passive "currently reading" marker (fork #509). Shows when the book's
+                           read state is IN_PROGRESS (read_status_raw == 2) — i.e. a book a user is
+                           partway through on KOReader/Kobo. The read toggle below stays a 2-state
+                           read/unread control; in-progress is sync-driven display only, not a
+                           user-set toggle position. #}
+                        {% if entry.read_status_raw == 2 %}
+                        <p class="currently-reading cover-badge-in-progress" id="currently-reading-badge">
+                            <span class="glyphicon glyphicon-book" aria-hidden="true"></span>
+                            {{ _('Currently reading') }}
+                        </p>
+                        {% endif %}
                         {% set current_rating = (entry.ratings[0].rating / 2)|int if entry.ratings|length > 0 else 0 %}
                         <div class="rating" id="detail-rating-block">
                             {% if current_user.role_edit() %}

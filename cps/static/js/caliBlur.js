@@ -1136,6 +1136,10 @@ $(function() {
                         // Remove read badge
                         $readBadge.remove();
                     } else {
+                        // Marking read: drop any "currently reading" badge first
+                        // so an in-progress book doesn't show Reading + Read at
+                        // once until the next reload (fork #509).
+                        $link.find('.cover-badge-in-progress, .badge.in-progress').remove();
                         // Add read badge — matches index.html / image.html
                         // glyphicon-check (fork #319 droM4X icon-standardization).
                         var $newBadge = $('<span class="badge read glyphicon glyphicon-check"></span>');

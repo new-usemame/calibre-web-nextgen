@@ -16,6 +16,15 @@ is for things you can see or feel when running the app.
 
 ## [Unreleased]
 
+### Added
+- **Books you're partway through now show a "Currently reading" badge.** If you
+  read on KOReader (or a Kobo) and your progress syncs back, the book used to
+  look exactly like one you'd never opened — the web only marked books as read
+  once you finished them. Now an in-progress book gets an amber "Currently
+  reading" marker on its detail page and a badge on its cover in the grid,
+  shelves, search and author pages, so synced reading progress is actually
+  visible. Reported by @barukh27.
+
 ## [v4.0.171] - 2026-06-24
 
 ### Added

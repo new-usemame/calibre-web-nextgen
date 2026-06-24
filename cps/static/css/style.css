@@ -309,7 +309,8 @@ span.glyphicon.glyphicon-tags {
   background-color: #fff;
 }
 
-.cover .read {
+.cover .read,
+.cover .in-progress {
   position: relative;
   top: -20px;
   /*left: auto;

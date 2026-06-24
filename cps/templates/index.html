@@ -42,7 +42,7 @@
              class="book-cover-link">
               <span class="img" title="{{ entry.Books.title }}">
                 {{ image.book_cover(entry.Books) }}
-                {% if entry[2] == True %}<span class="badge read glyphicon glyphicon-check"></span>{% endif %}
+                {% if entry[2] == 1 %}<span class="badge read glyphicon glyphicon-check"></span>{% elif entry[2] == 2 %}<span class="badge in-progress glyphicon glyphicon-book" title="{{ _('Currently reading') }}"></span>{% endif %}
               </span>
           </a>
       </div>
@@ -185,7 +185,7 @@
              class="book-cover-link">
             <span class="img" title="{{ entry.Books.title }}">
               {{ image.book_cover(entry.Books) }}
-              {{ image.cover_badges(entry.Books, is_read=(entry[2] == True)) }}
+              {{ image.cover_badges(entry.Books, read_status=(entry[2] or 0)) }}
             </span>
           </a>
       </div>

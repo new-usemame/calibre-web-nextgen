@@ -8,7 +8,7 @@ msgstr ""
 "Project-Id-Version: Calibre-Web NextGen\n"
 "Report-Msgid-Bugs-To: https://github.com/crocodilestick/Calibre-Web-"
 "Automated\n"
-"POT-Creation-Date: 2026-06-17 18:07+0000\n"
+"POT-Creation-Date: 2026-06-23 21:21+0000\n"
 "PO-Revision-Date: 2018-02-07 02:20-0500\n"
 "Last-Translator: subdiox <subdiox@gmail.com>\n"
 "Language-Team: ja <LL@li.org>\n"
@@ -1955,7 +1955,7 @@ msgstr "カテゴリ順"
 
 #: cps/opds.py:223 cps/render_template.py:107 cps/templates/book_edit.html:143
 #: cps/templates/book_table.html:111 cps/templates/cwa_settings.html:362
-#: cps/templates/cwa_settings.html:364 cps/templates/cwa_settings.html:1103
+#: cps/templates/cwa_settings.html:364 cps/templates/cwa_settings.html:1133
 #: cps/templates/hardcover_review_matches.html:140
 #: cps/templates/search_form.html:70 cps/web.py:2076 cps/web.py:2088
 msgid "Series"
@@ -1991,7 +1991,7 @@ msgstr "ファイル形式"
 msgid "Books ordered by file formats"
 msgstr "ファイル形式順"
 
-#: cps/opds.py:247 cps/templates/layout.html:413
+#: cps/opds.py:247 cps/templates/layout.html:427
 #: cps/templates/search_form.html:88
 msgid "Shelves"
 msgstr "本棚"
@@ -2140,6 +2140,18 @@ msgstr "重複"
 #: cps/render_template.py:144
 msgid "Show Duplicate Books"
 msgstr "重複する書籍を表示"
+
+#: cps/render_template.py:253
+#, python-format
+msgid "Calibre-Web NextGen %(latest)s is available — you're on %(current)s."
+msgstr ""
+
+#: cps/render_template.py:263
+#, python-format
+msgid ""
+"Help improve Calibre-Web NextGen's %(language)s translations — %(count)s "
+"strings in your language still need translating."
+msgstr ""
 
 #: cps/search.py:53 cps/search.py:438 cps/templates/book_edit.html:338
 #: cps/templates/cwa_epub_fixer.html:25 cps/templates/feed.xml:43
@@ -2316,63 +2328,63 @@ msgstr "本棚: '%(name)s'"
 msgid "Error opening shelf. Shelf does not exist or is not accessible"
 msgstr "本棚を開けません。この本棚は存在しないかアクセスできません"
 
-#: cps/shelf.py:972
+#: cps/shelf.py:995
 #, python-format
 msgid "Invalid order mode: %(mode)s"
 msgstr ""
 
-#: cps/shelf.py:976
+#: cps/shelf.py:999
 msgid "Invalid payload: 'order' must be a list"
 msgstr ""
 
-#: cps/shelf.py:1000
+#: cps/shelf.py:1023
 msgid "Could not save order"
 msgstr ""
 
-#: cps/shelf.py:1008 cps/templates/layout.html:422
+#: cps/shelf.py:1031 cps/templates/layout.html:436
 #, fuzzy
 msgid "Reorder Shelves"
 msgstr "除外する本棚"
 
-#: cps/shelf.py:1013
+#: cps/shelf.py:1036
 #, fuzzy
 msgid "Name (A → Z)"
 msgstr "名前（A-Z）"
 
-#: cps/shelf.py:1014
+#: cps/shelf.py:1037
 #, fuzzy
 msgid "Name (Z → A)"
 msgstr "名前（Z-A）"
 
-#: cps/shelf.py:1015
+#: cps/shelf.py:1038
 #, fuzzy
 msgid "Book count (most → fewest)"
 msgstr "書籍数（多い順）"
 
-#: cps/shelf.py:1016
+#: cps/shelf.py:1039
 #, fuzzy
 msgid "Book count (fewest → most)"
 msgstr "書籍数（多い順）"
 
-#: cps/shelf.py:1017
+#: cps/shelf.py:1040
 #, fuzzy
 msgid "Created (newest → oldest)"
 msgstr "作成日（新しい順）"
 
-#: cps/shelf.py:1018
+#: cps/shelf.py:1041
 #, fuzzy
 msgid "Created (oldest → newest)"
 msgstr "作成日（古い順）"
 
-#: cps/shelf.py:1019
+#: cps/shelf.py:1042
 msgid "Modified (recent → oldest)"
 msgstr ""
 
-#: cps/shelf.py:1020
+#: cps/shelf.py:1043
 msgid "Modified (oldest → recent)"
 msgstr ""
 
-#: cps/shelf.py:1021
+#: cps/shelf.py:1044
 #, fuzzy
 msgid "Manual (drag below)"
 msgstr "手動（ドラッグで並び替え）"
@@ -2561,7 +2573,7 @@ msgstr ""
 msgid "Error creating shelf"
 msgstr "本棚の削除中にエラーが発生しました"
 
-#: cps/templates/layout.html:432 cps/web.py:1553
+#: cps/templates/layout.html:446 cps/web.py:1553
 #, fuzzy
 msgid "Create Magic Shelf"
 msgstr "Magic Shelfを作成"
@@ -3069,7 +3081,7 @@ msgstr "本棚に追加"
 #: cps/templates/detail.html:820 cps/templates/detail.html:979
 #: cps/templates/detail.html:1601 cps/templates/feed.xml:109
 #: cps/templates/feed.xml:111 cps/templates/index.html:162
-#: cps/templates/layout.html:416 cps/templates/layout.html:429
+#: cps/templates/layout.html:430 cps/templates/layout.html:443
 #: cps/templates/listenmp3.html:201 cps/templates/listenmp3.html:218
 #: cps/templates/search.html:23 cps/templates/shelf_reorder.html:31
 msgid "(Public)"
@@ -3093,7 +3105,7 @@ msgstr "未読にする"
 #: cps/templates/book_edit.html:59 cps/templates/book_table.html:66
 #: cps/templates/book_table.html:145 cps/templates/book_table.html:194
 #: cps/templates/duplicates.html:718 cps/templates/modal_dialogs.html:63
-#: cps/templates/modal_dialogs.html:116 cps/templates/read.html:175
+#: cps/templates/modal_dialogs.html:116 cps/templates/read.html:179
 #: cps/templates/user_edit.html:333 cps/templates/user_table.html:150
 msgid "Delete"
 msgstr "削除"
@@ -3476,40 +3488,45 @@ msgstr "詳細"
 msgid "Update available"
 msgstr "アップデート失敗:"
 
-#: cps/templates/admin.html:263
+#: cps/templates/admin.html:262 cps/templates/layout.html:283
+#, fuzzy
+msgid "Update now"
+msgstr "アップデートチャンネル"
+
+#: cps/templates/admin.html:264
 msgid "Current Version"
 msgstr "現在のバージョン"
 
-#: cps/templates/admin.html:270 cps/templates/admin.html:275
+#: cps/templates/admin.html:271 cps/templates/admin.html:276
 msgid "-"
 msgstr "-"
 
-#: cps/templates/admin.html:282
+#: cps/templates/admin.html:283
 msgid "Check for Update"
 msgstr "アップデートを確認"
 
-#: cps/templates/admin.html:283
+#: cps/templates/admin.html:284
 msgid "Perform Update"
 msgstr "アップデートを実行"
 
-#: cps/templates/admin.html:296
+#: cps/templates/admin.html:297
 msgid "Are you sure you want to restart?"
 msgstr "再起動してもよろしいですか？"
 
-#: cps/templates/admin.html:298 cps/templates/admin.html:330
+#: cps/templates/admin.html:299 cps/templates/admin.html:331
 #: cps/templates/config_db.html:4 cps/templates/config_edit.html:4
 #: cps/templates/cwa_settings.html:4 cps/templates/read.html:74
 #, fuzzy
 msgid "Loading"
 msgstr "読み込み中..."
 
-#: cps/templates/admin.html:301 cps/templates/admin.html:315
-#: cps/templates/admin.html:335 cps/templates/config_db.html:139
+#: cps/templates/admin.html:302 cps/templates/admin.html:316
+#: cps/templates/admin.html:336 cps/templates/config_db.html:139
 #: cps/templates/duplicates.html:788 cps/templates/duplicates.html:810
 msgid "OK"
 msgstr "OK"
 
-#: cps/templates/admin.html:302 cps/templates/admin.html:316
+#: cps/templates/admin.html:303 cps/templates/admin.html:317
 #: cps/templates/book_edit.html:312 cps/templates/book_table.html:176
 #: cps/templates/book_table.html:195 cps/templates/book_table.html:215
 #: cps/templates/book_table.html:235 cps/templates/book_table.html:255
@@ -3520,10 +3537,10 @@ msgstr "OK"
 #: cps/templates/cwa_convert_library.html:23
 #: cps/templates/cwa_epub_fixer.html:40 cps/templates/detail.html:1173
 #: cps/templates/duplicates.html:696 cps/templates/duplicates.html:719
-#: cps/templates/duplicates.html:746 cps/templates/layout.html:606
-#: cps/templates/layout.html:761 cps/templates/modal_dialogs.html:64
+#: cps/templates/duplicates.html:746 cps/templates/layout.html:626
+#: cps/templates/layout.html:781 cps/templates/modal_dialogs.html:64
 #: cps/templates/modal_dialogs.html:99 cps/templates/modal_dialogs.html:117
-#: cps/templates/modal_dialogs.html:135 cps/templates/read.html:174
+#: cps/templates/modal_dialogs.html:135 cps/templates/read.html:178
 #: cps/templates/schedule_edit.html:46 cps/templates/shelf.html:125
 #: cps/templates/shelf_edit.html:34 cps/templates/tasks.html:94
 #: cps/templates/tasks.html:166 cps/templates/tasks.html:173
@@ -3531,11 +3548,11 @@ msgstr "OK"
 msgid "Cancel"
 msgstr "キャンセル"
 
-#: cps/templates/admin.html:314
+#: cps/templates/admin.html:315
 msgid "Are you sure you want to shutdown?"
 msgstr "シャットダウンしてもよろしいですか？"
 
-#: cps/templates/admin.html:326
+#: cps/templates/admin.html:327
 msgid "Updating, please do not reload this page"
 msgstr "アップデート中です。このページをリロードしないでください"
 
@@ -3589,7 +3606,7 @@ msgstr ""
 
 #: cps/templates/annotations_import.html:49 cps/templates/book_edit.html:94
 #: cps/templates/book_edit.html:111 cps/templates/layout.html:204
-#: cps/templates/layout.html:335
+#: cps/templates/layout.html:349
 msgid "Uploading..."
 msgstr "アップロード中..."
 
@@ -3624,8 +3641,8 @@ msgstr ""
 msgid "%(count)d highlights"
 msgstr ""
 
-#: cps/templates/annotations_view.html:23 cps/templates/cwa_settings.html:1122
-#: cps/templates/cwa_settings.html:1208
+#: cps/templates/annotations_view.html:23 cps/templates/cwa_settings.html:1152
+#: cps/templates/cwa_settings.html:1238
 msgid "Note:"
 msgstr "メモ："
 
@@ -3639,7 +3656,7 @@ msgstr ""
 msgid "Source: %(s)s"
 msgstr "シリーズ: %(serie)s"
 
-#: cps/templates/annotations_view.html:45 cps/templates/read.html:179
+#: cps/templates/annotations_view.html:45 cps/templates/read.html:183
 msgid "No annotations on this book yet."
 msgstr ""
 
@@ -3696,9 +3713,10 @@ msgstr "本を変換"
 
 #: cps/templates/book_edit.html:94 cps/templates/book_edit.html:378
 #: cps/templates/book_table.html:346 cps/templates/duplicates.html:766
-#: cps/templates/layout.html:204 cps/templates/layout.html:506
-#: cps/templates/layout.html:643 cps/templates/modal_dialogs.html:34
-#: cps/templates/shelf.html:110 cps/templates/user_edit.html:673
+#: cps/templates/layout.html:204 cps/templates/layout.html:520
+#: cps/templates/layout.html:663 cps/templates/modal_dialogs.html:34
+#: cps/templates/shelf.html:110 cps/templates/update_now_modal.html:69
+#: cps/templates/user_edit.html:673
 msgid "Close"
 msgstr "閉じる"
 
@@ -3725,7 +3743,7 @@ msgid "Imported as"
 msgstr "重要："
 
 #: cps/templates/book_edit.html:135 cps/templates/book_edit.html:459
-#: cps/templates/cwa_settings.html:1091 cps/templates/search_form.html:12
+#: cps/templates/cwa_settings.html:1121 cps/templates/search_form.html:12
 msgid "Author"
 msgstr "著者"
 
@@ -3743,13 +3761,13 @@ msgstr "発売日"
 
 #: cps/templates/book_edit.html:159 cps/templates/book_edit.html:460
 #: cps/templates/cwa_settings.html:348 cps/templates/cwa_settings.html:350
-#: cps/templates/cwa_settings.html:1109 cps/templates/detail.html:995
+#: cps/templates/cwa_settings.html:1139 cps/templates/detail.html:995
 #: cps/templates/hardcover_review_matches.html:148
 #: cps/templates/listenmp3.html:102 cps/templates/search_form.html:16
 msgid "Publisher"
 msgstr "出版社"
 
-#: cps/templates/book_edit.html:163 cps/templates/cwa_settings.html:1097
+#: cps/templates/book_edit.html:163 cps/templates/cwa_settings.html:1127
 #: cps/templates/listenmp3.html:69
 msgid "Language"
 msgstr "言語"
@@ -3841,7 +3859,7 @@ msgstr "メタデータを取得"
 
 #: cps/templates/book_edit.html:313 cps/templates/config_db.html:111
 #: cps/templates/config_edit.html:664 cps/templates/config_view_edit.html:237
-#: cps/templates/email_edit.html:71 cps/templates/read.html:173
+#: cps/templates/email_edit.html:71 cps/templates/read.html:177
 #: cps/templates/schedule_edit.html:47 cps/templates/shelf_edit.html:36
 #: cps/templates/shelf_reorder.html:38 cps/templates/user_edit.html:585
 msgid "Save"
@@ -3953,7 +3971,7 @@ msgstr "タイトルを入力"
 
 #: cps/templates/book_table.html:106 cps/templates/config_view_edit.html:39
 #: cps/templates/cwa_settings.html:327 cps/templates/cwa_settings.html:329
-#: cps/templates/cwa_settings.html:1085 cps/templates/shelf_edit.html:8
+#: cps/templates/cwa_settings.html:1115 cps/templates/shelf_edit.html:8
 #: cps/templates/tasks.html:41 cps/templates/tasks.html:64
 msgid "Title"
 msgstr "タイトル"
@@ -5837,11 +5855,56 @@ msgid ""
 "of NextGen is released"
 msgstr ""
 
-#: cps/templates/cwa_settings.html:755
+#: cps/templates/cwa_settings.html:751
+#, fuzzy
+msgid "Automatic updates"
+msgstr "自動バックアップ設定"
+
+#: cps/templates/cwa_settings.html:753
+msgid ""
+"New versions ship regularly — often weekly. Calibre-Web NextGen cannot "
+"update itself from inside its container (nothing running inside a container "
+"can), so a small companion called Watchtower does it for you: it watches for "
+"a new image and swaps NextGen in safely, leaving your other containers alone."
+msgstr ""
+
+#: cps/templates/cwa_settings.html:756
+msgid ""
+"Add these two services to your docker-compose file and run \"docker compose "
+"up -d\". After that you stay up to date automatically — no button to press."
+msgstr ""
+
+#: cps/templates/cwa_settings.html:770 cps/templates/update_now_modal.html:36
+#: cps/templates/update_now_modal.html:45
+#: cps/templates/update_now_modal.html:63 cps/templates/user_edit.html:618
+msgid "Copied!"
+msgstr ""
+
+#: cps/templates/cwa_settings.html:770 cps/templates/update_now_modal.html:36
+#: cps/templates/update_now_modal.html:45
+#: cps/templates/update_now_modal.html:63 cps/templates/user_edit.html:618
+#, fuzzy
+msgid "Copy"
+msgstr "UUIDをコピー"
+
+#: cps/templates/cwa_settings.html:773
+msgid ""
+"The label means Watchtower only ever touches Calibre-Web NextGen. The 86400 "
+"interval checks once a day; \"cleanup\" removes the old image after each "
+"update."
+msgstr ""
+
+#: cps/templates/cwa_settings.html:776
+msgid ""
+"Running under Podman instead? Native \"podman auto-update\" works too — a "
+"setup guide is coming once we have verified it against this image."
+msgstr ""
+
+#: cps/templates/cwa_settings.html:785
 msgid "Enable Contribute Translations Notifications"
 msgstr "翻訳貢献通知を有効にする"
 
-#: cps/templates/cwa_settings.html:757
+#: cps/templates/cwa_settings.html:787
 msgid ""
 "When disabled, you will no longer receive notifications in the Web UI when "
 "using a language other than English if the translations for your chosen "
@@ -5850,12 +5913,12 @@ msgstr ""
 "無効時、英語以外の言語を使用していて翻訳が完了していない場合、Web UIで通知を"
 "受け取らなくなります。"
 
-#: cps/templates/cwa_settings.html:765
+#: cps/templates/cwa_settings.html:795
 #, fuzzy
 msgid "Sync Magic Shelves to Kobo"
 msgstr "Magic ShelvesをKoboと同期"
 
-#: cps/templates/cwa_settings.html:767
+#: cps/templates/cwa_settings.html:797
 msgid ""
 "When active, your Magic Shelves will be synced to your Kobo device as "
 "collections. Note: You must also enable Kobo Sync in Basic Configuration."
@@ -5863,11 +5926,11 @@ msgstr ""
 "有効にすると、Magic ShelvesがKoboデバイスにコレクションとして同期されます。注"
 "意：基本設定でKobo同期も有効にする必要があります。"
 
-#: cps/templates/cwa_settings.html:775
+#: cps/templates/cwa_settings.html:805
 msgid "Enable Blurred Backgrounds on Mobile (&lt;768px)"
 msgstr "モバイルでぼかし背景を有効にする（&lt;768px）"
 
-#: cps/templates/cwa_settings.html:777
+#: cps/templates/cwa_settings.html:807
 msgid ""
 "When active, the blurred cover background effect is also rendered on small "
 "screens. Disable if you notice scrolling or animation lag."
@@ -5875,15 +5938,15 @@ msgstr ""
 "有効時、ぼかしカバー背景効果が小さな画面でも表示されます。スクロールやアニ"
 "メーションの遅延が発生する場合は無効にしてください。"
 
-#: cps/templates/cwa_settings.html:782
+#: cps/templates/cwa_settings.html:812
 msgid "Automatic Backup Settings"
 msgstr "自動バックアップ設定"
 
-#: cps/templates/cwa_settings.html:789
+#: cps/templates/cwa_settings.html:819
 msgid "Enable NextGen Import Auto-Backup"
 msgstr ""
 
-#: cps/templates/cwa_settings.html:791
+#: cps/templates/cwa_settings.html:821
 msgid ""
 "When active, a copy of all imported files will be stored in <i>/config/"
 "processed_books/imported</i>"
@@ -5891,11 +5954,11 @@ msgstr ""
 "有効時、インポートされたすべてのファイルのコピーが<i>/config/processed_books/"
 "imported</i>に保存されます"
 
-#: cps/templates/cwa_settings.html:799
+#: cps/templates/cwa_settings.html:829
 msgid "Enable NextGen Conversion Auto-Backup"
 msgstr ""
 
-#: cps/templates/cwa_settings.html:801
+#: cps/templates/cwa_settings.html:831
 msgid ""
 "When active, the originals of ingested files that undergo conversion will be "
 "stored in /config/processed_books/converted"
@@ -5903,21 +5966,21 @@ msgstr ""
 "有効時、変換される取り込みファイルの元ファイルが/config/processed_books/"
 "convertedに保存されます"
 
-#: cps/templates/cwa_settings.html:809
+#: cps/templates/cwa_settings.html:839
 msgid "Enable NextGen EPUB Fixer Auto-Backup"
 msgstr ""
 
-#: cps/templates/cwa_settings.html:811
+#: cps/templates/cwa_settings.html:841
 msgid ""
 "When active, the originals of EPUBs processed by the NextGen Kindle EPUB "
 "Fixer service will be stored in /config/processed_books/fixed_originals"
 msgstr ""
 
-#: cps/templates/cwa_settings.html:821
+#: cps/templates/cwa_settings.html:851
 msgid "Enable NextGen Auto-Zip Backups"
 msgstr ""
 
-#: cps/templates/cwa_settings.html:823
+#: cps/templates/cwa_settings.html:853
 msgid ""
 "When active, just before midnight each day, the cwa-auto-zipper service will "
 "make zip archives of all the backed up converted, imported and failed files "
@@ -5929,11 +5992,11 @@ msgstr ""
 "config/processed_booksのサブディレクトリを整理し、ディスク容量の使用を最小限"
 "に抑えるためです。"
 
-#: cps/templates/cwa_settings.html:828
+#: cps/templates/cwa_settings.html:858
 msgid "NextGen Auto-Conversion Target Format - EPUB by Default"
 msgstr ""
 
-#: cps/templates/cwa_settings.html:831
+#: cps/templates/cwa_settings.html:861
 msgid ""
 "When the Auto-Convert feature is active, all ingested books will be "
 "automatically converted to the format chosen here (except those formats "
@@ -5942,32 +6005,32 @@ msgstr ""
 "自動変換機能が有効な場合、すべての取り込まれた書籍がここで選択した形式に自動"
 "的に変換されます（以下の無視リストで選択した形式を除く）"
 
-#: cps/templates/cwa_settings.html:833
+#: cps/templates/cwa_settings.html:863
 msgid "Choose a target format:"
 msgstr "変換先の形式を選択："
 
-#: cps/templates/cwa_settings.html:845
+#: cps/templates/cwa_settings.html:875
 msgid ""
 "Note: NextGen's Metadata Enforcement service can currently only support file "
 "in either EPUB and AZW3 format. Files in other formats will simply be "
 "ignored by the service"
 msgstr ""
 
-#: cps/templates/cwa_settings.html:851
+#: cps/templates/cwa_settings.html:881
 msgid "NextGen Auto-Convert - Ignored Formats"
 msgstr ""
 
-#: cps/templates/cwa_settings.html:853
+#: cps/templates/cwa_settings.html:883
 msgid ""
 "The formats selected here will be ignored by NextGen's Auto-Conversion "
 "feature when it's active, meaning they will be imported as is."
 msgstr ""
 
-#: cps/templates/cwa_settings.html:878
+#: cps/templates/cwa_settings.html:908
 msgid "NextGen Auto-Convert - Retained Formats"
 msgstr ""
 
-#: cps/templates/cwa_settings.html:880
+#: cps/templates/cwa_settings.html:910
 msgid ""
 "The formats selected here will always be added to the library, even after "
 "they have been converted to the target format. However, if the format is in "
@@ -5975,19 +6038,19 @@ msgid ""
 "Note that the target format is always retained."
 msgstr ""
 
-#: cps/templates/cwa_settings.html:907
+#: cps/templates/cwa_settings.html:937
 msgid "NextGen Auto-Ingest Automerge"
 msgstr ""
 
-#: cps/templates/cwa_settings.html:910
+#: cps/templates/cwa_settings.html:940
 msgid "Calibre can detect Duplicate Book Titles on Import and depending on the"
 msgstr "Calibreはインポート時に重複した書籍タイトルを検出でき、"
 
-#: cps/templates/cwa_settings.html:910
+#: cps/templates/cwa_settings.html:940
 msgid "automerge"
 msgstr "automerge"
 
-#: cps/templates/cwa_settings.html:911
+#: cps/templates/cwa_settings.html:941
 msgid ""
 "setting. It can be set to delete either instance of a duplicated book or "
 "keep both (default)."
@@ -5995,34 +6058,34 @@ msgstr ""
 "設定に応じて動作します。重複書籍のいずれかのインスタンスを削除するか、両方を"
 "保持する（デフォルト）よう設定できます。"
 
-#: cps/templates/cwa_settings.html:929
+#: cps/templates/cwa_settings.html:959
 msgid "Discards duplicate import, keeps library copy"
 msgstr "重複インポートを破棄し、ライブラリのコピーを保持"
 
-#: cps/templates/cwa_settings.html:933
+#: cps/templates/cwa_settings.html:963
 msgid "Overwrites library copy with newly imported file"
 msgstr "ライブラリのコピーを新しくインポートしたファイルで上書き"
 
-#: cps/templates/cwa_settings.html:937
+#: cps/templates/cwa_settings.html:967
 msgid "Creates a duplicate record, keeping both copies"
 msgstr "重複レコードを作成し、両方のコピーを保持"
 
-#: cps/templates/cwa_settings.html:943
+#: cps/templates/cwa_settings.html:973
 msgid "NextGen Auto-Ingest - Ignored Formats"
 msgstr ""
 
-#: cps/templates/cwa_settings.html:945
+#: cps/templates/cwa_settings.html:975
 msgid ""
 "The formats selected here will be ignored by NextGen's Auto-Ingest feature, "
 "meaning files in these formats won't be added to the library by NextGen "
 "during the ingest process"
 msgstr ""
 
-#: cps/templates/cwa_settings.html:970
+#: cps/templates/cwa_settings.html:1000
 msgid "NextGen Duplicate Detection System"
 msgstr ""
 
-#: cps/templates/cwa_settings.html:973
+#: cps/templates/cwa_settings.html:1003
 msgid ""
 "Enable or disable the duplicate detection system. When disabled, duplicate "
 "scanning will not run and no notifications will be shown."
@@ -6030,31 +6093,31 @@ msgstr ""
 "重複検出システムを有効化または無効化します。無効化すると重複スキャンは実行さ"
 "れず、通知も表示されません。"
 
-#: cps/templates/cwa_settings.html:978
+#: cps/templates/cwa_settings.html:1008
 msgid "Enable Duplicate Detection"
 msgstr "重複検出を有効化"
 
-#: cps/templates/cwa_settings.html:982
+#: cps/templates/cwa_settings.html:1012
 msgid "When enabled, NextGen will scan for duplicate books after each import"
 msgstr ""
 
-#: cps/templates/cwa_settings.html:990
+#: cps/templates/cwa_settings.html:1020
 msgid "Duplicate Detection Method"
 msgstr "重複検出方式"
 
-#: cps/templates/cwa_settings.html:993
+#: cps/templates/cwa_settings.html:1023
 msgid "Hybrid (SQL prefilter + Python validation)"
 msgstr "ハイブリッド（SQL事前フィルタ + Python検証）"
 
-#: cps/templates/cwa_settings.html:996
+#: cps/templates/cwa_settings.html:1026
 msgid "Python only (slowest, most robust)"
 msgstr "Pythonのみ（最も低速、最も堅牢）"
 
-#: cps/templates/cwa_settings.html:999
+#: cps/templates/cwa_settings.html:1029
 msgid "Legacy SQL only (experimental)"
 msgstr "レガシーSQLのみ（実験的）"
 
-#: cps/templates/cwa_settings.html:1005
+#: cps/templates/cwa_settings.html:1035
 msgid ""
 "Hybrid mode uses a fast SQL pre-filter to narrow candidates, then applies "
 "the robust Python logic for final results."
@@ -6062,11 +6125,11 @@ msgstr ""
 "ハイブリッドモードは高速なSQL事前フィルタで候補を絞り込み、最終結果に堅牢な"
 "Pythonロジックを適用します。"
 
-#: cps/templates/cwa_settings.html:1014
+#: cps/templates/cwa_settings.html:1044
 msgid "Automatic Duplicate Scanning"
 msgstr "自動重複スキャン"
 
-#: cps/templates/cwa_settings.html:1017
+#: cps/templates/cwa_settings.html:1047
 msgid ""
 "Configure background duplicate scans. These run automatically without "
 "blocking the UI."
@@ -6074,27 +6137,27 @@ msgstr ""
 "バックグラウンドの重複スキャンを設定します。UIをブロックせずに自動実行されま"
 "す。"
 
-#: cps/templates/cwa_settings.html:1022
+#: cps/templates/cwa_settings.html:1052
 msgid "Enable automatic duplicate scans"
 msgstr "自動重複スキャンを有効化"
 
-#: cps/templates/cwa_settings.html:1026
+#: cps/templates/cwa_settings.html:1056
 msgid "After import scans"
 msgstr "インポート後のスキャン"
 
-#: cps/templates/cwa_settings.html:1029
+#: cps/templates/cwa_settings.html:1059
 msgid "Run after each import (debounced)"
 msgstr "各インポート後に実行（デバウンス付き）"
 
-#: cps/templates/cwa_settings.html:1032
+#: cps/templates/cwa_settings.html:1062
 msgid "Manual only"
 msgstr "手動のみ"
 
-#: cps/templates/cwa_settings.html:1038
+#: cps/templates/cwa_settings.html:1068
 msgid "After import debounce (seconds)"
 msgstr "インポート後の待機時間（秒）"
 
-#: cps/templates/cwa_settings.html:1046
+#: cps/templates/cwa_settings.html:1076
 msgid ""
 "Wait this many seconds after the last import before starting a background "
 "scan."
@@ -6102,15 +6165,15 @@ msgstr ""
 "最後のインポートから何秒待機してからバックグラウンドスキャンを開始するかを設"
 "定します。"
 
-#: cps/templates/cwa_settings.html:1051
+#: cps/templates/cwa_settings.html:1081
 msgid "Scheduled scans (cron expression)"
 msgstr "スケジュールスキャン（cron式）"
 
-#: cps/templates/cwa_settings.html:1057
+#: cps/templates/cwa_settings.html:1087
 msgid "Leave blank to disable scheduled scans. Example:"
 msgstr "空欄にするとスケジュールスキャンが無効化されます。例："
 
-#: cps/templates/cwa_settings.html:1062
+#: cps/templates/cwa_settings.html:1092
 msgid ""
 "If enabled, after-import scans and cron scans can both run. Use “Manual "
 "only” to disable after-import scans while keeping cron schedules."
@@ -6119,15 +6182,15 @@ msgstr ""
 "ケジュールを残しつつインポート後スキャンを無効化するには「手動のみ」を使用し"
 "てください。"
 
-#: cps/templates/cwa_settings.html:1069 cps/templates/duplicates.html:522
+#: cps/templates/cwa_settings.html:1099 cps/templates/duplicates.html:522
 msgid "Next scheduled scan:"
 msgstr "次回スケジュールスキャン："
 
-#: cps/templates/cwa_settings.html:1076
+#: cps/templates/cwa_settings.html:1106
 msgid "NextGen Duplicate Detection Criteria"
 msgstr ""
 
-#: cps/templates/cwa_settings.html:1079
+#: cps/templates/cwa_settings.html:1109
 msgid ""
 "Configure which metadata fields are used to determine if books are "
 "duplicates. Books must match ALL selected criteria to be considered "
@@ -6136,36 +6199,36 @@ msgstr ""
 "書籍が重複かを判定するメタデータフィールドを設定します。重複と見なされるに"
 "は、選択したすべての基準に一致する必要があります。"
 
-#: cps/templates/cwa_settings.html:1086
+#: cps/templates/cwa_settings.html:1116
 msgid "Consider book titles when detecting duplicates"
 msgstr "重複検出時に書籍タイトルを考慮"
 
-#: cps/templates/cwa_settings.html:1092
+#: cps/templates/cwa_settings.html:1122
 msgid "Consider book authors when detecting duplicates"
 msgstr "重複検出時に著者を考慮"
 
-#: cps/templates/cwa_settings.html:1098
+#: cps/templates/cwa_settings.html:1128
 msgid "Consider book language when detecting duplicates"
 msgstr "重複検出時に言語を考慮"
 
-#: cps/templates/cwa_settings.html:1104
+#: cps/templates/cwa_settings.html:1134
 msgid "Consider book series when detecting duplicates"
 msgstr "重複検出時にシリーズを考慮"
 
-#: cps/templates/cwa_settings.html:1110
+#: cps/templates/cwa_settings.html:1140
 msgid "Consider book publisher when detecting duplicates"
 msgstr "重複検出時に出版社を考慮"
 
-#: cps/templates/cwa_settings.html:1115
+#: cps/templates/cwa_settings.html:1145
 #, fuzzy
 msgid "Format"
 msgstr "アップロード形式"
 
-#: cps/templates/cwa_settings.html:1116
+#: cps/templates/cwa_settings.html:1146
 msgid "Consider file format when detecting duplicates"
 msgstr "重複検出時にファイル形式を考慮"
 
-#: cps/templates/cwa_settings.html:1122
+#: cps/templates/cwa_settings.html:1152
 msgid ""
 "At least one criterion must be selected. Title and Author are recommended as "
 "core criteria."
@@ -6173,11 +6236,11 @@ msgstr ""
 "少なくとも1つの基準を選択する必要があります。タイトルと著者を主要な基準として"
 "推奨します。"
 
-#: cps/templates/cwa_settings.html:1128
+#: cps/templates/cwa_settings.html:1158
 msgid "Duplicate Format Priority Ranking"
 msgstr "重複フォーマットの優先順位"
 
-#: cps/templates/cwa_settings.html:1131
+#: cps/templates/cwa_settings.html:1161
 msgid ""
 "Configure which file formats are preferred when using the \"Highest Quality "
 "Format\" auto-resolution strategy. Drag and drop to reorder formats by "
@@ -6186,11 +6249,11 @@ msgstr ""
 "\"最高品質フォーマット\"の自動解決戦略を使用する際に優先するファイル形式を設"
 "定します。ドラッグ＆ドロップで優先順位を並び替えてください（上＝優先）。"
 
-#: cps/templates/cwa_settings.html:1144
+#: cps/templates/cwa_settings.html:1174
 msgid "Tip:"
 msgstr "TIP："
 
-#: cps/templates/cwa_settings.html:1144
+#: cps/templates/cwa_settings.html:1174
 msgid ""
 "When resolving duplicates with \"Highest Quality Format\" strategy, books "
 "with higher-ranked formats will be kept. Lower priority formats will be "
@@ -6199,22 +6262,22 @@ msgstr ""
 "\"最高品質フォーマット\"戦略で重複を解決する際、より上位のフォーマットを持つ"
 "書籍が保持されます。優先順位が低いフォーマットは削除されます。"
 
-#: cps/templates/cwa_settings.html:1152
+#: cps/templates/cwa_settings.html:1182
 msgid "Duplicate Notifications & Auto-Resolution"
 msgstr "重複の通知と自動解決"
 
-#: cps/templates/cwa_settings.html:1155
+#: cps/templates/cwa_settings.html:1185
 msgid ""
 "Configure how you are notified about duplicate books and optionally enable "
 "automatic resolution."
 msgstr "重複書籍に関する通知方法を設定し、必要に応じて自動解決を有効化します。"
 
-#: cps/templates/cwa_settings.html:1160
+#: cps/templates/cwa_settings.html:1190
 #, fuzzy
 msgid "Enable Duplicate Notifications"
 msgstr "誰でも登録可能にする"
 
-#: cps/templates/cwa_settings.html:1162
+#: cps/templates/cwa_settings.html:1192
 msgid ""
 "Show popup notifications when unresolved duplicates are detected. Admins and "
 "users with edit rights will see a badge on the Duplicates sidebar button and "
@@ -6224,16 +6287,16 @@ msgstr ""
 "持つユーザーには重複サイドバーボタンにバッジが表示され、ログイン時に通知ポッ"
 "プアップが表示されます。"
 
-#: cps/templates/cwa_settings.html:1166
+#: cps/templates/cwa_settings.html:1196
 #, fuzzy
 msgid "Enable Automatic Duplicate Resolution"
 msgstr "誰でも登録可能にする"
 
-#: cps/templates/cwa_settings.html:1169 cps/templates/duplicates.html:593
+#: cps/templates/cwa_settings.html:1199 cps/templates/duplicates.html:593
 msgid "Warning:"
 msgstr "警告："
 
-#: cps/templates/cwa_settings.html:1169
+#: cps/templates/cwa_settings.html:1199
 msgid ""
 "This will automatically delete books based on the strategy below. Original "
 "files will be backed up to"
@@ -6241,81 +6304,81 @@ msgstr ""
 "下記の戦略に基づいて書籍を自動削除します。元のファイルは次の場所にバックアッ"
 "プされます："
 
-#: cps/templates/cwa_settings.html:1173
+#: cps/templates/cwa_settings.html:1203
 msgid "Auto-Resolution Strategy"
 msgstr "自動解決戦略"
 
-#: cps/templates/cwa_settings.html:1176
+#: cps/templates/cwa_settings.html:1206
 msgid "Keep Newest"
 msgstr "最新を保持"
 
-#: cps/templates/cwa_settings.html:1176
+#: cps/templates/cwa_settings.html:1206
 msgid "Delete older copies, keep the most recently added book"
 msgstr "古いコピーを削除し、最近追加された書籍を保持"
 
-#: cps/templates/cwa_settings.html:1179
+#: cps/templates/cwa_settings.html:1209
 msgid "Keep Oldest"
 msgstr "最古を保持"
 
-#: cps/templates/cwa_settings.html:1179
+#: cps/templates/cwa_settings.html:1209
 msgid "Delete newer copies, keep the earliest added"
 msgstr "新しいコピーを削除し、最初に追加されたものを保持"
 
-#: cps/templates/cwa_settings.html:1182
+#: cps/templates/cwa_settings.html:1212
 #, fuzzy
 msgid "Merge Formats"
 msgstr "削除する形式:"
 
-#: cps/templates/cwa_settings.html:1182
+#: cps/templates/cwa_settings.html:1212
 msgid "Merge formats into the newest book, delete the rest"
 msgstr "フォーマットを最新の書籍にマージし、残りを削除"
 
-#: cps/templates/cwa_settings.html:1185
+#: cps/templates/cwa_settings.html:1215
 msgid "Keep Highest Quality Format"
 msgstr "最高品質フォーマットを保持"
 
-#: cps/templates/cwa_settings.html:1185
+#: cps/templates/cwa_settings.html:1215
 msgid "Prefer formats based on your Duplicate Format Priority Ranking"
 msgstr "重複フォーマットの優先順位に基づいてフォーマットを優先"
 
-#: cps/templates/cwa_settings.html:1188
+#: cps/templates/cwa_settings.html:1218
 #, fuzzy
 msgid "Keep Most Metadata"
 msgstr "メタデータを取得"
 
-#: cps/templates/cwa_settings.html:1188
+#: cps/templates/cwa_settings.html:1218
 msgid "Keep book with most complete information"
 msgstr "最も情報が揃っている書籍を保持"
 
-#: cps/templates/cwa_settings.html:1191
+#: cps/templates/cwa_settings.html:1221
 msgid "Keep Largest File Size"
 msgstr "最大ファイルサイズを保持"
 
-#: cps/templates/cwa_settings.html:1191
+#: cps/templates/cwa_settings.html:1221
 msgid "Keep book with largest total file size"
 msgstr "総ファイルサイズが最大の書籍を保持"
 
-#: cps/templates/cwa_settings.html:1194
+#: cps/templates/cwa_settings.html:1224
 msgid "Choose which book to keep when duplicates are automatically resolved."
 msgstr "重複が自動解決される際に保持する書籍を選択してください。"
 
-#: cps/templates/cwa_settings.html:1198
+#: cps/templates/cwa_settings.html:1228
 #, fuzzy
 msgid "Rate Limiting"
 msgstr "評価"
 
-#: cps/templates/cwa_settings.html:1199
+#: cps/templates/cwa_settings.html:1229
 msgid "Cooldown Period (minutes)"
 msgstr "クールダウン期間（分）"
 
-#: cps/templates/cwa_settings.html:1203
+#: cps/templates/cwa_settings.html:1233
 msgid ""
 "Minimum time between automatic resolutions (0 to disable). Prevents rapid-"
 "fire deletions during batch imports."
 msgstr ""
 "自動解決間の最小時間（0で無効化）。バッチインポート中の連続削除を防ぎます。"
 
-#: cps/templates/cwa_settings.html:1208
+#: cps/templates/cwa_settings.html:1238
 msgid ""
 "Auto-resolution runs after duplicate scans detect new duplicates. Dismissed "
 "duplicate groups are never auto-resolved."
@@ -6715,7 +6778,7 @@ msgstr "選択した本を統合"
 msgid "Dismiss this duplicate group"
 msgstr "この重複グループを解除"
 
-#: cps/templates/duplicates.html:618 cps/templates/layout.html:360
+#: cps/templates/duplicates.html:618 cps/templates/layout.html:374
 msgid "Dismiss"
 msgstr "解除"
 
@@ -6772,7 +6835,7 @@ msgstr "この操作は元に戻せません！"
 msgid "The following books will be permanently deleted:"
 msgstr "以下の書籍は完全に削除されます："
 
-#: cps/templates/duplicates.html:730 cps/templates/layout.html:558
+#: cps/templates/duplicates.html:730 cps/templates/layout.html:578
 #, fuzzy
 msgid "Merge Books"
 msgstr "未読の本"
@@ -6879,8 +6942,8 @@ msgstr "ドメイン名を入力"
 msgid "Denied Domains (Blacklist)"
 msgstr "拒否するドメイン名 (ブラックリスト)"
 
-#: cps/templates/feed.xml:31 cps/templates/layout.html:464
-#: cps/templates/layout.html:490
+#: cps/templates/feed.xml:31 cps/templates/layout.html:478
+#: cps/templates/layout.html:504
 msgid "Next"
 msgstr "次"
 
@@ -7166,7 +7229,7 @@ msgstr "アカウント"
 msgid "Logout"
 msgstr "ログアウト"
 
-#: cps/templates/layout.html:218 cps/templates/read.html:99
+#: cps/templates/layout.html:218 cps/templates/read.html:103
 #: cps/templates/readcbr.html:71 cps/templates/readcbr.html:97
 msgid "Settings"
 msgstr "設定"
@@ -7175,153 +7238,153 @@ msgstr "設定"
 msgid "Refresh Library"
 msgstr "ライブラリを更新"
 
-#: cps/templates/layout.html:261
+#: cps/templates/layout.html:284
 msgid "See Changelog"
 msgstr "変更履歴を見る"
 
-#: cps/templates/layout.html:271
+#: cps/templates/layout.html:294
 #, fuzzy
 msgid "Open Duplicates"
 msgstr "重複"
 
-#: cps/templates/layout.html:293
+#: cps/templates/layout.html:316
 msgid "Contribute here!"
 msgstr "ここで貢献！"
 
-#: cps/templates/layout.html:336
+#: cps/templates/layout.html:350
 msgid "Please do not refresh the page"
 msgstr "ページを更新しないでください"
 
-#: cps/templates/layout.html:396
+#: cps/templates/layout.html:410
 msgid "Browse"
 msgstr "閲覧"
 
-#: cps/templates/layout.html:419
+#: cps/templates/layout.html:433
 #, fuzzy
 msgid "Create Shelf"
 msgstr "本棚を作成する"
 
-#: cps/templates/layout.html:427
+#: cps/templates/layout.html:441
 msgid "Magic Shelves ✨"
 msgstr "Magic Shelves ✨"
 
-#: cps/templates/layout.html:436 cps/templates/stats.html:3
+#: cps/templates/layout.html:450 cps/templates/stats.html:3
 msgid "About"
 msgstr "このサイトについて"
 
-#: cps/templates/layout.html:449 cps/templates/layout.html:475
+#: cps/templates/layout.html:463 cps/templates/layout.html:489
 msgid "Previous"
 msgstr "前"
 
-#: cps/templates/layout.html:502
+#: cps/templates/layout.html:516
 msgid "Book Details"
 msgstr "本の詳細"
 
-#: cps/templates/layout.html:564
+#: cps/templates/layout.html:584
 #, fuzzy
 msgid "This cannot be undone."
 msgstr "この操作は元に戻せません！"
 
-#: cps/templates/layout.html:570
+#: cps/templates/layout.html:590
 #, fuzzy
 msgid "Will be deleted"
 msgstr "選択を削除"
 
-#: cps/templates/layout.html:574 cps/templates/layout.html:587
+#: cps/templates/layout.html:594 cps/templates/layout.html:607
 #, fuzzy
 msgid "Formats:"
 msgstr "アップロード形式"
 
-#: cps/templates/layout.html:583
+#: cps/templates/layout.html:603
 msgid "Will be kept"
 msgstr ""
 
-#: cps/templates/layout.html:595
+#: cps/templates/layout.html:615
 msgid "Format conflicts — choose what to do:"
 msgstr ""
 
-#: cps/templates/layout.html:601
+#: cps/templates/layout.html:621
 #, fuzzy
 msgid "Result will have formats:"
 msgstr "削除する形式:"
 
-#: cps/templates/layout.html:610
+#: cps/templates/layout.html:630
 msgid "Merge &amp; Delete Source"
 msgstr ""
 
-#: cps/templates/layout.html:644
+#: cps/templates/layout.html:664
 #, fuzzy
 msgid "Duplicate Books Detected"
 msgstr "本を削除"
 
-#: cps/templates/layout.html:645
+#: cps/templates/layout.html:665
 msgid "You have unresolved duplicate books in your library"
 msgstr "ライブラリに未解決の重複書籍があります"
 
-#: cps/templates/layout.html:650
+#: cps/templates/layout.html:670
 #, fuzzy
 msgid "Duplicate Groups Found"
 msgstr "結果が見つかりません"
 
-#: cps/templates/layout.html:658
+#: cps/templates/layout.html:678
 msgid "Remind Me Later"
 msgstr "あとで通知"
 
-#: cps/templates/layout.html:661
+#: cps/templates/layout.html:681
 msgid "View & Resolve Duplicates"
 msgstr "重複を表示・解決"
 
-#: cps/templates/layout.html:670
+#: cps/templates/layout.html:690
 #, fuzzy
 msgid "Scroll to top"
 msgstr "最適なサイズにする"
 
-#: cps/templates/layout.html:672
+#: cps/templates/layout.html:692
 #, fuzzy
 msgid "Top"
 msgstr "TIP"
 
-#: cps/templates/layout.html:762
+#: cps/templates/layout.html:782
 #, fuzzy
 msgid "Confirm"
 msgstr "設定"
 
-#: cps/templates/layout.html:768
+#: cps/templates/layout.html:788
 #, fuzzy, python-brace-format
 msgid "Added {n} books to {shelf}"
 msgstr "本棚に追加"
 
-#: cps/templates/layout.html:769
+#: cps/templates/layout.html:789
 #, python-brace-format
 msgid "Added {ok} of {n} books to {shelf} (rest were already there)"
 msgstr ""
 
-#: cps/templates/layout.html:770
+#: cps/templates/layout.html:790
 #, python-brace-format
 msgid "All {n} book(s) were already on {shelf}."
 msgstr ""
 
-#: cps/templates/layout.html:771
+#: cps/templates/layout.html:791
 #, fuzzy, python-brace-format
 msgid "Marked {n} books as read"
 msgstr "未読に設定"
 
-#: cps/templates/layout.html:772
+#: cps/templates/layout.html:792
 #, fuzzy, python-brace-format
 msgid "Marked {n} books as unread"
 msgstr "未読に設定"
 
-#: cps/templates/layout.html:773
+#: cps/templates/layout.html:793
 #, fuzzy, python-brace-format
 msgid "Deleted {n} books"
 msgstr "本を削除"
 
-#: cps/templates/layout.html:774
+#: cps/templates/layout.html:794
 #, fuzzy
 msgid "Delete books?"
 msgstr "本を削除"
 
-#: cps/templates/layout.html:775
+#: cps/templates/layout.html:795
 #, fuzzy, python-brace-format
 msgid ""
 "This will permanently delete {n} book(s) from your library. This cannot be "
@@ -7330,12 +7393,12 @@ msgstr ""
 "これにより書籍が完全に削除されます。元のファイルは次の場所にバックアップされ"
 "ます："
 
-#: cps/templates/layout.html:776
+#: cps/templates/layout.html:796
 #, fuzzy
 msgid "Select at least one book first."
 msgstr "本棚を選択"
 
-#: cps/templates/layout.html:777
+#: cps/templates/layout.html:797
 #, fuzzy, python-brace-format
 msgid "Request failed: {err}"
 msgstr "復元失敗：%(err)s"
@@ -7523,105 +7586,105 @@ msgstr "アクション"
 msgid "Open annotations page"
 msgstr ""
 
-#: cps/templates/read.html:102 cps/templates/readcbr.html:102
+#: cps/templates/read.html:106 cps/templates/readcbr.html:102
 #: cps/templates/user_edit.html:279
 msgid "Theme"
 msgstr "テーマ"
 
-#: cps/templates/read.html:104 cps/templates/readcbr.html:105
+#: cps/templates/read.html:108 cps/templates/readcbr.html:105
 msgid "Light"
 msgstr "ライト"
 
-#: cps/templates/read.html:105 cps/templates/readcbr.html:106
+#: cps/templates/read.html:109 cps/templates/readcbr.html:106
 msgid "Dark"
 msgstr "ダーク"
 
-#: cps/templates/read.html:106
+#: cps/templates/read.html:110
 msgid "Sepia"
 msgstr "セピア"
 
-#: cps/templates/read.html:107
+#: cps/templates/read.html:111
 msgid "Black"
 msgstr "ブラック"
 
-#: cps/templates/read.html:112
+#: cps/templates/read.html:116
 msgid "Font Sizes"
 msgstr "フォントサイズ"
 
-#: cps/templates/read.html:120
+#: cps/templates/read.html:124
 #, fuzzy
 msgid "Text margin"
 msgstr "次のページ"
 
-#: cps/templates/read.html:128
+#: cps/templates/read.html:132
 msgid "Font"
 msgstr "フォント"
 
-#: cps/templates/read.html:130
+#: cps/templates/read.html:134
 msgid "Default"
 msgstr "デフォルト"
 
-#: cps/templates/read.html:131
+#: cps/templates/read.html:135
 msgid "Yahei"
 msgstr "ヤヘイ"
 
-#: cps/templates/read.html:132
+#: cps/templates/read.html:136
 msgid "SimSun"
 msgstr "宋体"
 
-#: cps/templates/read.html:133
+#: cps/templates/read.html:137
 msgid "KaiTi"
 msgstr "楷体"
 
-#: cps/templates/read.html:134
+#: cps/templates/read.html:138
 msgid "Arial"
 msgstr "Arial"
 
-#: cps/templates/read.html:139
+#: cps/templates/read.html:143
 msgid "Spread"
 msgstr "見開き"
 
-#: cps/templates/read.html:141
+#: cps/templates/read.html:145
 msgid "Two columns"
 msgstr "2カラム"
 
-#: cps/templates/read.html:142
+#: cps/templates/read.html:146
 msgid "One column"
 msgstr "1カラム"
 
-#: cps/templates/read.html:149
+#: cps/templates/read.html:153
 msgid "Reflow text when sidebars are open."
 msgstr "サイドバーが開いているとき、テキストを再度流し込みます。"
 
-#: cps/templates/read.html:176
+#: cps/templates/read.html:180
 #, fuzzy
 msgid "Note"
 msgstr "メモ："
 
-#: cps/templates/read.html:177
+#: cps/templates/read.html:181
 msgid "Add a note (optional)"
 msgstr ""
 
-#: cps/templates/read.html:178
+#: cps/templates/read.html:182
 msgid "Select within a paragraph to highlight."
 msgstr ""
 
-#: cps/templates/read.html:181
+#: cps/templates/read.html:185
 #, fuzzy
 msgid "Yellow"
 msgstr "許可"
 
-#: cps/templates/read.html:182
+#: cps/templates/read.html:186
 #, fuzzy
 msgid "Red"
 msgstr "既読"
 
-#: cps/templates/read.html:183
+#: cps/templates/read.html:187
 #, fuzzy
 msgid "Green"
 msgstr "ギリシャ語"
 
-#: cps/templates/read.html:184
+#: cps/templates/read.html:188
 msgid "Blue"
 msgstr ""
 
@@ -8146,6 +8209,104 @@ msgstr "スケジュール項目をキャンセルしました"
 msgid "Error cancelling scheduled item"
 msgstr "スケジュール項目のキャンセルエラー"
 
+#: cps/templates/update_now_modal.html:19
+#, fuzzy
+msgid "Update Calibre-Web NextGen"
+msgstr "Calibre-Web Automated 電子書籍カタログ"
+
+#: cps/templates/update_now_modal.html:22
+msgid ""
+"Updating pulls the new image and recreates the container. It is quick, and "
+"your library, settings and reading progress are safe — they live in your "
+"mounted volumes, not in the container."
+msgstr ""
+
+#: cps/templates/update_now_modal.html:24
+msgid "How do you run Calibre-Web NextGen?"
+msgstr ""
+
+#: cps/templates/update_now_modal.html:25
+msgid "Setup type"
+msgstr ""
+
+#: cps/templates/update_now_modal.html:26
+msgid "Docker Compose"
+msgstr ""
+
+#: cps/templates/update_now_modal.html:27
+msgid "docker run"
+msgstr ""
+
+#: cps/templates/update_now_modal.html:28
+msgid "Unraid"
+msgstr ""
+
+#: cps/templates/update_now_modal.html:29
+msgid "Portainer / Synology"
+msgstr ""
+
+#: cps/templates/update_now_modal.html:33
+msgid "Run this from the folder that holds your compose file:"
+msgstr ""
+
+#: cps/templates/update_now_modal.html:38
+msgid "Replace calibre-web-nextgen with your service name if it differs."
+msgstr ""
+
+#: cps/templates/update_now_modal.html:42
+msgid ""
+"Pull the new image, then recreate your container with the same options you "
+"started it with:"
+msgstr ""
+
+#: cps/templates/update_now_modal.html:47
+msgid ""
+"Then stop and remove the old container and start a new one with your usual "
+"docker run command. Your mounted volumes keep all data."
+msgstr ""
+
+#: cps/templates/update_now_modal.html:52
+msgid "Open the Docker tab in the Unraid web UI."
+msgstr ""
+
+#: cps/templates/update_now_modal.html:53
+msgid ""
+"Click the Calibre-Web NextGen container icon and choose Force update (check "
+"for updates first if you want to see what changed)."
+msgstr ""
+
+#: cps/templates/update_now_modal.html:55
+msgid ""
+"For hands-off updates, install the \"CA Auto Update Applications\" plugin "
+"from Community Applications."
+msgstr ""
+
+#: cps/templates/update_now_modal.html:59
+#, fuzzy
+msgid "Portainer:"
+msgstr "重要："
+
+#: cps/templates/update_now_modal.html:59
+msgid ""
+"Images → pull the image below, then Containers → select Calibre-Web NextGen "
+"→ Recreate with \"Re-pull image\" enabled."
+msgstr ""
+
+#: cps/templates/update_now_modal.html:60
+msgid "Synology Container Manager:"
+msgstr ""
+
+#: cps/templates/update_now_modal.html:60
+msgid ""
+"Registry → download the image below (tag: latest), then stop the container → "
+"Action → Reset to recreate it."
+msgstr ""
+
+#: cps/templates/update_now_modal.html:68
+#, fuzzy
+msgid "Set up automatic updates"
+msgstr "自動重複スキャンを有効化"
+
 #: cps/templates/user_edit.html:173
 #, fuzzy
 msgid "Your Profile"
@@ -8469,15 +8630,6 @@ msgstr ""
 #: cps/templates/user_edit.html:615
 msgid "New app password (cleartext)"
 msgstr ""
-
-#: cps/templates/user_edit.html:618
-msgid "Copied!"
-msgstr ""
-
-#: cps/templates/user_edit.html:618
-#, fuzzy
-msgid "Copy"
-msgstr "UUIDをコピー"
 
 #: cps/templates/user_edit.html:625
 msgid "e.g. Kobo Forma, KOReader iPad"

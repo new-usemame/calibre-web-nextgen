@@ -276,3 +276,48 @@ a#advanced_search > span.hidden-sm {
         padding-left: 10px;
     }
 }
+
+/* ---------------------------------------------------------------------------
+   Persistent flash-toast stack (fork).
+   caliBlur turns every .alert into a position:fixed toast (.alert-cwa). When
+   more than one persistent notice fired at once (e.g. the duplicate-scan-setup
+   notice + the "update available" banner) they all anchored to the same spot
+   and rendered on top of each other — a garbled overlap. The persistent toasts
+   now render inside a single .cwa-toast-stack flex column (see layout.html) so
+   they stack instead of overlap.
+   --------------------------------------------------------------------------- */
+.cwa-toast-stack {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 50%;
+    max-width: 640px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    z-index: 1050;
+    pointer-events: none; /* clicks fall through the gaps; toasts re-enable it */
+}
+.cwa-toast-stack > * { pointer-events: auto; }
+
+/* Neutralise caliBlur's per-toast fixed positioning so each toast simply flows
+   inside the stack column. The .cwa-toast-stack prefix raises specificity above
+   caliBlur's `.alert-info.alert-cwa { position: fixed }`. */
+.cwa-toast-stack .row-fluid,
+.cwa-toast-stack .alert-info.alert-cwa,
+.cwa-toast-stack .alert-danger.alert-cwa,
+.cwa-toast-stack .refresh-cwa {
+    position: static !important;
+    top: auto !important;
+    bottom: auto !important;
+    left: auto !important;
+    right: auto !important;
+    width: auto !important;
+    max-width: none !important;
+    margin: 0 !important;
+    -webkit-transform: none !important;
+    transform: none !important;
+}
+/* The mobile (<=767px) repositioning of .cwa-toast-stack lives in
+   fork-mobile-cards.css alongside the other mobile adaptations. */

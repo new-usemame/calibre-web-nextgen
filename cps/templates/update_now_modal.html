@@ -1,0 +1,73 @@
+{# Update Now modal — guided, setup-aware update instructions.
+   Admin-only (included gated in layout.html). There is NO server action here:
+   a container cannot recreate itself, so the update is run by the user's own
+   container runtime. We show the right command/steps for their setup and let
+   them run one line. See notes/easy-update-autoupdate-design.md. #}
+<style>
+  /* Responsive setup selector: a single non-wrapping row overflowed narrow
+     screens (the right-hand tabs got clipped). Wrap instead, and stack the
+     tabs full-width on phones so every option stays reachable. */
+  #update-setup-selector { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+  #update-setup-selector .btn { border-radius: 4px; }
+  @media (max-width: 480px) { #update-setup-selector .btn { flex: 1 1 100%; } }
+</style>
+<div id="updateNowDialog" class="modal fade" role="dialog" aria-labelledby="updateNowTitle">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+        <h4 class="modal-title" id="updateNowTitle">{{ _('Update Calibre-Web NextGen') }}</h4>
+      </div>
+      <div class="modal-body">
+        <p>{{ _('Updating pulls the new image and recreates the container. It is quick, and your library, settings and reading progress are safe — they live in your mounted volumes, not in the container.') }}</p>
+
+        <p><strong>{{ _('How do you run Calibre-Web NextGen?') }}</strong></p>
+        <div class="update-setup-tabs" role="group" aria-label="{{ _('Setup type') }}" id="update-setup-selector">
+          <button type="button" class="btn btn-default active" data-update-setup="compose">{{ _('Docker Compose') }}</button>
+          <button type="button" class="btn btn-default" data-update-setup="run">{{ _('docker run') }}</button>
+          <button type="button" class="btn btn-default" data-update-setup="unraid">{{ _('Unraid') }}</button>
+          <button type="button" class="btn btn-default" data-update-setup="gui">{{ _('Portainer / Synology') }}</button>
+        </div>
+
+        <div class="update-setup-pane" data-update-pane="compose" style="margin-top: 14px;">
+          <p>{{ _('Run this from the folder that holds your compose file:') }}</p>
+          <div class="update-cmd">
+            <pre><code>docker compose pull calibre-web-nextgen &amp;&amp; docker compose up -d calibre-web-nextgen</code></pre>
+            <button type="button" class="btn btn-primary btn-sm update-copy-btn" data-copied-label="{{ _('Copied!') }}">{{ _('Copy') }}</button>
+          </div>
+          <p class="text-muted">{{ _('Replace calibre-web-nextgen with your service name if it differs.') }}</p>
+        </div>
+
+        <div class="update-setup-pane" data-update-pane="run" style="margin-top: 14px; display:none;">
+          <p>{{ _('Pull the new image, then recreate your container with the same options you started it with:') }}</p>
+          <div class="update-cmd">
+            <pre><code>docker pull ghcr.io/new-usemame/calibre-web-nextgen:latest</code></pre>
+            <button type="button" class="btn btn-primary btn-sm update-copy-btn" data-copied-label="{{ _('Copied!') }}">{{ _('Copy') }}</button>
+          </div>
+          <p class="text-muted">{{ _('Then stop and remove the old container and start a new one with your usual docker run command. Your mounted volumes keep all data.') }}</p>
+        </div>
+
+        <div class="update-setup-pane" data-update-pane="unraid" style="margin-top: 14px; display:none;">
+          <ol>
+            <li>{{ _('Open the Docker tab in the Unraid web UI.') }}</li>
+            <li>{{ _('Click the Calibre-Web NextGen container icon and choose Force update (check for updates first if you want to see what changed).') }}</li>
+          </ol>
+          <p class="text-muted">{{ _('For hands-off updates, install the "CA Auto Update Applications" plugin from Community Applications.') }}</p>
+        </div>
+
+        <div class="update-setup-pane" data-update-pane="gui" style="margin-top: 14px; display:none;">
+          <p><strong>{{ _('Portainer:') }}</strong> {{ _('Images → pull the image below, then Containers → select Calibre-Web NextGen → Recreate with "Re-pull image" enabled.') }}</p>
+          <p><strong>{{ _('Synology Container Manager:') }}</strong> {{ _('Registry → download the image below (tag: latest), then stop the container → Action → Reset to recreate it.') }}</p>
+          <div class="update-cmd">
+            <pre><code>ghcr.io/new-usemame/calibre-web-nextgen:latest</code></pre>
+            <button type="button" class="btn btn-primary btn-sm update-copy-btn" data-copied-label="{{ _('Copied!') }}">{{ _('Copy') }}</button>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <a class="btn btn-link pull-left" href="{{ url_for('cwa_settings.set_cwa_settings') }}#cwa-autoupdate">{{ _('Set up automatic updates') }}</a>
+        <button type="button" class="btn btn-default" data-dismiss="modal">{{ _('Close') }}</button>
+      </div>
+    </div>
+  </div>
+</div>

@@ -8,7 +8,7 @@ msgstr ""
 "Project-Id-Version: Calibre-Web NextGen\n"
 "Report-Msgid-Bugs-To: https://github.com/crocodilestick/Calibre-Web-"
 "Automated\n"
-"POT-Creation-Date: 2026-06-17 18:07+0000\n"
+"POT-Creation-Date: 2026-06-23 21:21+0000\n"
 "PO-Revision-Date: 2020-09-27 22:18+0800\n"
 "Last-Translator: xlivevil <xlivevil@aliyun.com>\n"
 "Language-Team: zh_Hans_CN <LL@li.org>\n"
@@ -1899,7 +1899,7 @@ msgstr "書籍按分類排序"
 
 #: cps/opds.py:223 cps/render_template.py:107 cps/templates/book_edit.html:143
 #: cps/templates/book_table.html:111 cps/templates/cwa_settings.html:362
-#: cps/templates/cwa_settings.html:364 cps/templates/cwa_settings.html:1103
+#: cps/templates/cwa_settings.html:364 cps/templates/cwa_settings.html:1133
 #: cps/templates/hardcover_review_matches.html:140
 #: cps/templates/search_form.html:70 cps/web.py:2076 cps/web.py:2088
 msgid "Series"
@@ -1935,7 +1935,7 @@ msgstr "文件格式"
 msgid "Books ordered by file formats"
 msgstr "書籍按文件格式排序"
 
-#: cps/opds.py:247 cps/templates/layout.html:413
+#: cps/opds.py:247 cps/templates/layout.html:427
 #: cps/templates/search_form.html:88
 msgid "Shelves"
 msgstr "書架列表"
@@ -2094,6 +2094,18 @@ msgstr ""
 #, fuzzy
 msgid "Show Duplicate Books"
 msgstr "顯示最高評分書籍"
+
+#: cps/render_template.py:253
+#, python-format
+msgid "Calibre-Web NextGen %(latest)s is available — you're on %(current)s."
+msgstr ""
+
+#: cps/render_template.py:263
+#, python-format
+msgid ""
+"Help improve Calibre-Web NextGen's %(language)s translations — %(count)s "
+"strings in your language still need translating."
+msgstr ""
 
 #: cps/search.py:53 cps/search.py:438 cps/templates/book_edit.html:338
 #: cps/templates/cwa_epub_fixer.html:25 cps/templates/feed.xml:43
@@ -2267,57 +2279,57 @@ msgstr "書架：%(name)s"
 msgid "Error opening shelf. Shelf does not exist or is not accessible"
 msgstr "打開書架出錯。書架不存在或不可訪問"
 
-#: cps/shelf.py:972
+#: cps/shelf.py:995
 #, python-format
 msgid "Invalid order mode: %(mode)s"
 msgstr ""
 
-#: cps/shelf.py:976
+#: cps/shelf.py:999
 msgid "Invalid payload: 'order' must be a list"
 msgstr ""
 
-#: cps/shelf.py:1000
+#: cps/shelf.py:1023
 msgid "Could not save order"
 msgstr ""
 
-#: cps/shelf.py:1008 cps/templates/layout.html:422
+#: cps/shelf.py:1031 cps/templates/layout.html:436
 #, fuzzy
 msgid "Reorder Shelves"
 msgstr "排除書架"
 
-#: cps/shelf.py:1013
+#: cps/shelf.py:1036
 msgid "Name (A → Z)"
 msgstr ""
 
-#: cps/shelf.py:1014
+#: cps/shelf.py:1037
 msgid "Name (Z → A)"
 msgstr ""
 
-#: cps/shelf.py:1015
+#: cps/shelf.py:1038
 msgid "Book count (most → fewest)"
 msgstr ""
 
-#: cps/shelf.py:1016
+#: cps/shelf.py:1039
 msgid "Book count (fewest → most)"
 msgstr ""
 
-#: cps/shelf.py:1017
+#: cps/shelf.py:1040
 msgid "Created (newest → oldest)"
 msgstr ""
 
-#: cps/shelf.py:1018
+#: cps/shelf.py:1041
 msgid "Created (oldest → newest)"
 msgstr ""
 
-#: cps/shelf.py:1019
+#: cps/shelf.py:1042
 msgid "Modified (recent → oldest)"
 msgstr ""
 
-#: cps/shelf.py:1020
+#: cps/shelf.py:1043
 msgid "Modified (oldest → recent)"
 msgstr ""
 
-#: cps/shelf.py:1021
+#: cps/shelf.py:1044
 msgid "Manual (drag below)"
 msgstr ""
 
@@ -2497,7 +2509,7 @@ msgstr ""
 msgid "Error creating shelf"
 msgstr "下載封面時出錯"
 
-#: cps/templates/layout.html:432 cps/web.py:1553
+#: cps/templates/layout.html:446 cps/web.py:1553
 #, fuzzy
 msgid "Create Magic Shelf"
 msgstr "創建書架"
@@ -3008,7 +3020,7 @@ msgstr "添加到書架"
 #: cps/templates/detail.html:820 cps/templates/detail.html:979
 #: cps/templates/detail.html:1601 cps/templates/feed.xml:109
 #: cps/templates/feed.xml:111 cps/templates/index.html:162
-#: cps/templates/layout.html:416 cps/templates/layout.html:429
+#: cps/templates/layout.html:430 cps/templates/layout.html:443
 #: cps/templates/listenmp3.html:201 cps/templates/listenmp3.html:218
 #: cps/templates/search.html:23 cps/templates/shelf_reorder.html:31
 msgid "(Public)"
@@ -3034,7 +3046,7 @@ msgstr "標為未讀"
 #: cps/templates/book_edit.html:59 cps/templates/book_table.html:66
 #: cps/templates/book_table.html:145 cps/templates/book_table.html:194
 #: cps/templates/duplicates.html:718 cps/templates/modal_dialogs.html:63
-#: cps/templates/modal_dialogs.html:116 cps/templates/read.html:175
+#: cps/templates/modal_dialogs.html:116 cps/templates/read.html:179
 #: cps/templates/user_edit.html:333 cps/templates/user_table.html:150
 msgid "Delete"
 msgstr "刪除數據"
@@ -3424,40 +3436,45 @@ msgstr "詳情"
 msgid "Update available"
 msgstr "更新失敗："
 
-#: cps/templates/admin.html:263
+#: cps/templates/admin.html:262 cps/templates/layout.html:283
+#, fuzzy
+msgid "Update now"
+msgstr "更新通道"
+
+#: cps/templates/admin.html:264
 msgid "Current Version"
 msgstr "當前版本"
 
-#: cps/templates/admin.html:270 cps/templates/admin.html:275
+#: cps/templates/admin.html:271 cps/templates/admin.html:276
 msgid "-"
 msgstr ""
 
-#: cps/templates/admin.html:282
+#: cps/templates/admin.html:283
 msgid "Check for Update"
 msgstr "檢查更新"
 
-#: cps/templates/admin.html:283
+#: cps/templates/admin.html:284
 msgid "Perform Update"
 msgstr "執行更新"
 
-#: cps/templates/admin.html:296
+#: cps/templates/admin.html:297
 msgid "Are you sure you want to restart?"
 msgstr "您確定要重啟嗎？"
 
-#: cps/templates/admin.html:298 cps/templates/admin.html:330
+#: cps/templates/admin.html:299 cps/templates/admin.html:331
 #: cps/templates/config_db.html:4 cps/templates/config_edit.html:4
 #: cps/templates/cwa_settings.html:4 cps/templates/read.html:74
 #, fuzzy
 msgid "Loading"
 msgstr "加載中..."
 
-#: cps/templates/admin.html:301 cps/templates/admin.html:315
-#: cps/templates/admin.html:335 cps/templates/config_db.html:139
+#: cps/templates/admin.html:302 cps/templates/admin.html:316
+#: cps/templates/admin.html:336 cps/templates/config_db.html:139
 #: cps/templates/duplicates.html:788 cps/templates/duplicates.html:810
 msgid "OK"
 msgstr "確定"
 
-#: cps/templates/admin.html:302 cps/templates/admin.html:316
+#: cps/templates/admin.html:303 cps/templates/admin.html:317
 #: cps/templates/book_edit.html:312 cps/templates/book_table.html:176
 #: cps/templates/book_table.html:195 cps/templates/book_table.html:215
 #: cps/templates/book_table.html:235 cps/templates/book_table.html:255
@@ -3468,10 +3485,10 @@ msgstr "確定"
 #: cps/templates/cwa_convert_library.html:23
 #: cps/templates/cwa_epub_fixer.html:40 cps/templates/detail.html:1173
 #: cps/templates/duplicates.html:696 cps/templates/duplicates.html:719
-#: cps/templates/duplicates.html:746 cps/templates/layout.html:606
-#: cps/templates/layout.html:761 cps/templates/modal_dialogs.html:64
+#: cps/templates/duplicates.html:746 cps/templates/layout.html:626
+#: cps/templates/layout.html:781 cps/templates/modal_dialogs.html:64
 #: cps/templates/modal_dialogs.html:99 cps/templates/modal_dialogs.html:117
-#: cps/templates/modal_dialogs.html:135 cps/templates/read.html:174
+#: cps/templates/modal_dialogs.html:135 cps/templates/read.html:178
 #: cps/templates/schedule_edit.html:46 cps/templates/shelf.html:125
 #: cps/templates/shelf_edit.html:34 cps/templates/tasks.html:94
 #: cps/templates/tasks.html:166 cps/templates/tasks.html:173
@@ -3479,11 +3496,11 @@ msgstr "確定"
 msgid "Cancel"
 msgstr "取消"
 
-#: cps/templates/admin.html:314
+#: cps/templates/admin.html:315
 msgid "Are you sure you want to shutdown?"
 msgstr "您確定要關閉嗎？"
 
-#: cps/templates/admin.html:326
+#: cps/templates/admin.html:327
 msgid "Updating, please do not reload this page"
 msgstr "正在更新，請不要刷新頁面"
 
@@ -3536,7 +3553,7 @@ msgstr ""
 
 #: cps/templates/annotations_import.html:49 cps/templates/book_edit.html:94
 #: cps/templates/book_edit.html:111 cps/templates/layout.html:204
-#: cps/templates/layout.html:335
+#: cps/templates/layout.html:349
 msgid "Uploading..."
 msgstr "正在上傳..."
 
@@ -3571,8 +3588,8 @@ msgstr ""
 msgid "%(count)d highlights"
 msgstr ""
 
-#: cps/templates/annotations_view.html:23 cps/templates/cwa_settings.html:1122
-#: cps/templates/cwa_settings.html:1208
+#: cps/templates/annotations_view.html:23 cps/templates/cwa_settings.html:1152
+#: cps/templates/cwa_settings.html:1238
 msgid "Note:"
 msgstr ""
 
@@ -3586,7 +3603,7 @@ msgstr ""
 msgid "Source: %(s)s"
 msgstr "叢書：%(serie)s"
 
-#: cps/templates/annotations_view.html:45 cps/templates/read.html:179
+#: cps/templates/annotations_view.html:45 cps/templates/read.html:183
 msgid "No annotations on this book yet."
 msgstr ""
 
@@ -3644,9 +3661,10 @@ msgstr "轉換書籍"
 
 #: cps/templates/book_edit.html:94 cps/templates/book_edit.html:378
 #: cps/templates/book_table.html:346 cps/templates/duplicates.html:766
-#: cps/templates/layout.html:204 cps/templates/layout.html:506
-#: cps/templates/layout.html:643 cps/templates/modal_dialogs.html:34
-#: cps/templates/shelf.html:110 cps/templates/user_edit.html:673
+#: cps/templates/layout.html:204 cps/templates/layout.html:520
+#: cps/templates/layout.html:663 cps/templates/modal_dialogs.html:34
+#: cps/templates/shelf.html:110 cps/templates/update_now_modal.html:69
+#: cps/templates/user_edit.html:673
 msgid "Close"
 msgstr "關閉"
 
@@ -3673,7 +3691,7 @@ msgid "Imported as"
 msgstr "更新失敗："
 
 #: cps/templates/book_edit.html:135 cps/templates/book_edit.html:459
-#: cps/templates/cwa_settings.html:1091 cps/templates/search_form.html:12
+#: cps/templates/cwa_settings.html:1121 cps/templates/search_form.html:12
 msgid "Author"
 msgstr "作者"
 
@@ -3691,13 +3709,13 @@ msgstr "出版日期"
 
 #: cps/templates/book_edit.html:159 cps/templates/book_edit.html:460
 #: cps/templates/cwa_settings.html:348 cps/templates/cwa_settings.html:350
-#: cps/templates/cwa_settings.html:1109 cps/templates/detail.html:995
+#: cps/templates/cwa_settings.html:1139 cps/templates/detail.html:995
 #: cps/templates/hardcover_review_matches.html:148
 #: cps/templates/listenmp3.html:102 cps/templates/search_form.html:16
 msgid "Publisher"
 msgstr "出版社"
 
-#: cps/templates/book_edit.html:163 cps/templates/cwa_settings.html:1097
+#: cps/templates/book_edit.html:163 cps/templates/cwa_settings.html:1127
 #: cps/templates/listenmp3.html:69
 msgid "Language"
 msgstr "語言"
@@ -3789,7 +3807,7 @@ msgstr "獲取元數據"
 
 #: cps/templates/book_edit.html:313 cps/templates/config_db.html:111
 #: cps/templates/config_edit.html:664 cps/templates/config_view_edit.html:237
-#: cps/templates/email_edit.html:71 cps/templates/read.html:173
+#: cps/templates/email_edit.html:71 cps/templates/read.html:177
 #: cps/templates/schedule_edit.html:47 cps/templates/shelf_edit.html:36
 #: cps/templates/shelf_reorder.html:38 cps/templates/user_edit.html:585
 msgid "Save"
@@ -3907,7 +3925,7 @@ msgstr "輸入書名"
 
 #: cps/templates/book_table.html:106 cps/templates/config_view_edit.html:39
 #: cps/templates/cwa_settings.html:327 cps/templates/cwa_settings.html:329
-#: cps/templates/cwa_settings.html:1085 cps/templates/shelf_edit.html:8
+#: cps/templates/cwa_settings.html:1115 cps/templates/shelf_edit.html:8
 #: cps/templates/tasks.html:41 cps/templates/tasks.html:64
 msgid "Title"
 msgstr "標題"
@@ -5717,78 +5735,122 @@ msgid ""
 "of NextGen is released"
 msgstr ""
 
-#: cps/templates/cwa_settings.html:755
+#: cps/templates/cwa_settings.html:751
+#, fuzzy
+msgid "Automatic updates"
+msgstr "OAuth設置"
+
+#: cps/templates/cwa_settings.html:753
+msgid ""
+"New versions ship regularly — often weekly. Calibre-Web NextGen cannot "
+"update itself from inside its container (nothing running inside a container "
+"can), so a small companion called Watchtower does it for you: it watches for "
+"a new image and swaps NextGen in safely, leaving your other containers alone."
+msgstr ""
+
+#: cps/templates/cwa_settings.html:756
+msgid ""
+"Add these two services to your docker-compose file and run \"docker compose "
+"up -d\". After that you stay up to date automatically — no button to press."
+msgstr ""
+
+#: cps/templates/cwa_settings.html:770 cps/templates/update_now_modal.html:36
+#: cps/templates/update_now_modal.html:45
+#: cps/templates/update_now_modal.html:63 cps/templates/user_edit.html:618
+msgid "Copied!"
+msgstr ""
+
+#: cps/templates/cwa_settings.html:770 cps/templates/update_now_modal.html:36
+#: cps/templates/update_now_modal.html:45
+#: cps/templates/update_now_modal.html:63 cps/templates/user_edit.html:618
+msgid "Copy"
+msgstr ""
+
+#: cps/templates/cwa_settings.html:773
+msgid ""
+"The label means Watchtower only ever touches Calibre-Web NextGen. The 86400 "
+"interval checks once a day; \"cleanup\" removes the old image after each "
+"update."
+msgstr ""
+
+#: cps/templates/cwa_settings.html:776
+msgid ""
+"Running under Podman instead? Native \"podman auto-update\" works too — a "
+"setup guide is coming once we have verified it against this image."
+msgstr ""
+
+#: cps/templates/cwa_settings.html:785
 msgid "Enable Contribute Translations Notifications"
 msgstr ""
 
-#: cps/templates/cwa_settings.html:757
+#: cps/templates/cwa_settings.html:787
 msgid ""
 "When disabled, you will no longer receive notifications in the Web UI when "
 "using a language other than English if the translations for your chosen "
 "language are not complete."
 msgstr ""
 
-#: cps/templates/cwa_settings.html:765
+#: cps/templates/cwa_settings.html:795
 #, fuzzy
 msgid "Sync Magic Shelves to Kobo"
 msgstr "同步所選書架到 Kobo"
 
-#: cps/templates/cwa_settings.html:767
+#: cps/templates/cwa_settings.html:797
 msgid ""
 "When active, your Magic Shelves will be synced to your Kobo device as "
 "collections. Note: You must also enable Kobo Sync in Basic Configuration."
 msgstr ""
 
-#: cps/templates/cwa_settings.html:775
+#: cps/templates/cwa_settings.html:805
 msgid "Enable Blurred Backgrounds on Mobile (&lt;768px)"
 msgstr ""
 
-#: cps/templates/cwa_settings.html:777
+#: cps/templates/cwa_settings.html:807
 msgid ""
 "When active, the blurred cover background effect is also rendered on small "
 "screens. Disable if you notice scrolling or animation lag."
 msgstr ""
 
-#: cps/templates/cwa_settings.html:782
+#: cps/templates/cwa_settings.html:812
 #, fuzzy
 msgid "Automatic Backup Settings"
 msgstr "OAuth設置"
 
-#: cps/templates/cwa_settings.html:789
+#: cps/templates/cwa_settings.html:819
 msgid "Enable NextGen Import Auto-Backup"
 msgstr ""
 
-#: cps/templates/cwa_settings.html:791
+#: cps/templates/cwa_settings.html:821
 msgid ""
 "When active, a copy of all imported files will be stored in <i>/config/"
 "processed_books/imported</i>"
 msgstr ""
 
-#: cps/templates/cwa_settings.html:799
+#: cps/templates/cwa_settings.html:829
 msgid "Enable NextGen Conversion Auto-Backup"
 msgstr ""
 
-#: cps/templates/cwa_settings.html:801
+#: cps/templates/cwa_settings.html:831
 msgid ""
 "When active, the originals of ingested files that undergo conversion will be "
 "stored in /config/processed_books/converted"
 msgstr ""
 
-#: cps/templates/cwa_settings.html:809
+#: cps/templates/cwa_settings.html:839
 msgid "Enable NextGen EPUB Fixer Auto-Backup"
 msgstr ""
 
-#: cps/templates/cwa_settings.html:811
+#: cps/templates/cwa_settings.html:841
 msgid ""
 "When active, the originals of EPUBs processed by the NextGen Kindle EPUB "
 "Fixer service will be stored in /config/processed_books/fixed_originals"
 msgstr ""
 
-#: cps/templates/cwa_settings.html:821
+#: cps/templates/cwa_settings.html:851
 msgid "Enable NextGen Auto-Zip Backups"
 msgstr ""
 
-#: cps/templates/cwa_settings.html:823
+#: cps/templates/cwa_settings.html:853
 msgid ""
 "When active, just before midnight each day, the cwa-auto-zipper service will "
 "make zip archives of all the backed up converted, imported and failed files "
@@ -5796,44 +5858,44 @@ msgid ""
 "processed_books organised and to minimise disk space usage."
 msgstr ""
 
-#: cps/templates/cwa_settings.html:828
+#: cps/templates/cwa_settings.html:858
 msgid "NextGen Auto-Conversion Target Format - EPUB by Default"
 msgstr ""
 
-#: cps/templates/cwa_settings.html:831
+#: cps/templates/cwa_settings.html:861
 msgid ""
 "When the Auto-Convert feature is active, all ingested books will be "
 "automatically converted to the format chosen here (except those formats "
 "selected in the ignore list below)"
 msgstr ""
 
-#: cps/templates/cwa_settings.html:833
+#: cps/templates/cwa_settings.html:863
 #, fuzzy
 msgid "Choose a target format:"
 msgstr "轉換書籍格式:"
 
-#: cps/templates/cwa_settings.html:845
+#: cps/templates/cwa_settings.html:875
 msgid ""
 "Note: NextGen's Metadata Enforcement service can currently only support file "
 "in either EPUB and AZW3 format. Files in other formats will simply be "
 "ignored by the service"
 msgstr ""
 
-#: cps/templates/cwa_settings.html:851
+#: cps/templates/cwa_settings.html:881
 msgid "NextGen Auto-Convert - Ignored Formats"
 msgstr ""
 
-#: cps/templates/cwa_settings.html:853
+#: cps/templates/cwa_settings.html:883
 msgid ""
 "The formats selected here will be ignored by NextGen's Auto-Conversion "
 "feature when it's active, meaning they will be imported as is."
 msgstr ""
 
-#: cps/templates/cwa_settings.html:878
+#: cps/templates/cwa_settings.html:908
 msgid "NextGen Auto-Convert - Retained Formats"
 msgstr ""
 
-#: cps/templates/cwa_settings.html:880
+#: cps/templates/cwa_settings.html:910
 msgid ""
 "The formats selected here will always be added to the library, even after "
 "they have been converted to the target format. However, if the format is in "
@@ -5841,322 +5903,322 @@ msgid ""
 "Note that the target format is always retained."
 msgstr ""
 
-#: cps/templates/cwa_settings.html:907
+#: cps/templates/cwa_settings.html:937
 msgid "NextGen Auto-Ingest Automerge"
 msgstr ""
 
-#: cps/templates/cwa_settings.html:910
+#: cps/templates/cwa_settings.html:940
 msgid "Calibre can detect Duplicate Book Titles on Import and depending on the"
 msgstr ""
 
-#: cps/templates/cwa_settings.html:910
+#: cps/templates/cwa_settings.html:940
 msgid "automerge"
 msgstr ""
 
-#: cps/templates/cwa_settings.html:911
+#: cps/templates/cwa_settings.html:941
 msgid ""
 "setting. It can be set to delete either instance of a duplicated book or "
 "keep both (default)."
 msgstr ""
 
-#: cps/templates/cwa_settings.html:929
+#: cps/templates/cwa_settings.html:959
 msgid "Discards duplicate import, keeps library copy"
 msgstr ""
 
-#: cps/templates/cwa_settings.html:933
+#: cps/templates/cwa_settings.html:963
 msgid "Overwrites library copy with newly imported file"
 msgstr ""
 
-#: cps/templates/cwa_settings.html:937
+#: cps/templates/cwa_settings.html:967
 msgid "Creates a duplicate record, keeping both copies"
 msgstr ""
 
-#: cps/templates/cwa_settings.html:943
+#: cps/templates/cwa_settings.html:973
 msgid "NextGen Auto-Ingest - Ignored Formats"
 msgstr ""
 
-#: cps/templates/cwa_settings.html:945
+#: cps/templates/cwa_settings.html:975
 msgid ""
 "The formats selected here will be ignored by NextGen's Auto-Ingest feature, "
 "meaning files in these formats won't be added to the library by NextGen "
 "during the ingest process"
 msgstr ""
 
-#: cps/templates/cwa_settings.html:970
+#: cps/templates/cwa_settings.html:1000
 msgid "NextGen Duplicate Detection System"
 msgstr ""
 
-#: cps/templates/cwa_settings.html:973
+#: cps/templates/cwa_settings.html:1003
 msgid ""
 "Enable or disable the duplicate detection system. When disabled, duplicate "
 "scanning will not run and no notifications will be shown."
 msgstr ""
 
-#: cps/templates/cwa_settings.html:978
+#: cps/templates/cwa_settings.html:1008
 #, fuzzy
 msgid "Enable Duplicate Detection"
 msgstr "啟用註冊"
 
-#: cps/templates/cwa_settings.html:982
+#: cps/templates/cwa_settings.html:1012
 msgid "When enabled, NextGen will scan for duplicate books after each import"
 msgstr ""
 
-#: cps/templates/cwa_settings.html:990
+#: cps/templates/cwa_settings.html:1020
 msgid "Duplicate Detection Method"
 msgstr ""
 
-#: cps/templates/cwa_settings.html:993
+#: cps/templates/cwa_settings.html:1023
 msgid "Hybrid (SQL prefilter + Python validation)"
 msgstr ""
 
-#: cps/templates/cwa_settings.html:996
+#: cps/templates/cwa_settings.html:1026
 msgid "Python only (slowest, most robust)"
 msgstr ""
 
-#: cps/templates/cwa_settings.html:999
+#: cps/templates/cwa_settings.html:1029
 msgid "Legacy SQL only (experimental)"
 msgstr ""
 
-#: cps/templates/cwa_settings.html:1005
+#: cps/templates/cwa_settings.html:1035
 msgid ""
 "Hybrid mode uses a fast SQL pre-filter to narrow candidates, then applies "
 "the robust Python logic for final results."
 msgstr ""
 
-#: cps/templates/cwa_settings.html:1014
+#: cps/templates/cwa_settings.html:1044
 #, fuzzy
 msgid "Automatic Duplicate Scanning"
 msgstr "OAuth設置"
 
-#: cps/templates/cwa_settings.html:1017
+#: cps/templates/cwa_settings.html:1047
 msgid ""
 "Configure background duplicate scans. These run automatically without "
 "blocking the UI."
 msgstr ""
 
-#: cps/templates/cwa_settings.html:1022
+#: cps/templates/cwa_settings.html:1052
 msgid "Enable automatic duplicate scans"
 msgstr ""
 
-#: cps/templates/cwa_settings.html:1026
+#: cps/templates/cwa_settings.html:1056
 msgid "After import scans"
 msgstr ""
 
-#: cps/templates/cwa_settings.html:1029
+#: cps/templates/cwa_settings.html:1059
 msgid "Run after each import (debounced)"
 msgstr ""
 
-#: cps/templates/cwa_settings.html:1032
+#: cps/templates/cwa_settings.html:1062
 msgid "Manual only"
 msgstr ""
 
-#: cps/templates/cwa_settings.html:1038
+#: cps/templates/cwa_settings.html:1068
 msgid "After import debounce (seconds)"
 msgstr ""
 
-#: cps/templates/cwa_settings.html:1046
+#: cps/templates/cwa_settings.html:1076
 msgid ""
 "Wait this many seconds after the last import before starting a background "
 "scan."
 msgstr ""
 
-#: cps/templates/cwa_settings.html:1051
+#: cps/templates/cwa_settings.html:1081
 msgid "Scheduled scans (cron expression)"
 msgstr ""
 
-#: cps/templates/cwa_settings.html:1057
+#: cps/templates/cwa_settings.html:1087
 msgid "Leave blank to disable scheduled scans. Example:"
 msgstr ""
 
-#: cps/templates/cwa_settings.html:1062
+#: cps/templates/cwa_settings.html:1092
 msgid ""
 "If enabled, after-import scans and cron scans can both run. Use “Manual "
 "only” to disable after-import scans while keeping cron schedules."
 msgstr ""
 
-#: cps/templates/cwa_settings.html:1069 cps/templates/duplicates.html:522
+#: cps/templates/cwa_settings.html:1099 cps/templates/duplicates.html:522
 msgid "Next scheduled scan:"
 msgstr ""
 
-#: cps/templates/cwa_settings.html:1076
+#: cps/templates/cwa_settings.html:1106
 msgid "NextGen Duplicate Detection Criteria"
 msgstr ""
 
-#: cps/templates/cwa_settings.html:1079
+#: cps/templates/cwa_settings.html:1109
 msgid ""
 "Configure which metadata fields are used to determine if books are "
 "duplicates. Books must match ALL selected criteria to be considered "
 "duplicates."
 msgstr ""
 
-#: cps/templates/cwa_settings.html:1086
+#: cps/templates/cwa_settings.html:1116
 msgid "Consider book titles when detecting duplicates"
 msgstr ""
 
-#: cps/templates/cwa_settings.html:1092
+#: cps/templates/cwa_settings.html:1122
 msgid "Consider book authors when detecting duplicates"
 msgstr ""
 
-#: cps/templates/cwa_settings.html:1098
+#: cps/templates/cwa_settings.html:1128
 msgid "Consider book language when detecting duplicates"
 msgstr ""
 
-#: cps/templates/cwa_settings.html:1104
+#: cps/templates/cwa_settings.html:1134
 msgid "Consider book series when detecting duplicates"
 msgstr ""
 
-#: cps/templates/cwa_settings.html:1110
+#: cps/templates/cwa_settings.html:1140
 msgid "Consider book publisher when detecting duplicates"
 msgstr ""
 
-#: cps/templates/cwa_settings.html:1115
+#: cps/templates/cwa_settings.html:1145
 #, fuzzy
 msgid "Format"
 msgstr "上傳格式"
 
-#: cps/templates/cwa_settings.html:1116
+#: cps/templates/cwa_settings.html:1146
 msgid "Consider file format when detecting duplicates"
 msgstr ""
 
-#: cps/templates/cwa_settings.html:1122
+#: cps/templates/cwa_settings.html:1152
 msgid ""
 "At least one criterion must be selected. Title and Author are recommended as "
 "core criteria."
 msgstr ""
 
-#: cps/templates/cwa_settings.html:1128
+#: cps/templates/cwa_settings.html:1158
 msgid "Duplicate Format Priority Ranking"
 msgstr ""
 
-#: cps/templates/cwa_settings.html:1131
+#: cps/templates/cwa_settings.html:1161
 msgid ""
 "Configure which file formats are preferred when using the \"Highest Quality "
 "Format\" auto-resolution strategy. Drag and drop to reorder formats by "
 "priority (higher = better)."
 msgstr ""
 
-#: cps/templates/cwa_settings.html:1144
+#: cps/templates/cwa_settings.html:1174
 msgid "Tip:"
 msgstr ""
 
-#: cps/templates/cwa_settings.html:1144
+#: cps/templates/cwa_settings.html:1174
 msgid ""
 "When resolving duplicates with \"Highest Quality Format\" strategy, books "
 "with higher-ranked formats will be kept. Lower priority formats will be "
 "deleted."
 msgstr ""
 
-#: cps/templates/cwa_settings.html:1152
+#: cps/templates/cwa_settings.html:1182
 msgid "Duplicate Notifications & Auto-Resolution"
 msgstr ""
 
-#: cps/templates/cwa_settings.html:1155
+#: cps/templates/cwa_settings.html:1185
 msgid ""
 "Configure how you are notified about duplicate books and optionally enable "
 "automatic resolution."
 msgstr ""
 
-#: cps/templates/cwa_settings.html:1160
+#: cps/templates/cwa_settings.html:1190
 #, fuzzy
 msgid "Enable Duplicate Notifications"
 msgstr "啟用註冊"
 
-#: cps/templates/cwa_settings.html:1162
+#: cps/templates/cwa_settings.html:1192
 msgid ""
 "Show popup notifications when unresolved duplicates are detected. Admins and "
 "users with edit rights will see a badge on the Duplicates sidebar button and "
 "a notification popup when they login."
 msgstr ""
 
-#: cps/templates/cwa_settings.html:1166
+#: cps/templates/cwa_settings.html:1196
 #, fuzzy
 msgid "Enable Automatic Duplicate Resolution"
 msgstr "啟用註冊"
 
-#: cps/templates/cwa_settings.html:1169 cps/templates/duplicates.html:593
+#: cps/templates/cwa_settings.html:1199 cps/templates/duplicates.html:593
 msgid "Warning:"
 msgstr ""
 
-#: cps/templates/cwa_settings.html:1169
+#: cps/templates/cwa_settings.html:1199
 msgid ""
 "This will automatically delete books based on the strategy below. Original "
 "files will be backed up to"
 msgstr ""
 
-#: cps/templates/cwa_settings.html:1173
+#: cps/templates/cwa_settings.html:1203
 msgid "Auto-Resolution Strategy"
 msgstr ""
 
-#: cps/templates/cwa_settings.html:1176
+#: cps/templates/cwa_settings.html:1206
 msgid "Keep Newest"
 msgstr ""
 
-#: cps/templates/cwa_settings.html:1176
+#: cps/templates/cwa_settings.html:1206
 msgid "Delete older copies, keep the most recently added book"
 msgstr ""
 
-#: cps/templates/cwa_settings.html:1179
+#: cps/templates/cwa_settings.html:1209
 msgid "Keep Oldest"
 msgstr ""
 
-#: cps/templates/cwa_settings.html:1179
+#: cps/templates/cwa_settings.html:1209
 msgid "Delete newer copies, keep the earliest added"
 msgstr ""
 
-#: cps/templates/cwa_settings.html:1182
+#: cps/templates/cwa_settings.html:1212
 #, fuzzy
 msgid "Merge Formats"
 msgstr "刪除格式:"
 
-#: cps/templates/cwa_settings.html:1182
+#: cps/templates/cwa_settings.html:1212
 msgid "Merge formats into the newest book, delete the rest"
 msgstr ""
 
-#: cps/templates/cwa_settings.html:1185
+#: cps/templates/cwa_settings.html:1215
 msgid "Keep Highest Quality Format"
 msgstr ""
 
-#: cps/templates/cwa_settings.html:1185
+#: cps/templates/cwa_settings.html:1215
 msgid "Prefer formats based on your Duplicate Format Priority Ranking"
 msgstr ""
 
-#: cps/templates/cwa_settings.html:1188
+#: cps/templates/cwa_settings.html:1218
 #, fuzzy
 msgid "Keep Most Metadata"
 msgstr "獲取元數據"
 
-#: cps/templates/cwa_settings.html:1188
+#: cps/templates/cwa_settings.html:1218
 msgid "Keep book with most complete information"
 msgstr ""
 
-#: cps/templates/cwa_settings.html:1191
+#: cps/templates/cwa_settings.html:1221
 msgid "Keep Largest File Size"
 msgstr ""
 
-#: cps/templates/cwa_settings.html:1191
+#: cps/templates/cwa_settings.html:1221
 msgid "Keep book with largest total file size"
 msgstr ""
 
-#: cps/templates/cwa_settings.html:1194
+#: cps/templates/cwa_settings.html:1224
 msgid "Choose which book to keep when duplicates are automatically resolved."
 msgstr ""
 
-#: cps/templates/cwa_settings.html:1198
+#: cps/templates/cwa_settings.html:1228
 #, fuzzy
 msgid "Rate Limiting"
 msgstr "評分"
 
-#: cps/templates/cwa_settings.html:1199
+#: cps/templates/cwa_settings.html:1229
 msgid "Cooldown Period (minutes)"
 msgstr ""
 
-#: cps/templates/cwa_settings.html:1203
+#: cps/templates/cwa_settings.html:1233
 msgid ""
 "Minimum time between automatic resolutions (0 to disable). Prevents rapid-"
 "fire deletions during batch imports."
 msgstr ""
 
-#: cps/templates/cwa_settings.html:1208
+#: cps/templates/cwa_settings.html:1238
 msgid ""
 "Auto-resolution runs after duplicate scans detect new duplicates. Dismissed "
 "duplicate groups are never auto-resolved."
@@ -6545,7 +6607,7 @@ msgstr "合併選中的書籍"
 msgid "Dismiss this duplicate group"
 msgstr ""
 
-#: cps/templates/duplicates.html:618 cps/templates/layout.html:360
+#: cps/templates/duplicates.html:618 cps/templates/layout.html:374
 msgid "Dismiss"
 msgstr ""
 
@@ -6603,7 +6665,7 @@ msgstr ""
 msgid "The following books will be permanently deleted:"
 msgstr "此書籍將從數據庫中永久刪除"
 
-#: cps/templates/duplicates.html:730 cps/templates/layout.html:558
+#: cps/templates/duplicates.html:730 cps/templates/layout.html:578
 #, fuzzy
 msgid "Merge Books"
 msgstr "未讀書籍"
@@ -6714,8 +6776,8 @@ msgstr "輸入網域名"
 msgid "Denied Domains (Blacklist)"
 msgstr "禁止註冊的網域名（黑名單）"
 
-#: cps/templates/feed.xml:31 cps/templates/layout.html:464
-#: cps/templates/layout.html:490
+#: cps/templates/feed.xml:31 cps/templates/layout.html:478
+#: cps/templates/layout.html:504
 msgid "Next"
 msgstr "下一個"
 
@@ -6988,7 +7050,7 @@ msgstr "賬號"
 msgid "Logout"
 msgstr "登出"
 
-#: cps/templates/layout.html:218 cps/templates/read.html:99
+#: cps/templates/layout.html:218 cps/templates/read.html:103
 #: cps/templates/readcbr.html:71 cps/templates/readcbr.html:97
 #, fuzzy
 msgid "Settings"
@@ -6999,165 +7061,165 @@ msgstr "設置"
 msgid "Refresh Library"
 msgstr "搜索書庫"
 
-#: cps/templates/layout.html:261
+#: cps/templates/layout.html:284
 msgid "See Changelog"
 msgstr ""
 
-#: cps/templates/layout.html:271
+#: cps/templates/layout.html:294
 #, fuzzy
 msgid "Open Duplicates"
 msgstr "刪除書籍"
 
-#: cps/templates/layout.html:293
+#: cps/templates/layout.html:316
 msgid "Contribute here!"
 msgstr ""
 
-#: cps/templates/layout.html:336
+#: cps/templates/layout.html:350
 msgid "Please do not refresh the page"
 msgstr "請不要刷新頁面"
 
-#: cps/templates/layout.html:396
+#: cps/templates/layout.html:410
 msgid "Browse"
 msgstr "瀏覽"
 
-#: cps/templates/layout.html:419
+#: cps/templates/layout.html:433
 #, fuzzy
 msgid "Create Shelf"
 msgstr "創建書架"
 
-#: cps/templates/layout.html:427
+#: cps/templates/layout.html:441
 msgid "Magic Shelves ✨"
 msgstr ""
 
-#: cps/templates/layout.html:436 cps/templates/stats.html:3
+#: cps/templates/layout.html:450 cps/templates/stats.html:3
 msgid "About"
 msgstr "關於"
 
-#: cps/templates/layout.html:449 cps/templates/layout.html:475
+#: cps/templates/layout.html:463 cps/templates/layout.html:489
 msgid "Previous"
 msgstr "上一個"
 
-#: cps/templates/layout.html:502
+#: cps/templates/layout.html:516
 msgid "Book Details"
 msgstr "書籍詳情"
 
-#: cps/templates/layout.html:564
+#: cps/templates/layout.html:584
 #, fuzzy
 msgid "This cannot be undone."
 msgstr "您確定要關閉嗎？"
 
-#: cps/templates/layout.html:570
+#: cps/templates/layout.html:590
 #, fuzzy
 msgid "Will be deleted"
 msgstr "合併選中的書籍"
 
-#: cps/templates/layout.html:574 cps/templates/layout.html:587
+#: cps/templates/layout.html:594 cps/templates/layout.html:607
 #, fuzzy
 msgid "Formats:"
 msgstr "上傳格式"
 
-#: cps/templates/layout.html:583
+#: cps/templates/layout.html:603
 msgid "Will be kept"
 msgstr ""
 
-#: cps/templates/layout.html:595
+#: cps/templates/layout.html:615
 msgid "Format conflicts — choose what to do:"
 msgstr ""
 
-#: cps/templates/layout.html:601
+#: cps/templates/layout.html:621
 #, fuzzy
 msgid "Result will have formats:"
 msgstr "刪除格式:"
 
-#: cps/templates/layout.html:610
+#: cps/templates/layout.html:630
 msgid "Merge &amp; Delete Source"
 msgstr ""
 
-#: cps/templates/layout.html:644
+#: cps/templates/layout.html:664
 #, fuzzy
 msgid "Duplicate Books Detected"
 msgstr "刪除書籍"
 
-#: cps/templates/layout.html:645
+#: cps/templates/layout.html:665
 msgid "You have unresolved duplicate books in your library"
-msgstr ""
-
-#: cps/templates/layout.html:650
-#, fuzzy
-msgid "Duplicate Groups Found"
-msgstr "無搜索結果"
-
-#: cps/templates/layout.html:658
-msgid "Remind Me Later"
-msgstr ""
-
-#: cps/templates/layout.html:661
-msgid "View & Resolve Duplicates"
 msgstr ""
 
 #: cps/templates/layout.html:670
 #, fuzzy
+msgid "Duplicate Groups Found"
+msgstr "無搜索結果"
+
+#: cps/templates/layout.html:678
+msgid "Remind Me Later"
+msgstr ""
+
+#: cps/templates/layout.html:681
+msgid "View & Resolve Duplicates"
+msgstr ""
+
+#: cps/templates/layout.html:690
+#, fuzzy
 msgid "Scroll to top"
 msgstr "縮放到最佳"
 
-#: cps/templates/layout.html:672
+#: cps/templates/layout.html:692
 #, fuzzy
 msgid "Top"
 msgstr "到："
 
-#: cps/templates/layout.html:762
+#: cps/templates/layout.html:782
 #, fuzzy
 msgid "Confirm"
 msgstr "配置"
 
-#: cps/templates/layout.html:768
+#: cps/templates/layout.html:788
 #, fuzzy, python-brace-format
 msgid "Added {n} books to {shelf}"
 msgstr "添加到書架"
 
-#: cps/templates/layout.html:769
+#: cps/templates/layout.html:789
 #, python-brace-format
 msgid "Added {ok} of {n} books to {shelf} (rest were already there)"
 msgstr ""
 
-#: cps/templates/layout.html:770
+#: cps/templates/layout.html:790
 #, python-brace-format
 msgid "All {n} book(s) were already on {shelf}."
 msgstr ""
 
-#: cps/templates/layout.html:771
+#: cps/templates/layout.html:791
 #, fuzzy, python-brace-format
 msgid "Marked {n} books as read"
 msgstr "合併選中的書籍"
 
-#: cps/templates/layout.html:772
+#: cps/templates/layout.html:792
 #, fuzzy, python-brace-format
 msgid "Marked {n} books as unread"
 msgstr "標為未讀"
 
-#: cps/templates/layout.html:773
+#: cps/templates/layout.html:793
 #, fuzzy, python-brace-format
 msgid "Deleted {n} books"
 msgstr "刪除書籍"
 
-#: cps/templates/layout.html:774
+#: cps/templates/layout.html:794
 #, fuzzy
 msgid "Delete books?"
 msgstr "刪除書籍"
 
-#: cps/templates/layout.html:775
+#: cps/templates/layout.html:795
 #, python-brace-format
 msgid ""
 "This will permanently delete {n} book(s) from your library. This cannot be "
 "undone."
 msgstr ""
 
-#: cps/templates/layout.html:776
+#: cps/templates/layout.html:796
 #, fuzzy
 msgid "Select at least one book first."
 msgstr "創建書架"
 
-#: cps/templates/layout.html:777
+#: cps/templates/layout.html:797
 #, fuzzy, python-brace-format
 msgid "Request failed: {err}"
 msgstr "連接錯誤"
@@ -7336,110 +7398,110 @@ msgstr ""
 msgid "Open annotations page"
 msgstr ""
 
-#: cps/templates/read.html:102 cps/templates/readcbr.html:102
+#: cps/templates/read.html:106 cps/templates/readcbr.html:102
 #: cps/templates/user_edit.html:279
 msgid "Theme"
 msgstr "主題"
 
-#: cps/templates/read.html:104 cps/templates/readcbr.html:105
+#: cps/templates/read.html:108 cps/templates/readcbr.html:105
 msgid "Light"
 msgstr "淺色"
 
-#: cps/templates/read.html:105 cps/templates/readcbr.html:106
+#: cps/templates/read.html:109 cps/templates/readcbr.html:106
 msgid "Dark"
 msgstr "深色"
 
-#: cps/templates/read.html:106
+#: cps/templates/read.html:110
 msgid "Sepia"
 msgstr ""
 
-#: cps/templates/read.html:107
+#: cps/templates/read.html:111
 #, fuzzy
 msgid "Black"
 msgstr "後退"
 
-#: cps/templates/read.html:112
+#: cps/templates/read.html:116
 msgid "Font Sizes"
 msgstr ""
 
-#: cps/templates/read.html:120
+#: cps/templates/read.html:124
 #, fuzzy
 msgid "Text margin"
 msgstr "下一頁"
 
-#: cps/templates/read.html:128
+#: cps/templates/read.html:132
 msgid "Font"
 msgstr ""
 
-#: cps/templates/read.html:130
+#: cps/templates/read.html:134
 #, fuzzy
 msgid "Default"
 msgstr "刪除數據"
 
-#: cps/templates/read.html:131
+#: cps/templates/read.html:135
 msgid "Yahei"
 msgstr ""
 
-#: cps/templates/read.html:132
+#: cps/templates/read.html:136
 msgid "SimSun"
 msgstr ""
 
-#: cps/templates/read.html:133
+#: cps/templates/read.html:137
 #, fuzzy
 msgid "KaiTi"
 msgstr "等待中"
 
-#: cps/templates/read.html:134
+#: cps/templates/read.html:138
 #, fuzzy
 msgid "Arial"
 msgstr "垂直"
 
-#: cps/templates/read.html:139
+#: cps/templates/read.html:143
 #, fuzzy
 msgid "Spread"
 msgstr "已讀"
 
-#: cps/templates/read.html:141
+#: cps/templates/read.html:145
 #, fuzzy
 msgid "Two columns"
 msgstr "無效的閱讀列"
 
-#: cps/templates/read.html:142
+#: cps/templates/read.html:146
 #, fuzzy
 msgid "One column"
 msgstr "無效的閱讀列"
 
-#: cps/templates/read.html:149
+#: cps/templates/read.html:153
 msgid "Reflow text when sidebars are open."
 msgstr "打開側欄時重排文本。"
 
-#: cps/templates/read.html:176
+#: cps/templates/read.html:180
 msgid "Note"
 msgstr ""
 
-#: cps/templates/read.html:177
+#: cps/templates/read.html:181
 msgid "Add a note (optional)"
 msgstr ""
 
-#: cps/templates/read.html:178
+#: cps/templates/read.html:182
 msgid "Select within a paragraph to highlight."
 msgstr ""
 
-#: cps/templates/read.html:181
+#: cps/templates/read.html:185
 #, fuzzy
 msgid "Yellow"
 msgstr "允許"
 
-#: cps/templates/read.html:182
+#: cps/templates/read.html:186
 #, fuzzy
 msgid "Red"
 msgstr "已讀"
 
-#: cps/templates/read.html:183
+#: cps/templates/read.html:187
 msgid "Green"
 msgstr ""
 
-#: cps/templates/read.html:184
+#: cps/templates/read.html:188
 msgid "Blue"
 msgstr ""
 
@@ -7958,6 +8020,102 @@ msgstr "成功刪除 {} 個用戶"
 msgid "Error cancelling scheduled item"
 msgstr ""
 
+#: cps/templates/update_now_modal.html:19
+#, fuzzy
+msgid "Update Calibre-Web NextGen"
+msgstr "Caliebre-Web電子書路徑"
+
+#: cps/templates/update_now_modal.html:22
+msgid ""
+"Updating pulls the new image and recreates the container. It is quick, and "
+"your library, settings and reading progress are safe — they live in your "
+"mounted volumes, not in the container."
+msgstr ""
+
+#: cps/templates/update_now_modal.html:24
+msgid "How do you run Calibre-Web NextGen?"
+msgstr ""
+
+#: cps/templates/update_now_modal.html:25
+msgid "Setup type"
+msgstr ""
+
+#: cps/templates/update_now_modal.html:26
+msgid "Docker Compose"
+msgstr ""
+
+#: cps/templates/update_now_modal.html:27
+msgid "docker run"
+msgstr ""
+
+#: cps/templates/update_now_modal.html:28
+msgid "Unraid"
+msgstr ""
+
+#: cps/templates/update_now_modal.html:29
+msgid "Portainer / Synology"
+msgstr ""
+
+#: cps/templates/update_now_modal.html:33
+msgid "Run this from the folder that holds your compose file:"
+msgstr ""
+
+#: cps/templates/update_now_modal.html:38
+msgid "Replace calibre-web-nextgen with your service name if it differs."
+msgstr ""
+
+#: cps/templates/update_now_modal.html:42
+msgid ""
+"Pull the new image, then recreate your container with the same options you "
+"started it with:"
+msgstr ""
+
+#: cps/templates/update_now_modal.html:47
+msgid ""
+"Then stop and remove the old container and start a new one with your usual "
+"docker run command. Your mounted volumes keep all data."
+msgstr ""
+
+#: cps/templates/update_now_modal.html:52
+msgid "Open the Docker tab in the Unraid web UI."
+msgstr ""
+
+#: cps/templates/update_now_modal.html:53
+msgid ""
+"Click the Calibre-Web NextGen container icon and choose Force update (check "
+"for updates first if you want to see what changed)."
+msgstr ""
+
+#: cps/templates/update_now_modal.html:55
+msgid ""
+"For hands-off updates, install the \"CA Auto Update Applications\" plugin "
+"from Community Applications."
+msgstr ""
+
+#: cps/templates/update_now_modal.html:59
+msgid "Portainer:"
+msgstr ""
+
+#: cps/templates/update_now_modal.html:59
+msgid ""
+"Images → pull the image below, then Containers → select Calibre-Web NextGen "
+"→ Recreate with \"Re-pull image\" enabled."
+msgstr ""
+
+#: cps/templates/update_now_modal.html:60
+msgid "Synology Container Manager:"
+msgstr ""
+
+#: cps/templates/update_now_modal.html:60
+msgid ""
+"Registry → download the image below (tag: latest), then stop the container → "
+"Action → Reset to recreate it."
+msgstr ""
+
+#: cps/templates/update_now_modal.html:68
+msgid "Set up automatic updates"
+msgstr ""
+
 #: cps/templates/user_edit.html:173
 #, fuzzy
 msgid "Your Profile"
@@ -8262,14 +8420,6 @@ msgstr ""
 
 #: cps/templates/user_edit.html:615
 msgid "New app password (cleartext)"
-msgstr ""
-
-#: cps/templates/user_edit.html:618
-msgid "Copied!"
-msgstr ""
-
-#: cps/templates/user_edit.html:618
-msgid "Copy"
 msgstr ""
 
 #: cps/templates/user_edit.html:625

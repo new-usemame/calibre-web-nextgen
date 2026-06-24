@@ -114,11 +114,41 @@ var reader;
     // (Copy / Look Up / Share, shown AFTER a selection) cannot be suppressed via
     // web APIs without disabling selection, so the custom popup coexists with it
     // there. See notes/2026-06-17-reader-native-menu-DESIGN.md.
+    // Walk up from an event target to decide whether it is (or sits inside) an
+    // image / media element. EPUB images come as HTML <img>, SVG <image> wrapped
+    // in <svg>, <picture>, or embedded <canvas>/<video>/<audio>.
+    function isReaderMediaTarget(node) {
+        while (node && node.nodeType === 1) {
+            var name = (node.localName || node.tagName || '').toLowerCase();
+            if (name === 'img' || name === 'image' || name === 'picture' ||
+                name === 'svg' || name === 'canvas' || name === 'video' ||
+                name === 'audio') {
+                return true;
+            }
+            node = node.parentNode;
+        }
+        return false;
+    }
     function suppressMenuOnContents(contents) {
         var doc = contents && contents.document;
         if (!doc || doc.__cwaMenuSuppressed) { return; }
         doc.__cwaMenuSuppressed = true;
-        doc.addEventListener('contextmenu', function (ev) { ev.preventDefault(); }, false);
+        doc.addEventListener('contextmenu', function (ev) {
+            // fork #502: keep the browser's native context menu on images/media
+            // so readers can "Save image as"; suppress it on text so the in-app
+            // highlight popup stays the affordance.
+            if (isReaderMediaTarget(ev.target)) { return; }
+            ev.preventDefault();
+        }, false);
+        // fork #502: the global -webkit-touch-callout:none (set so a text
+        // long-press opens the highlight popup, not the OS callout) also kills the
+        // iOS long-press "Save Image" affordance. Re-enable the callout on media.
+        try {
+            var st = doc.createElement('style');
+            st.textContent = 'img,image,picture,svg,canvas,video,audio' +
+                '{-webkit-touch-callout:default !important;}';
+            (doc.head || doc.documentElement).appendChild(st);
+        } catch (e) { /* head not ready */ }
     }
     window.suppressReaderNativeMenu = function () {
         if (!reader || !reader.rendition) { return; }

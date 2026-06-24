@@ -870,12 +870,35 @@ def normalize_shelf_order(order_list, available_ids):
     return normalized
 
 
-def _shelf_book_count(shelf):
-    """Best-effort book count without forcing a relationship load. Returns 0
-    when the relationship is detached or the query can't run."""
+def _shelf_book_count(shelf, user=None):
+    """Book count for the sidebar badge / book_count sort modes.
+
+    When ``user`` is a concrete (non-anonymous) user, books that user has
+    archived are excluded so the badge matches what opening the shelf shows:
+    the shelf view runs through ``calibre_db.common_filters`` (cps/db.py),
+    which hides the current user's archived books. A raw ``shelf.books.count()``
+    ignored archive state, so archiving a book left the badge stuck at the old
+    total (fork issue #499). Without ``user`` (or for anonymous users, who have
+    no per-user archive) it falls back to the raw relationship count.
+
+    Best-effort: returns 0 when the relationship is detached or a query can't
+    run; the archive-aware query falls through to the raw count on error.
+    """
     books = getattr(shelf, 'books', None)
     if books is None:
         return 0
+    shelf_id = getattr(shelf, 'id', None)
+    if user is not None and not getattr(user, 'is_anonymous', False) and shelf_id is not None:
+        try:
+            archived_ids = (ub.session.query(ub.ArchivedBook.book_id)
+                            .filter(ub.ArchivedBook.user_id == int(user.id))
+                            .filter(ub.ArchivedBook.is_archived.is_(True)))
+            return int(ub.session.query(ub.BookShelf)
+                       .filter(ub.BookShelf.shelf == shelf_id)
+                       .filter(ub.BookShelf.book_id.notin_(archived_ids))
+                       .count())
+        except Exception:
+            pass  # fall through to the archive-blind raw count
     try:
         return int(books.count())
     except Exception:
@@ -912,13 +935,13 @@ def sort_shelves_for_user(shelves, user):
         return shelves
 
     if order_mode == 'book_count_desc':
-        shelves.sort(key=lambda s: (_shelf_book_count(s), (s.name or "").casefold()),
+        shelves.sort(key=lambda s: (_shelf_book_count(s, user), (s.name or "").casefold()),
                      reverse=True)
         return shelves
 
     if order_mode == 'book_count_asc':
         # Tie-break by name ascending so equal-count shelves are stable.
-        shelves.sort(key=lambda s: (_shelf_book_count(s), (s.name or "").casefold()))
+        shelves.sort(key=lambda s: (_shelf_book_count(s, user), (s.name or "").casefold()))
         return shelves
 
     if order_mode == 'created_desc':

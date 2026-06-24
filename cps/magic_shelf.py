@@ -696,18 +696,44 @@ def get_book_ids_for_magic_shelf(shelf_id, sort_order=None, sort_param='stored',
         total_count = len(all_ids)
 
         if current_user.is_authenticated and not bypass_cache:
+            existing = ub.session.query(ub.MagicShelfCache).filter_by(
+                shelf_id=shelf_id,
+                user_id=current_user.id,
+                sort_param=sort_param,
+            ).first()
+            # Preserve created_at when the rebuilt membership SET is
+            # unchanged (fork #468). created_at doubles as the Kobo sync's
+            # "membership added" timestamp: get_magic_shelf_membership_added_at
+            # takes max(created_at) across the user's kobo_sync magic shelves,
+            # and the Kobo sync arm re-emits the whole shelf whenever that
+            # timestamp advances past the device cursor. If a 30-minute TTL
+            # rebuild stamps a fresh created_at even though the books didn't
+            # change, every spaced-out sync re-fires the entire shelf as a
+            # ChangedEntitlement and the Kobo drops the local copies back to
+            # "Download"/"Unread" — except on a back-to-back sync inside the
+            # TTL window, which is exactly the reporter's symptom. Comparing
+            # as sets keeps the timestamp tied to membership, not to sort
+            # order (browse re-sorts must not re-fire the device).
+            preserved_created_at = (
+                existing.created_at
+                if existing is not None and set(existing.book_ids or []) == set(all_ids)
+                else None
+            )
             ub.session.query(ub.MagicShelfCache).filter_by(
                 shelf_id=shelf_id,
                 user_id=current_user.id,
                 sort_param=sort_param,
             ).delete()
-            ub.session.add(ub.MagicShelfCache(
+            new_cache = ub.MagicShelfCache(
                 shelf_id=shelf_id,
                 user_id=current_user.id,
                 sort_param=sort_param,
                 book_ids=all_ids,
                 total_count=total_count,
-            ))
+            )
+            if preserved_created_at is not None:
+                new_cache.created_at = preserved_created_at
+            ub.session.add(new_cache)
             ub.session.commit()
             log.debug(f"Magic shelf {shelf_id} cache updated ({total_count} items)")
 

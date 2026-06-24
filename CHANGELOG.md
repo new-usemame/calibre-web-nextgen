@@ -17,6 +17,92 @@ is for things you can see or feel when running the app.
 ## [Unreleased]
 
 ### Added
+- **Restrict Generic OAuth/OIDC login to specific identity-provider groups.**
+  Admins can now require that a user belong to one of an allowed list of OAuth
+  groups before an account is created or logged in, and can name the token claim
+  that carries the group list (handy for Keycloak/Authentik, which often use a
+  custom claim rather than `groups`). Membership is enforced before any account
+  is provisioned, and turning the requirement on with an empty allow-list denies
+  everyone rather than admitting all directory users. Thanks to @lduesing.
+
+### Fixed
+- **Beta (`:dev`) builds no longer nag about a "false" update.** If you run the
+  beta image, the "update available" banner kept pointing at the latest *stable*
+  release even though a beta build is actually ahead of it. Beta/unversioned
+  builds are now recognised and don't show the banner.
+- **Stacked notices no longer pile up into an unreadable blur.** When more than
+  one pop-up notice showed at once — e.g. the duplicate-scan setup notice plus
+  the update banner — they all floated to the same spot and rendered on top of
+  each other. They now stack neatly in a column.
+
+## [v4.0.170] - 2026-06-23
+
+### Added
+- **Update from a button instead of hunting for the right Docker command.** When
+  a new version is available, the update banner and the Admin page now show an
+  **Update now** button that gives you the exact one-line command for your setup
+  — Docker Compose, `docker run`, Unraid, or Portainer/Synology — with one-click
+  copy. A new **Automatic updates** section under Admin → NextGen Settings walks
+  you through turning on truly hands-off updates with Watchtower, so new versions
+  install themselves. (Admin only.) The README gains a matching "Updating" guide,
+  including how to run NextGen under Podman.
+
+### Fixed
+- **The epub reader's Settings panel no longer sits flush against its edges.**
+  After the recent settings redesign, the option labels were pressed against the
+  left edge and the slider readouts ("150%", "0px") were clipped at the right.
+  The panel now insets its content again, and the "Settings" title keeps its
+  full-width bar across the top. Reported by @sambong.
+- **The Duplicate Books page works again behind a reverse proxy on a sub-path.**
+  Behind a proxy mounted on a sub-path, the cover placeholder kept requesting
+  `generic_cover.svg` in an endless loop, and dismissing or resolving a duplicate
+  group failed with "Failed to update duplicate group." Both came from page URLs
+  that dropped the proxy's sub-path prefix; they now carry it. Reported by
+  @chloeroform.
+
+## [v4.0.169] - 2026-06-22
+
+### Changed
+- Simplified Chinese (`zh_Hans`): more of the interface now appears in Chinese —
+  279 menu, button and message strings that previously fell back to English are
+  translated. Thanks to @GSAlex.
+- Spanish (`es`): 76 strings that were showing in English — or, in a few cases,
+  the wrong Spanish phrase — now read correctly. This covers the duplicate-book
+  tools, OAuth sign-in messages and several admin labels. Thanks to @HaruIjima-kun.
+
+### Fixed
+- **Kobo no longer re-downloads your whole magic shelf on every sync.** If you
+  synced magic (smart) shelves to a Kobo, books kept dropping back to
+  "Download"/"Unread" and losing your place — every sync unless you synced twice
+  back-to-back. The shelf's membership cache was being re-stamped with a new
+  timestamp every 30 minutes even when nothing changed, which made the sync
+  re-send the entire shelf. It now only re-sends when the shelf's contents
+  actually change. Reported by @Glennza1962 and @bigbold1023.
+- **Right-click on an image in the epub reader now offers "Save image as"
+  again.** The reader was swallowing the right-click (and Android long-press)
+  menu on everything so the in-app highlight popup could be the way you select
+  text — but that also blocked the browser's own menu on illustrations, so you
+  couldn't save a picture. Images now get their native menu back (including the
+  iOS long-press "Save Image"), while right-clicking text still opens the
+  highlight popup. Reported by @sambong.
+- **The epub reader's Settings panel no longer gets cut off on short browser
+  windows.** On a window shorter than the panel — common on a NAS admin tab — the
+  Theme row at the top and the Font, Spread and Reflow options at the bottom were
+  clipped off-screen with no way to scroll to them. The panel now caps its height
+  and scrolls internally at every window size, so every setting stays reachable.
+  Reported by @sambong.
+
+## [v4.0.168] - 2026-06-19
+
+### Fixed
+- **Archiving a book now updates the shelf count in the sidebar.** The badge
+  next to a shelf name counted archived books even though opening the shelf
+  already hid them, so the number stayed too high. It now matches what you see
+  inside the shelf. Reported by @jasonxbergman.
+
+## [v4.0.167] - 2026-06-18
+
+### Added
 - You can now **support Calibre-Web NextGen's development** directly — the
   project has its own [Ko-fi](https://ko-fi.com/calibrewebnextgen), linked from the
   README and the GitHub "Sponsor" button. (The upstream project it builds on is

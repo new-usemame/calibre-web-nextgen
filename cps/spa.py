@@ -4,6 +4,10 @@
 import os
 from flask import Blueprint, send_from_directory, abort
 
+from . import logger
+
+log = logger.create()
+
 spa = Blueprint("spa", __name__)
 
 _SPA_DIR = os.path.join(os.path.dirname(__file__), "static", "app")
@@ -18,6 +22,9 @@ def _spa_enabled():
 def spa_shell(path=""):
     if not _spa_enabled():
         abort(404)
-    if not os.path.isfile(os.path.join(_SPA_DIR, "index.html")):
+    index_path = os.path.join(_SPA_DIR, "index.html")
+    if not os.path.isfile(index_path):
+        log.warning("SPA shell requested but build artifact not found: %s — run the Vite build "
+                    "or set CWNG_SPA=0 to suppress this warning", index_path)
         abort(404)
     return send_from_directory(_SPA_DIR, "index.html")

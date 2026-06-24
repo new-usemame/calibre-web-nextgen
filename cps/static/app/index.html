@@ -17,6 +17,8 @@
   <h1>Calibre-Web <span class="accent">NextGen</span></h1>
   <p id="me">checking session…</p>
   <div class="grid" id="grid"></div>
+  <!-- PLACEHOLDER — throwaway shell only; intentionally uses unescaped innerHTML for prototype
+       speed. Replaced by the React/Vite build in Plan 02. Do not cargo-cult this pattern. -->
   <script>
     fetch('/api/v1/auth/me', {credentials: 'same-origin'})
       .then(function (r) { return r.ok ? r.json() : null; })

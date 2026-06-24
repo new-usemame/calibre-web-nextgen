@@ -7,13 +7,25 @@ from werkzeug.security import check_password_hash
 
 from . import api_v1
 from .serializers import serialize_user
-from .. import ub
+from .. import ub, config, limiter
 from ..cw_login import current_user, login_user, logout_user
 
 try:
     from flask_wtf.csrf import generate_csrf
 except ImportError:  # flask_wtf is optional/container-only
     generate_csrf = None
+
+try:
+    from flask_limiter.util import get_remote_address
+except ImportError:  # flask_limiter is optional/container-only
+    get_remote_address = lambda: "127.0.0.1"  # noqa: E731
+
+
+def _login_key_func():
+    """Rate-limit key: posted username (lower-stripped), falling back to remote IP."""
+    data = request.get_json(silent=True) or request.form
+    username = (data.get("username") or "").strip().lower()
+    return username or get_remote_address()
 
 
 @api_v1.route("/auth/csrf")
@@ -30,7 +42,15 @@ def auth_me():
 
 
 @api_v1.route("/auth/login", methods=["POST"])
+@limiter.limit("40/day", key_func=_login_key_func)
+@limiter.limit("3/minute", key_func=_login_key_func)
 def auth_login():
+    # I2: Honour config_disable_standard_login.
+    # LDAP/OAuth login routing is deferred to the auth-bridge sub-project (sub-project 2).
+    if config.config_disable_standard_login:
+        return jsonify({"error": {"code": "standard_login_disabled",
+                                  "message": "Standard login is disabled"}}), 403
+
     data = request.get_json(silent=True) or request.form
     username = (data.get("username") or "").strip().lower()
     password = data.get("password") or ""

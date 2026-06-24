@@ -160,7 +160,9 @@ export function BookDetail() {
           {book.description_html && (
             <div
               className={styles.description}
-              // TODO: sanitize description_html (DOMPurify) before production
+              // description_html is sanitized server-side in serialize_book_detail
+              // (cps/clean_html.clean_string — bleach/nh3 allowlist, same as the
+              // legacy templates), so it is safe to render here.
               // eslint-disable-next-line react/no-danger
               dangerouslySetInnerHTML={{ __html: book.description_html }}
             />

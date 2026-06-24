@@ -44,3 +44,21 @@ def test_serialize_user_roles():
     assert out["role"]["admin"] is True
     assert out["role"]["upload"] is True
     assert out["role"]["edit"] is False
+
+
+@pytest.mark.unit
+def test_serialize_book_detail_sanitizes_description_xss():
+    """description_html must be sanitized (no executable HTML) — stored-XSS guard."""
+    from types import SimpleNamespace
+    from cps.api.serializers import serialize_book_detail
+    book = SimpleNamespace(
+        id=9, title="X", series_index="1.0", has_cover=0, pubdate=None,
+        authors=[], series=[], data=[], tags=[], languages=[], publishers=[], identifiers=[],
+        comments=[SimpleNamespace(
+            text='<p>Safe</p><script>alert(1)</script><img src=x onerror=alert(2)>')],
+    )
+    out = serialize_book_detail(book)
+    assert "<script>" not in out["description_html"]
+    assert "<img" not in out["description_html"]   # img tag escaped/neutralized
+    assert "<script" not in out["description_html"]
+    assert "<p>Safe</p>" in out["description_html"]

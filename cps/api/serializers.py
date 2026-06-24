@@ -2,6 +2,8 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 """Pure (context-free) JSON serializers for the /api/v1 surface."""
 
+from ..clean_html import clean_string
+
 
 def serialize_user(user):
     return {
@@ -59,9 +61,13 @@ def serialize_book_detail(book, read=False, archived=False):
     else:
         pubdate_str = None
 
-    # Description
+    # Description — sanitize stored comment HTML with the same allowlist the
+    # rest of the app uses (clean_html.clean_string, via bleach/nh3). The
+    # comments field is edit-user- and metadata-provider-sourced, NOT trusted,
+    # so the API must never emit raw HTML (stored XSS otherwise). Mirrors
+    # detail.html's `entry.comments[0].text|clean_string|safe`.
     comments = getattr(book, "comments", None) or []
-    description_html = comments[0].text if comments else None
+    description_html = clean_string(comments[0].text, bid) if comments else None
 
     # Tags
     tags = [t.name for t in (getattr(book, "tags", None) or [])]

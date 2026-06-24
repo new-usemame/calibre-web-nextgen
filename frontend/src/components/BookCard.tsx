@@ -1,3 +1,4 @@
+import { Check } from 'lucide-react';
 import { Link } from 'wouter';
 import type { Book } from '../lib/api';
 import { BookCover } from './BookCover';
@@ -16,6 +17,11 @@ export function BookCard({ book, style }: BookCardProps) {
       <article className={styles.card} style={style} tabIndex={0}>
         <div className={styles.coverWrap}>
           <BookCover coverUrl={book.cover_url} title={book.title} />
+          {book.read && (
+            <span className={styles.readBadge} aria-label="Read" title="Read">
+              <Check size={14} strokeWidth={3} />
+            </span>
+          )}
         </div>
         <div className={styles.info}>
           <p className={styles.title}>{book.title}</p>

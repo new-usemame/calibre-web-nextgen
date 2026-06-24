@@ -59,3 +59,19 @@
   -webkit-line-clamp: 1;
   -webkit-box-orient: vertical;
 }
+
+.readBadge {
+  position: absolute;
+  top: var(--sp-2);
+  right: var(--sp-2);
+  width: 22px;
+  height: 22px;
+  border-radius: var(--r-full);
+  background: var(--accent);
+  color: var(--on-accent);
+  box-shadow: var(--elev-1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}

@@ -16,6 +16,8 @@ export interface Book {
   series_index: number | null;
   cover_url: string | null;
   formats: string[];
+  read?: boolean;
+  archived?: boolean;
 }
 
 export interface BookFormat {

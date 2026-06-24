@@ -33,6 +33,11 @@ is for things you can see or feel when running the app.
   everyone rather than admitting all directory users. Thanks to @lduesing.
 
 ### Fixed
+- **"Send to eReader" now shows the real reason it failed.** When your mail
+  server rejected the recipient address, the send used to die with a confusing
+  `TypeError` and hid the actual rejection. It now reports the address and the
+  server's reason (e.g. `kid@home.net: 550 User unknown`) so you can fix it.
+  Reported by @kurtlieber.
 - **Beta (`:dev`) builds no longer nag about a "false" update.** If you run the
   beta image, the "update available" banner kept pointing at the latest *stable*
   release even though a beta build is actually ahead of it. Beta/unversioned

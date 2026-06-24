@@ -62,11 +62,31 @@ except NameError:
 from flask_dance.consumer.requests import OAuth2Session as BaseOAuth2Session
 
 def _oauth_role_enabled(role_value, role_flag):
+    """True if ``role_flag`` is set in ``role_value`` (a role bitmask), guarding
+    against a None/non-numeric stored value."""
     try:
         return constants.has_flag(int(role_value or 0), role_flag)
     except (TypeError, ValueError):
         return False
-    
+
+
+def _oauth_effective_default_role(provider_role, config_default_role):
+    """Resolve the role assigned to a newly created Generic OAuth user.
+
+    ``provider_role`` is the per-provider ``oauth_default_role`` column. NULL
+    (None) means the admin never configured a per-provider role, so we fall
+    back to the global ``config_default_role`` — preserving the pre-feature
+    behavior and avoiding a silent permission-strip on upgrade. An explicitly
+    stored value (including 0 = no extra permissions) is honored as configured.
+    """
+    if provider_role is None:
+        return config_default_role
+    try:
+        return int(provider_role)
+    except (TypeError, ValueError):
+        return config_default_role
+
+
 class GenericOIDCSession(BaseOAuth2Session):
     """
     Custom OAuth2Session for generic OIDC providers like Authentik.
@@ -408,7 +428,8 @@ def register_user_from_generic_oauth(token=None):
             log.info("New OAuth user '%s' granted admin role via group '%s' (groups: %s)", 
                     provider_username, admin_group, user_groups)
         else:
-            user.role = int(generic.get('oauth_default_role') or 0)
+            user.role = _oauth_effective_default_role(
+                generic.get('oauth_default_role'), config.config_default_role)
             if should_be_admin and not config.config_enable_oauth_group_admin_management:
                 log.debug("New OAuth user '%s' not granted admin role - group-based management disabled", 
                          provider_username)
@@ -752,6 +773,11 @@ def generate_oauth_blueprints():
     if not scope_value or not scope_value.strip():
         scope_value = 'email openid profile'  # Sorted alphabetically
     
+    # The default-role checkboxes reflect the EFFECTIVE default (the per-provider
+    # role if configured, else the global default), so opening the form shows the
+    # real current behavior and saving it unchanged is a no-op.
+    effective_default_role = _oauth_effective_default_role(
+        generic.oauth_default_role, config.config_default_role)
     ele3 = dict(provider_name='generic',
                 id=generic.id,
                 active=generic.active,
@@ -769,7 +795,15 @@ def generate_oauth_blueprints():
                 oauth_admin_group=generic.oauth_admin_group or 'admin',
                 oauth_group_claim=generic.oauth_group_claim or 'groups',
                 oauth_allowed_groups=generic.oauth_allowed_groups or '',
-                oauth_require_group=bool(generic.oauth_require_group))
+                oauth_require_group=bool(generic.oauth_require_group),
+                oauth_default_role=generic.oauth_default_role,
+                oauth_default_role_download=_oauth_role_enabled(effective_default_role, constants.ROLE_DOWNLOAD),
+                oauth_default_role_viewer=_oauth_role_enabled(effective_default_role, constants.ROLE_VIEWER),
+                oauth_default_role_upload=_oauth_role_enabled(effective_default_role, constants.ROLE_UPLOAD),
+                oauth_default_role_edit=_oauth_role_enabled(effective_default_role, constants.ROLE_EDIT),
+                oauth_default_role_delete=_oauth_role_enabled(effective_default_role, constants.ROLE_DELETE_BOOKS),
+                oauth_default_role_passwd=_oauth_role_enabled(effective_default_role, constants.ROLE_PASSWD),
+                oauth_default_role_edit_shelf=_oauth_role_enabled(effective_default_role, constants.ROLE_EDIT_SHELFS))
     oauthblueprints.append(ele3)
 
     for element in oauthblueprints:

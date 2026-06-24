@@ -1668,6 +1668,11 @@ def _configuration_oauth_helper(to_save):
             if require_group != bool(element.get("oauth_require_group")):
                 reboot_required = True
                 update["oauth_require_group"] = require_group
+
+            oauth_default_role = _selected_generic_oauth_default_role(to_save)
+            if oauth_default_role != int(element.get("oauth_default_role") or 0):
+                reboot_required = True
+                update["oauth_default_role"] = oauth_default_role
         else:
             if to_save["config_" + str(element['id']) + "_oauth_client_id"] != element["oauth_client_id"]:
                 reboot_required = True

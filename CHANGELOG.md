@@ -17,6 +17,13 @@ is for things you can see or feel when running the app.
 ## [Unreleased]
 
 ### Added
+- **Choose what permissions new Generic OAuth users get.** Instead of every
+  OAuth sign-up inheriting the one global default role, admins can now set a
+  per-provider permission set (downloads, viewer, uploads, edit, delete, change
+  password, edit public shelves) for accounts auto-created via Generic OAuth.
+  Leaving it unconfigured keeps the existing global default, so upgrading
+  changes nothing until you opt in. Existing users are untouched. Thanks to
+  @lduesing.
 - **Restrict Generic OAuth/OIDC login to specific identity-provider groups.**
   Admins can now require that a user belong to one of an allowed list of OAuth
   groups before an account is created or logged in, and can name the token claim

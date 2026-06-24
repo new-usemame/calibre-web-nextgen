@@ -170,15 +170,39 @@ log = logger.create()
 
 
 def _normalize_oauth_claim_values(value):
+    """Normalize an OIDC claim payload into a clean list of strings.
+
+    Accepts the three shapes an IdP can send a group/role claim as:
+    a JSON list, a comma- or space-separated string, or None/other. Empty
+    and whitespace-only entries are dropped.
+    """
     if isinstance(value, list):
         return [str(item).strip() for item in value if str(item).strip()]
     if isinstance(value, str):
         return [item.strip() for item in value.replace(',', ' ').split() if item.strip()]
     return []
 
+
 def _oauth_claim_contains_any(claim_values, expected_values):
+    """Case-insensitive membership test: True if any expected value is present
+    in claim_values (e.g. 'Admin' in the claim matches an expected 'admin')."""
     claim_value_set = {value.lower() for value in claim_values}
     return any(value.lower() in claim_value_set for value in expected_values)
+
+
+def _oauth_group_access_denied(require_group, allowed_groups, user_groups):
+    """Authorization gate for Generic OAuth group membership.
+
+    Returns True when the login must be rejected. Membership is only enforced
+    when ``require_group`` is set; then the user must be in at least one
+    ``allowed_groups`` entry. An empty allow-list with the requirement enabled
+    denies everyone (fail closed) rather than silently admitting all users.
+    """
+    if not require_group:
+        return False
+    if not allowed_groups:
+        return True
+    return not _oauth_claim_contains_any(user_groups, allowed_groups)
 
 
 def oauth_required(f):
@@ -344,16 +368,18 @@ def register_user_from_generic_oauth(token=None):
                 log.info("OAuth login matched existing user by email '%s' (user '%s'), provider username '%s'",
                          provider_email, user.name, provider_username)
 
-# Check OAuth/OIDC group membership.
+    # Resolve OAuth/OIDC group membership from the configured claim, then
+    # enforce required-group access BEFORE creating or logging in a user, so a
+    # rejected login never auto-provisions an account or grants any role.
     group_claim = generic.get('oauth_group_claim') or 'groups'
     groups_present = group_claim in userinfo
     user_groups = _normalize_oauth_claim_values(userinfo.get(group_claim, []))
 
     allowed_groups = _normalize_oauth_claim_values(generic.get('oauth_allowed_groups', ''))
     require_group = bool(generic.get('oauth_require_group'))
-    if require_group and (not allowed_groups or not _oauth_claim_contains_any(user_groups, allowed_groups)):
+    if _oauth_group_access_denied(require_group, allowed_groups, user_groups):
         log.warning(
-            "OIDC login rejected for '%s': missing required group. Required: %s, present in claim '%s': %s",
+            "OAuth login rejected for '%s': not a member of any allowed group. Allowed: %s, claim '%s': %s",
             provider_username, allowed_groups, group_claim, user_groups,
         )
         flash(_("Login failed: your account is not allowed to access this application."), category="error")

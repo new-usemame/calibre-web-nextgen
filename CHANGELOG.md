@@ -16,6 +16,15 @@ is for things you can see or feel when running the app.
 
 ## [Unreleased]
 
+### Added
+- **Restrict Generic OAuth/OIDC login to specific identity-provider groups.**
+  Admins can now require that a user belong to one of an allowed list of OAuth
+  groups before an account is created or logged in, and can name the token claim
+  that carries the group list (handy for Keycloak/Authentik, which often use a
+  custom claim rather than `groups`). Membership is enforced before any account
+  is provisioned, and turning the requirement on with an empty allow-list denies
+  everyone rather than admitting all directory users. Thanks to @lduesing.
+
 ### Fixed
 - **Beta (`:dev`) builds no longer nag about a "false" update.** If you run the
   beta image, the "update available" banner kept pointing at the latest *stable*

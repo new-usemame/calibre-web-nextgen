@@ -144,16 +144,20 @@ class TestCoverBadgeMacroRendersInProgress:
 @pytest.mark.unit
 class TestCoercionCarriesRawStatus:
     def test_web_py_carries_raw_read_status(self):
-        """Both render paths in web.py (the books-table JSON serializer and
-        the detail page) must expose the raw integer read_status, not only
-        the ``== STATUS_FINISHED`` boolean — otherwise the template can never
-        tell in-progress from unread."""
+        """The detail page (``show_book``) must expose the raw integer
+        read_status, not only the ``== STATUS_FINISHED`` boolean — otherwise
+        detail.html can never tell in-progress from unread. (The grid/list
+        views read the raw tri-state straight off the query tuple as
+        ``entry[2]``, so they don't need a web.py field.)"""
         src = WEB_PY.read_text(encoding="utf-8")
-        assert src.count("read_status_raw") >= 2, (
-            "web.py must set a raw integer read-status field (e.g. "
-            "read_status_raw) at BOTH coercion sites (books-list serializer "
-            "~L1937 and detail page ~L3537) so the in-progress state "
-            "survives to the templates. fork #509."
+        assert "read_status_raw" in src, (
+            "web.py show_book must set read_status_raw (the raw tri-state) so "
+            "detail.html can render the in-progress marker. fork #509."
+        )
+        # Pin it to the detail page's read_book source, not the boolean.
+        assert "read_status_raw = read_book" in src, (
+            "read_status_raw must derive from the detail page's read_book "
+            "value (the raw int), e.g. `read_book or STATUS_UNREAD`. fork #509."
         )
 
     def test_detail_template_branches_on_in_progress(self):
@@ -169,6 +173,22 @@ class TestCoercionCarriesRawStatus:
             "detail.html must render a distinct in-progress marker "
             "(.cover-badge-in-progress / .currently-reading) for a book the "
             "user is partway through. fork #509."
+        )
+
+    def test_detail_toggle_removes_currently_reading_pill(self):
+        """When the user marks a book read/unread via the detail-page toggle,
+        the JS handler must remove the sync-driven "Currently reading" pill —
+        otherwise the page shows "Currently reading" next to "Mark As Unread"
+        until a reload (Greptile #520 finding, fork #509)."""
+        src = DETAIL_HTML.read_text(encoding="utf-8")
+        # The toggle handler and the pill removal must both be present, and the
+        # removal must target the pill's id.
+        assert "#toggle-read-btn" in src, "detail.html toggle handler missing"
+        assert '$("#currently-reading-badge").remove()' in src or \
+               "$('#currently-reading-badge').remove()" in src, (
+            "The #toggle-read-btn success handler must remove "
+            "#currently-reading-badge so an in-progress book marked read "
+            "doesn't show the stale pill until reload. fork #509 / Greptile #520."
         )
 
     def test_image_macro_takes_tristate_not_bool(self):

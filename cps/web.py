@@ -1935,10 +1935,6 @@ def list_books():
         val = entry[0]
         val.is_archived = entry[1] is True
         val.read_status = entry[2] == ub.ReadBook.STATUS_FINISHED
-        # Carry the raw tri-state too (0 unread / 1 finished / 2 in-progress)
-        # so consumers can distinguish a book synced as in-progress from
-        # KOReader/Kobo from an unread one. fork #509.
-        val.read_status_raw = entry[2] or ub.ReadBook.STATUS_UNREAD
         for lang_index in range(0, len(val.languages)):
             val.languages[lang_index].language_name = isoLanguages.get_language_name(get_locale(), val.languages[
                 lang_index].lang_code)

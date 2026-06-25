@@ -16,6 +16,17 @@ is for things you can see or feel when running the app.
 
 ## [Unreleased]
 
+### Added
+- **Email your users straight from the admin area.** A new "Email Your Users"
+  page (Admin → Email Your Users) lets you write a message and send it by email
+  to everyone — or just the people you pick. Handy for announcing new books or
+  server updates to the people sharing your library. It uses the same mail
+  server you already set up for password resets, formats with HTML (links,
+  bold) with an automatic plain-text fallback, can pull in your announcement
+  banner text with one click, and has a "Send test to me" button so you can
+  preview before sending. Messages send in the background — check Tasks for
+  delivery. Requested by @froggybottomboys.
+
 ## [v4.0.172] - 2026-06-25
 
 ### Added

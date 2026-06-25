@@ -43,6 +43,11 @@ try:  # SQLAlchemy 1.4+ / 2.0
 except ImportError:  # pragma: no cover - older SQLAlchemy
     from sqlalchemy.ext.declarative import declarative_base
 
+# CI selects tests with ``pytest -m "smoke or unit"``; without this marker the
+# whole module is collected but deselected, so the regression below would never
+# guard against reintroduction.
+pytestmark = pytest.mark.unit
+
 Base = declarative_base()
 
 

@@ -1898,7 +1898,21 @@ def list_books():
         order = [db.Languages.lang_code.asc()] if order == "asc" else [db.Languages.lang_code.desc()]
         join = db.books_languages_link, db.Books.id == db.books_languages_link.c.book, db.Languages
     elif order and sort_param in ["sort", "title", "authors_sort", "series_index"]:
-        order = [text(sort_param + " " + order)]
+        # Map to an ORM column object instead of a raw SQL ORDER BY fragment.
+        # The default render path eager-loads the one-to-many
+        # Books.data relationship under a LIMIT, so SQLAlchemy wraps the book
+        # query in a subquery alias (anon_1) where the column is exposed as
+        # books_<name>. A bare "ORDER BY title" cannot resolve against that
+        # alias -> sqlite3.OperationalError: no such column (CWA#1411). ORM
+        # column objects get rewritten to anon_1.books_<name> at the outer
+        # level, exactly like the author/author_sort branches that never broke.
+        # "authors_sort" is a stale alias for the real column author_sort.
+        col_name = "author_sort" if sort_param == "authors_sort" else sort_param
+        column = getattr(db.Books, col_name, None)
+        if column is not None:
+            order = [column.asc() if order == "asc" else column.desc()]
+        else:
+            order = [db.Books.sort.asc()]
     elif not state:
         order = [db.Books.timestamp.desc()]
 

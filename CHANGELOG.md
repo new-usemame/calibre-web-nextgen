@@ -25,6 +25,13 @@ is for things you can see or feel when running the app.
   shelves, search and author pages, so synced reading progress is actually
   visible. Reported by @barukh27.
 
+### Fixed
+- **Sorting the Books List by Title no longer breaks the table.** In the "Books
+  List" table view, clicking the Title, Title Sort, or Series ID column header
+  produced an empty table and flooded the log with `no such column: title`
+  errors — only Author sorting worked. The table now sorts correctly by every
+  column. Reported by @Mr-Me-torn.
+
 ## [v4.0.171] - 2026-06-24
 
 ### Added

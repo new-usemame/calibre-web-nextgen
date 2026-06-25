@@ -20,6 +20,7 @@ from flask_babel import lazy_gettext as N_
 
 from cps.services.worker import CalibreTask
 from cps.services import gmail
+from cps.services.mail_error import compose_smtp_error_text
 from cps.embed_helper import do_calibre_export
 from cps import logger, config
 from cps import gdriveutils
@@ -162,14 +163,7 @@ class TaskEmail(CalibreTask):
             self._handleError('MemoryError sending e-mail: {}'.format(str(e)))
         except (smtplib.SMTPException, smtplib.SMTPAuthenticationError) as e:
             log.error_or_exception(e, stacklevel=3)
-            if hasattr(e, "smtp_error"):
-                text = e.smtp_error.decode('utf-8').replace("\n", '. ')
-            elif hasattr(e, "message"):
-                text = e.message
-            elif hasattr(e, "args"):
-                text = '\n'.join(e.args)
-            else:
-                text = ''
+            text = compose_smtp_error_text(e)
             self._handleError('Smtplib Error sending e-mail: {}'.format(text))
         except (socket.error) as e:
             log.error_or_exception(e, stacklevel=3)

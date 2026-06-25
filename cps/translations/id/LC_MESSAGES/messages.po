@@ -8,7 +8,7 @@ msgstr ""
 "Project-Id-Version: Calibre-Web NextGen\n"
 "Report-Msgid-Bugs-To: https://github.com/crocodilestick/Calibre-Web-"
 "Automated\n"
-"POT-Creation-Date: 2026-06-24 00:17+0000\n"
+"POT-Creation-Date: 2026-06-24 23:55+0000\n"
 "PO-Revision-Date: 2023-01-21 10:00+0700\n"
 "Last-Translator: Arief Hidayat<arihid95@gmail.com>\n"
 "Language-Team: Arief Hidayat <arihid95@gmail.com>\n"
@@ -1303,7 +1303,7 @@ msgid "File to be uploaded must have an extension"
 msgstr "Berkas yang akan diunggah harus memiliki ekstensi"
 
 #: cps/editbooks.py:860 cps/editbooks.py:1599 cps/web.py:821 cps/web.py:3330
-#: cps/web.py:3512 cps/web.py:3640
+#: cps/web.py:3512 cps/web.py:3642
 msgid ""
 "Oops! Selected book is unavailable. File does not exist or is not accessible"
 msgstr ""
@@ -1955,7 +1955,7 @@ msgid "Books ordered by series"
 msgstr "Buku yang diurutkan menurut Seri"
 
 #: cps/opds.py:229 cps/render_template.py:117 cps/templates/book_table.html:113
-#: cps/templates/detail.html:920 cps/templates/search_form.html:108
+#: cps/templates/detail.html:931 cps/templates/search_form.html:108
 #: cps/web.py:2168
 msgid "Languages"
 msgstr "Bahasa"
@@ -2978,7 +2978,7 @@ msgstr ""
 msgid "Hardcover Sync"
 msgstr "Aktifkan sinkronisasi Kobo"
 
-#: cps/tasks/mail.py:280
+#: cps/tasks/mail.py:274
 msgid "E-mail"
 msgstr "Email"
 
@@ -3068,8 +3068,8 @@ msgid "Add to Shelf"
 msgstr "Tambah ke rak"
 
 #: cps/templates/_book_organizer.html:116 cps/templates/detail.html:798
-#: cps/templates/detail.html:820 cps/templates/detail.html:979
-#: cps/templates/detail.html:1601 cps/templates/feed.xml:109
+#: cps/templates/detail.html:820 cps/templates/detail.html:990
+#: cps/templates/detail.html:1617 cps/templates/feed.xml:109
 #: cps/templates/feed.xml:111 cps/templates/index.html:162
 #: cps/templates/layout.html:430 cps/templates/layout.html:443
 #: cps/templates/listenmp3.html:201 cps/templates/listenmp3.html:218
@@ -3533,7 +3533,7 @@ msgstr "OK"
 #: cps/templates/config_edit.html:712 cps/templates/config_view_edit.html:236
 #: cps/templates/cover_picker.html:189
 #: cps/templates/cwa_convert_library.html:23
-#: cps/templates/cwa_epub_fixer.html:40 cps/templates/detail.html:1173
+#: cps/templates/cwa_epub_fixer.html:40 cps/templates/detail.html:1184
 #: cps/templates/duplicates.html:696 cps/templates/duplicates.html:719
 #: cps/templates/duplicates.html:746 cps/templates/layout.html:626
 #: cps/templates/layout.html:781 cps/templates/modal_dialogs.html:64
@@ -3735,7 +3735,7 @@ msgstr "Terjadi Kesalahan"
 msgid "Upload Format"
 msgstr "Format Unggahan"
 
-#: cps/templates/book_edit.html:128 cps/templates/detail.html:889
+#: cps/templates/book_edit.html:128 cps/templates/detail.html:900
 #, fuzzy
 msgid "Imported as"
 msgstr "Pembaruan gagal:"
@@ -3759,7 +3759,7 @@ msgstr "Tanggal Terbit"
 
 #: cps/templates/book_edit.html:159 cps/templates/book_edit.html:460
 #: cps/templates/cwa_settings.html:348 cps/templates/cwa_settings.html:350
-#: cps/templates/cwa_settings.html:1139 cps/templates/detail.html:995
+#: cps/templates/cwa_settings.html:1139 cps/templates/detail.html:1006
 #: cps/templates/hardcover_review_matches.html:148
 #: cps/templates/listenmp3.html:102 cps/templates/search_form.html:16
 msgid "Publisher"
@@ -6346,18 +6346,18 @@ msgstr ""
 msgid "Click to See More"
 msgstr ""
 
-#: cps/templates/detail.html:634 cps/templates/image.html:19
+#: cps/templates/detail.html:634 cps/templates/image.html:26
 #: cps/templates/listenmp3.html:159
 msgid "Read"
 msgstr "Baca"
 
 #: cps/templates/detail.html:692 cps/templates/detail.html:693
-#: cps/templates/detail.html:1058 cps/templates/listenmp3.html:158
+#: cps/templates/detail.html:1069 cps/templates/listenmp3.html:158
 msgid "Mark As Unread"
 msgstr "Tandai sebagai Belum dibaca"
 
 #: cps/templates/detail.html:692 cps/templates/detail.html:693
-#: cps/templates/detail.html:1059 cps/templates/listenmp3.html:158
+#: cps/templates/detail.html:1070 cps/templates/listenmp3.html:158
 msgid "Mark As Read"
 msgstr "Tandai sebagai dibaca"
 
@@ -6394,12 +6394,12 @@ msgid "Removed from favorites"
 msgstr "Pulihkan dari arsip"
 
 #: cps/templates/detail.html:711 cps/templates/detail.html:712
-#: cps/templates/detail.html:1069 cps/templates/listenmp3.html:166
+#: cps/templates/detail.html:1080 cps/templates/listenmp3.html:166
 msgid "Restore from archive"
 msgstr "Pulihkan dari arsip"
 
 #: cps/templates/detail.html:711 cps/templates/detail.html:712
-#: cps/templates/detail.html:1070 cps/templates/listenmp3.html:166
+#: cps/templates/detail.html:1081 cps/templates/listenmp3.html:166
 msgid "Add to archive"
 msgstr "Tambahkan ke Arsip"
 
@@ -6447,137 +6447,143 @@ msgstr "Buku Tersembunyi"
 msgid "Unhidden"
 msgstr ""
 
-#: cps/templates/detail.html:787 cps/templates/detail.html:987
-#: cps/templates/detail.html:988 cps/templates/detail.html:1638
+#: cps/templates/detail.html:787 cps/templates/detail.html:998
+#: cps/templates/detail.html:999 cps/templates/detail.html:1654
 #: cps/templates/listenmp3.html:190 cps/templates/search.html:17
 msgid "Add to shelf"
 msgstr "Tambah ke rak"
 
-#: cps/templates/detail.html:810 cps/templates/detail.html:981
+#: cps/templates/detail.html:810 cps/templates/detail.html:992
 #, fuzzy
 msgid "Remove from shelf"
 msgstr "Pulihkan dari arsip"
 
-#: cps/templates/detail.html:848
+#: cps/templates/detail.html:850 cps/templates/image.html:27
+#: cps/templates/index.html:45
+#, fuzzy
+msgid "Currently reading"
+msgstr "Versi saat ini"
+
+#: cps/templates/detail.html:859
 #, fuzzy
 msgid "Rating updated"
 msgstr "Pengaturan Basis Data diperbarui"
 
-#: cps/templates/detail.html:849
+#: cps/templates/detail.html:860
 #, fuzzy
 msgid "Rating cleared"
 msgstr "Peringkat Diatas"
 
-#: cps/templates/detail.html:867 cps/templates/listenmp3.html:62
+#: cps/templates/detail.html:878 cps/templates/listenmp3.html:62
 #, python-format
 msgid "Book %(index)s of %(range)s"
 msgstr "Buku %(index)s dari %(range)s"
 
-#: cps/templates/detail.html:872
+#: cps/templates/detail.html:883
 msgid "ID"
 msgstr ""
 
-#: cps/templates/detail.html:877
+#: cps/templates/detail.html:888
 msgid "UUID"
 msgstr ""
 
-#: cps/templates/detail.html:880
+#: cps/templates/detail.html:891
 msgid "UUID copied to clipboard"
 msgstr ""
 
-#: cps/templates/detail.html:881
+#: cps/templates/detail.html:892
 msgid "Unable to copy UUID"
 msgstr ""
 
-#: cps/templates/detail.html:882 cps/templates/detail.html:883
+#: cps/templates/detail.html:893 cps/templates/detail.html:894
 msgid "Copy UUID"
 msgstr ""
 
-#: cps/templates/detail.html:894
+#: cps/templates/detail.html:905
 msgid "Date added"
 msgstr ""
 
-#: cps/templates/detail.html:898
+#: cps/templates/detail.html:909
 msgid "Last modified"
 msgstr ""
 
-#: cps/templates/detail.html:903
+#: cps/templates/detail.html:914
 msgid "File sizes"
 msgstr ""
 
-#: cps/templates/detail.html:947
+#: cps/templates/detail.html:958
 #, fuzzy
 msgid "Remove tag"
 msgstr "Hapus"
 
-#: cps/templates/detail.html:955 cps/templates/detail.html:956
-#: cps/templates/detail.html:1516
+#: cps/templates/detail.html:966 cps/templates/detail.html:967
+#: cps/templates/detail.html:1532
 msgid "Add tag"
 msgstr ""
 
-#: cps/templates/detail.html:1001 cps/templates/listenmp3.html:111
+#: cps/templates/detail.html:1012 cps/templates/listenmp3.html:111
 msgid "Published"
 msgstr "Diterbitkan"
 
-#: cps/templates/detail.html:1007
+#: cps/templates/detail.html:1018
 #, fuzzy
 msgid "KOReader Progress"
 msgstr "Kemajuan"
 
-#: cps/templates/detail.html:1081 cps/templates/listenmp3.html:177
+#: cps/templates/detail.html:1092 cps/templates/listenmp3.html:177
 msgid "Description:"
 msgstr "Deskripsi:"
 
-#: cps/templates/detail.html:1098
+#: cps/templates/detail.html:1109
 #, fuzzy
 msgid "Select eReader Email Addresses"
 msgstr "Alamat E-mail untuk Kirim ke E-Reader"
 
-#: cps/templates/detail.html:1111
+#: cps/templates/detail.html:1122
 #, fuzzy
 msgid "Choose email addresses:"
 msgstr "Alamat E-mail untuk Kirim ke E-Reader"
 
-#: cps/templates/detail.html:1116
+#: cps/templates/detail.html:1127
 #, fuzzy
 msgid "Select All"
 msgstr "Buat Rak"
 
-#: cps/templates/detail.html:1137
+#: cps/templates/detail.html:1148
 msgid "Other users' eReaders:"
 msgstr ""
 
-#: cps/templates/detail.html:1152
+#: cps/templates/detail.html:1163
 msgid "Additional email addresses:"
 msgstr ""
 
-#: cps/templates/detail.html:1153
+#: cps/templates/detail.html:1164
 msgid "Enter additional email addresses (separated by commas):"
 msgstr ""
 
-#: cps/templates/detail.html:1154
+#: cps/templates/detail.html:1165
 msgid "example@domain.com, another@domain.com"
 msgstr ""
 
-#: cps/templates/detail.html:1155
+#: cps/templates/detail.html:1166
 msgid "Enter one or more email addresses separated by commas"
 msgstr ""
 
-#: cps/templates/detail.html:1160
+#: cps/templates/detail.html:1171
 #, fuzzy
 msgid "Select format:"
 msgstr "Hapus format:"
 
-#: cps/templates/detail.html:1172
+#: cps/templates/detail.html:1183
 msgid "Send"
 msgstr ""
 
-#: cps/templates/detail.html:1494
+#: cps/templates/detail.html:1510
 #, fuzzy
 msgid "Failed to update tags"
 msgstr "Gagal membuat jalur untuk sampul"
 
-#: cps/templates/detail.html:1602
+#: cps/templates/detail.html:1618
 #, fuzzy
 msgid "Failed to update shelves"
 msgstr "Gagal membuat jalur untuk sampul"
@@ -7072,9 +7078,14 @@ msgstr "Kembali ke Beranda"
 msgid "Logout User"
 msgstr "Keluar Pengguna"
 
-#: cps/templates/image.html:18
+#: cps/templates/image.html:25
 msgid "Favorite"
 msgstr ""
+
+#: cps/templates/image.html:27
+#, fuzzy
+msgid "Reading"
+msgstr "Baca"
 
 #: cps/templates/index.html:104
 msgid "Mobile Notice"

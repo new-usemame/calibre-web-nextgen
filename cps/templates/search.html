@@ -46,7 +46,7 @@
               class="book-cover-link">
             <span class="img" title="{{entry.Books.title}}" >
                 {{ image.book_cover(entry.Books) }}
-                {{ image.cover_badges(entry.Books, is_read=(entry[2] == True)) }}
+                {{ image.cover_badges(entry.Books, read_status=(entry[2] or 0)) }}
             </span>
           </a>
         {% endif %}

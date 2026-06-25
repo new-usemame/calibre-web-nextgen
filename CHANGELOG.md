@@ -17,6 +17,17 @@ is for things you can see or feel when running the app.
 ## [Unreleased]
 
 ### Added
+- **Books you're partway through now show a "Currently reading" badge.** If you
+  read on KOReader (or a Kobo) and your progress syncs back, the book used to
+  look exactly like one you'd never opened — the web only marked books as read
+  once you finished them. Now an in-progress book gets an amber "Currently
+  reading" marker on its detail page and a badge on its cover in the grid,
+  shelves, search and author pages, so synced reading progress is actually
+  visible. Reported by @barukh27.
+
+## [v4.0.171] - 2026-06-24
+
+### Added
 - **Choose what permissions new Generic OAuth users get.** Instead of every
   OAuth sign-up inheriting the one global default role, admins can now set a
   per-provider permission set (downloads, viewer, uploads, edit, delete, change
@@ -33,6 +44,11 @@ is for things you can see or feel when running the app.
   everyone rather than admitting all directory users. Thanks to @lduesing.
 
 ### Fixed
+- **"Send to eReader" now shows the real reason it failed.** When your mail
+  server rejected the recipient address, the send used to die with a confusing
+  `TypeError` and hid the actual rejection. It now reports the address and the
+  server's reason (e.g. `kid@home.net: 550 User unknown`) so you can fix it.
+  Reported by @kurtlieber.
 - **Beta (`:dev`) builds no longer nag about a "false" update.** If you run the
   beta image, the "update available" banner kept pointing at the latest *stable*
   release even though a beta build is actually ahead of it. Beta/unversioned

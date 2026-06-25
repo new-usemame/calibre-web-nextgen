@@ -3535,6 +3535,8 @@ def show_book(book_id):
         archived_book = entries[2]
         entry = entries[0]
         entry.read_status = read_book == ub.ReadBook.STATUS_FINISHED
+        # Raw tri-state for the "currently reading" detail-page marker. fork #509.
+        entry.read_status_raw = read_book or ub.ReadBook.STATUS_UNREAD
         entry.is_archived = archived_book
         for lang_index in range(0, len(entry.languages)):
             entry.languages[lang_index].language_name = isoLanguages.get_language_name(get_locale(), entry.languages[

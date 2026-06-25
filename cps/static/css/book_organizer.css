@@ -410,6 +410,41 @@ body.book-organizer-select-mode .book-organizer-actions-row {
 .cover-badge-read .glyphicon { font-size: 11px; }
 .cover-badge-read-label { letter-spacing: 0.3px; }
 
+/* fork #509: "currently reading" badge — a book synced as in-progress from
+   KOReader/Kobo. Amber, distinct from the green "Read" badge so the two
+   states never look alike. Shares the .cover-badge pill geometry. */
+.cover-badge-in-progress {
+  background: #d98e04;
+  color: #fff;
+  padding: 3px 8px;
+}
+.cover-badge-in-progress .glyphicon { font-size: 11px; }
+.cover-badge-in-progress-label { letter-spacing: 0.3px; }
+
+/* Detail-page "Currently reading" marker (fork #509). A standalone amber
+   pill under the title/author — not a cover overlay, so it carries its own
+   inline-flex layout instead of the absolute-positioned .cover-badges stack. */
+.currently-reading {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 4px 0 8px;
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  background: #d98e04;
+  color: #fff;
+  letter-spacing: 0.3px;
+}
+.currently-reading .glyphicon { font-size: 12px; }
+
+/* Legacy random-books-strip badge variant (index.html), matched to the
+   absolute-positioned .cover .read slot but amber for the in-progress state. */
+.cover .badge.in-progress {
+  background: #d98e04;
+}
+
 .cover-badge-shelf {
   background: rgba(20, 30, 40, 0.92);
   color: #fff;

@@ -21,7 +21,8 @@ input[type=checkbox] {accent-color: #cc7b19;}
   box-shadow: 0 0 4px rgba(0, 0, 0, 0.6);
 } */
 
-.cover .read {
+.cover .read,
+.cover .in-progress {
   line-height: 15px;
   font-size: xx-small;
   position: absolute !important;
@@ -34,7 +35,8 @@ input[type=checkbox] {accent-color: #cc7b19;}
 }
 
 @media (max-width: 767px) {
-  .cover .read {
+  .cover .read,
+  .cover .in-progress {
     line-height: 15px;
     font-size: xx-small;
     position: absolute !important;

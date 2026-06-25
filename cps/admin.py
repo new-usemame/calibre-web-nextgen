@@ -37,7 +37,7 @@ from . import user_book_data
 from . import db, calibre_db, ub, web_server, config, updater_thread, gdriveutils, \
     kobo_sync_status, schedule
 from .helper import check_valid_domain, send_test_mail, reset_password, generate_password_hash, check_email, \
-    valid_email, check_username
+    valid_email, check_username, send_broadcast_email
 from .embed_helper import get_calibre_binarypath
 from .gdriveutils import is_gdrive_ready, gdrive_support
 from .render_template import render_title_template, get_sidebar_config
@@ -1886,6 +1886,104 @@ def update_mailsettings():
         flash(_("Email Server Settings updated"), category="success")
 
     return edit_mailsettings()
+
+
+# ---------------------------------------------------------------------------
+# Fork #225 (@froggybottomboys): admin email broadcast to users. Lets an admin
+# compose an HTML message and send it to selected users (or all users with an
+# email) via the existing async mail worker. Delivers the reporter's actual
+# ask (reach users proactively) on top of the v4.0.118 login banner.
+# ---------------------------------------------------------------------------
+
+def _broadcast_recipient_users():
+    """Users eligible to receive a broadcast: anyone with a non-empty email.
+
+    Returns lightweight dicts (id/name/email) ordered by name, for the
+    recipient picker. The Anonymous/guest account is excluded.
+    """
+    rows = ub.session.query(ub.User).filter(
+        ub.User.email != "", ub.User.email.isnot(None)
+    ).order_by(func.lower(ub.User.name)).all()
+    return [{"id": u.id, "name": u.name, "email": u.email}
+            for u in rows if u.email and not u.role_anonymous()]
+
+
+def _render_broadcast_page(subject="", body=""):
+    recipients = _broadcast_recipient_users()
+    return render_title_template(
+        "broadcast_email.html",
+        title=_("Email Your Users"),
+        page="broadcast",
+        recipients=recipients,
+        mail_configured=config.get_mail_server_configured(),
+        announcement=config.config_server_announcement or "",
+        subject_value=subject,
+        body_value=body,
+    )
+
+
+@admi.route("/admin/broadcast", methods=["GET"])
+@user_login_required
+@admin_required
+def broadcast_email():
+    return _render_broadcast_page()
+
+
+@admi.route("/admin/broadcast", methods=["POST"])
+@user_login_required
+@admin_required
+def send_broadcast():
+    subject = strip_whitespaces(request.form.get("subject", "") or "")
+    body = request.form.get("body", "") or ""
+    is_test = bool(request.form.get("test"))
+
+    if not config.get_mail_server_configured():
+        flash(_("Please configure the email server under Edit Email Server Settings first."),
+              category="error")
+        return _render_broadcast_page(subject, body)
+
+    if not subject:
+        flash(_("Please enter a subject for the announcement email."), category="error")
+        return _render_broadcast_page(subject, body)
+    if not strip_whitespaces(body):
+        flash(_("Please enter a message body for the announcement email."), category="error")
+        return _render_broadcast_page(subject, body)
+
+    if is_test:
+        # Send-to-self preview: only ever the current admin's own address.
+        if not current_user.email:
+            flash(_("Please set an email address on your own account first..."), category="error")
+            return _render_broadcast_page(subject, body)
+        recipients = [current_user.email]
+    else:
+        # Resolve recipient emails SERVER-SIDE from the posted user ids — never
+        # trust posted email strings. "select all" sends to every eligible user.
+        eligible = {str(u["id"]): u["email"] for u in _broadcast_recipient_users()}
+        if request.form.get("select_all"):
+            recipients = list(eligible.values())
+        else:
+            chosen = request.form.getlist("recipients")
+            recipients = [eligible[cid] for cid in chosen if cid in eligible]
+        if not recipients:
+            flash(_("Please select at least one recipient."), category="error")
+            return _render_broadcast_page(subject, body)
+
+    queued, skipped = send_broadcast_email(subject, body, recipients, current_user.name)
+
+    if queued == 0:
+        flash(_("No valid recipients — nothing was sent."), category="error")
+        return _render_broadcast_page(subject, body)
+
+    if is_test:
+        flash(_("Test announcement email queued to %(email)s — check Tasks for the result.",
+                email=current_user.email), category="info")
+        return _render_broadcast_page(subject, body)
+
+    msg = _("Announcement email queued for %(num)s recipient(s) — check Tasks for delivery.", num=queued)
+    if skipped:
+        msg += " " + _("%(num)s address(es) were skipped as invalid or duplicate.", num=skipped)
+    flash(msg, category="success")
+    return redirect(url_for('admin.broadcast_email'))
 
 
 @admi.route("/admin/scheduledtasks")

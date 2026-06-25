@@ -134,6 +134,103 @@ def get_email_body_text():
         _('This Email has been sent via Calibre-Web NextGen.'))
 
 
+# ---------------------------------------------------------------------------
+# Fork #225 (@froggybottomboys): admin email broadcast to users.
+# ---------------------------------------------------------------------------
+
+def html_to_text(html_body):
+    """Derive a plain-text fallback from an admin-authored HTML body.
+
+    Dependency-free (Hard Rule 6): turn block/line breaks into newlines,
+    drop every remaining tag, unescape entities, and collapse runaway blank
+    lines. This is the ``text/plain`` alternative shown by mail clients that
+    don't render HTML — it doesn't need to be perfect, only readable.
+    """
+    import html as _html
+    if not html_body:
+        return ""
+    text = html_body
+    # <br> and end-of-block tags become newlines so paragraphs survive.
+    text = re.sub(r"(?i)<\s*br\s*/?\s*>", "\n", text)
+    text = re.sub(r"(?i)</\s*(p|div|li|tr|h[1-6]|ul|ol|table|blockquote)\s*>", "\n", text)
+    # Strip every remaining tag, then unescape HTML entities.
+    text = re.sub(r"(?s)<[^>]+>", "", text)
+    text = _html.unescape(text)
+    # Collapse 3+ newlines to a blank-line separator; trim trailing space.
+    text = re.sub(r"[ \t]+\n", "\n", text)
+    text = re.sub(r"\n{3,}", "\n\n", text)
+    return strip_whitespaces(text)
+
+
+def build_broadcast_html(body_html):
+    """Wrap the admin's HTML body in a minimal, email-safe skeleton.
+
+    The body is admin-authored and trusted (same model as the #323 custom-CSS
+    injection); it is delivered to recipients' mail clients, never rendered
+    inside CWNG, so there is no XSS surface against this app. The wrapper just
+    gives clients a well-formed document with sane default styling.
+    """
+    body_html = body_html or ""
+    return (
+        "<!DOCTYPE html><html><head><meta charset=\"utf-8\">"
+        "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"></head>"
+        "<body style=\"margin:0;padding:16px;font-family:-apple-system,Segoe UI,Roboto,"
+        "Helvetica,Arial,sans-serif;font-size:15px;line-height:1.5;color:#222;\">"
+        "{}</body></html>".format(body_html)
+    )
+
+
+def _coerce_valid_recipient(raw_email):
+    """Return a single validated email, or None if empty/malformed.
+
+    Unlike :func:`valid_email` (which raises on the first bad address), this
+    is lenient: a broadcast skips an unparseable recipient rather than
+    aborting the whole send.
+    """
+    if not raw_email:
+        return None
+    try:
+        cleaned = valid_email(raw_email)
+    except Exception:
+        return None
+    return cleaned or None
+
+
+def send_broadcast_email(subject, body_html, recipients, sender_name):
+    """Queue an HTML broadcast email to each recipient via the worker thread.
+
+    ``recipients`` is an iterable of email strings already resolved from user
+    ids server-side (never trusted from the request). Each valid recipient
+    gets its own :class:`TaskEmail` (multipart/alternative: the wrapped HTML
+    body + a derived text fallback), enqueued on :class:`WorkerThread` so the
+    request returns immediately. Returns ``(queued, skipped)``.
+    """
+    settings = config.get_mail_settings()
+    text_fallback = html_to_text(body_html) or strip_whitespaces(body_html or "")
+    wrapped_html = build_broadcast_html(body_html)
+    queued = 0
+    skipped = 0
+    seen = set()
+    for raw in recipients:
+        email = _coerce_valid_recipient(raw)
+        if not email or email.lower() in seen:
+            skipped += 1
+            continue
+        seen.add(email.lower())
+        WorkerThread.add(sender_name, TaskEmail(
+            subject=subject,
+            filepath=None,
+            attachment=None,
+            settings=settings,
+            recipient=email,
+            task_message=N_("Announcement Email to %(email)s", email=email),
+            text=text_fallback,
+            html=wrapped_html,
+        ))
+        queued += 1
+    return queued, skipped
+
+
 # Convert existing book entry to new format
 def convert_book_format(book_id, calibre_path, old_book_format, new_book_format, user_id,
                         ereader_mail=None, subject=None, blocking=False):

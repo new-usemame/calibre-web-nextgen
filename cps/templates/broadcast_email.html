@@ -1,0 +1,108 @@
+{% extends "layout.html" %}
+{% block body %}
+<div class="discover">
+  <h1>{{title}}</h1>
+
+  {% if not mail_configured %}
+  <div class="alert alert-warning">
+    {{_('The email server is not configured yet, so announcements cannot be sent.')}}
+    <a href="{{ url_for('admin.edit_mailsettings') }}">{{_('Edit Email Server Settings')}}</a>
+  </div>
+  {% endif %}
+
+  <p class="text-muted">{{_('Compose a message and send it by email to your users. Messages are queued and sent in the background — check Tasks for delivery status.')}}</p>
+
+  <form role="form" id="broadcastForm" class="col-md-10 col-lg-8" method="POST" action="{{ url_for('admin.send_broadcast') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+    <div class="form-group">
+      <label for="broadcast_subject">{{_('Subject')}}</label>
+      <input type="text" class="form-control" name="subject" id="broadcast_subject" maxlength="255"
+             value="{{ subject_value }}" required>
+    </div>
+
+    <div class="form-group">
+      <label for="broadcast_body">{{_('Message')}}</label>
+      <textarea class="form-control" name="body" id="broadcast_body" rows="10"
+                placeholder="{{_('Write your announcement here. HTML is allowed (links, bold, lists).')}}">{{ body_value }}</textarea>
+      <small class="help-block">
+        {{_('HTML is allowed for formatting (e.g. links and bold). Recipients on plain-text mail clients automatically get a text-only version.')}}
+        {% if announcement %}
+        <button type="button" id="prefill_announcement" class="btn btn-link btn-xs" style="padding:0">{{_('Use current announcement banner text')}}</button>
+        {% endif %}
+      </small>
+    </div>
+
+    <div class="form-group">
+      <label>{{_('Recipients')}}</label>
+      {% if recipients %}
+      <div class="checkbox">
+        <label><input type="checkbox" id="broadcast_select_all" name="select_all" value="1"> <strong>{{_('Select all users with an email address')}}</strong> ({{ recipients|length }})</label>
+      </div>
+      <div id="broadcast_recipient_list" style="max-height:260px;overflow-y:auto;border:1px solid #ddd;border-radius:4px;padding:8px;">
+        {% for u in recipients %}
+        <div class="checkbox" style="margin:2px 0">
+          <label><input type="checkbox" class="broadcast-recipient" name="recipients" value="{{ u.id }}"> {{ u.name }} &mdash; <span class="text-muted">{{ u.email }}</span></label>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <p class="text-muted">{{_('No users have an email address set, so there is no one to send to yet.')}}</p>
+      {% endif %}
+    </div>
+
+    <button type="submit" name="send" value="send" id="broadcast_send" class="btn btn-primary"
+            {% if not mail_configured or not recipients %}disabled{% endif %}>{{_('Send announcement')}}</button>
+    <button type="submit" name="test" value="test" id="broadcast_test" class="btn btn-default"
+            {% if not mail_configured %}disabled{% endif %}>{{_('Send test to me')}}</button>
+    <a href="{{ url_for('admin.admin') }}" class="btn btn-default">{{_('Back')}}</a>
+  </form>
+</div>
+{% endblock %}
+
+{% block js %}
+<script>
+  (function () {
+    var announcementText = {{ announcement|tojson }};
+    var confirmTemplate = {{ _('Send this announcement to %(num)s recipient(s)?')|tojson }};
+
+    var prefillBtn = document.getElementById('prefill_announcement');
+    if (prefillBtn) {
+      prefillBtn.addEventListener('click', function () {
+        var body = document.getElementById('broadcast_body');
+        body.value = announcementText;
+        body.focus();
+      });
+    }
+
+    var selectAll = document.getElementById('broadcast_select_all');
+    var boxes = Array.prototype.slice.call(document.querySelectorAll('.broadcast-recipient'));
+    if (selectAll) {
+      selectAll.addEventListener('change', function () {
+        boxes.forEach(function (b) { b.checked = selectAll.checked; });
+      });
+      boxes.forEach(function (b) {
+        b.addEventListener('change', function () {
+          if (!b.checked) { selectAll.checked = false; }
+          else if (boxes.every(function (x) { return x.checked; })) { selectAll.checked = true; }
+        });
+      });
+    }
+
+    // Confirm only on the real broadcast (not the test-to-self button).
+    var form = document.getElementById('broadcastForm');
+    var sendBtn = document.getElementById('broadcast_send');
+    if (form && sendBtn) {
+      sendBtn.addEventListener('click', function (e) {
+        var count = (selectAll && selectAll.checked)
+          ? boxes.length
+          : boxes.filter(function (b) { return b.checked; }).length;
+        if (count === 0) { return; } // let server-side validation flash the error
+        if (!window.confirm(confirmTemplate.replace('%(num)s', count))) {
+          e.preventDefault();
+        }
+      });
+    }
+  })();
+</script>
+{% endblock %}

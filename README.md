@@ -24,6 +24,7 @@ docker compose pull && docker compose up -d
 
 Library, settings, users, OAuth tokens, and KOReader sync state are preserved. Switching back is the reverse one-line change.
 
+- **On a NAS or Docker GUI** (Synology, Unraid, Portainer, TrueNAS)? Follow the click-by-click [Install / Switch guides](docs/install/README.md) — no command line needed.
 - **Bug?** [File it here.](https://github.com/new-usemame/Calibre-Web-NextGen/issues/new?template=bug_report.md)
 - **Feature idea?** [Open a request.](https://github.com/new-usemame/Calibre-Web-NextGen/issues/new?template=feature_request.md) Anything goes, no checklist required — even half-formed ideas are welcome and help prioritize what to look at next.
 - **New here?** See [Quick start](#quick-start) below.
@@ -36,6 +37,7 @@ Library, settings, users, OAuth tokens, and KOReader sync state are preserved. S
 
 - [Why this fork exists](#why-this-fork-exists)
 - [What's included](#whats-included)
+- [Install / Switch guides (NAS & Docker GUIs)](docs/install/README.md)
 - [Quick start](#quick-start)
 - [Full Docker Compose setup](#full-docker-compose-setup)
 - [First run](#first-run)

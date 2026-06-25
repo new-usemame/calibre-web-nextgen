@@ -21,7 +21,8 @@ replit.nix
 .vscode
 .history
 cwa-wiki/
-docs/
+docs/*
+!docs/install/
 .venv-activate.sh
 test_venv
 cwa.code-workspace

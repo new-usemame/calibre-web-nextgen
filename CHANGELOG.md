@@ -27,6 +27,13 @@ is for things you can see or feel when running the app.
   preview before sending. Messages send in the background — check Tasks for
   delivery. Requested by @froggybottomboys.
 
+### Fixed
+- **The "Discover (Random Books)" row now actually appears.** Turning on "Show
+  Random Books in Detail View" did nothing — a leftover theme rule hid the
+  random-books row for everyone, so the "No. of Random Books to Display" setting
+  had no visible effect. The row now shows as a "Discover (Random Books)" strip
+  above your book list, on desktop and mobile. Reported by @chloeroform.
+
 ## [v4.0.172] - 2026-06-25
 
 ### Added

@@ -1696,9 +1696,16 @@ app-loading-container {
     margin: 20px auto
 }
 
-.pace-progress, .random-books {
+.pace-progress {
     display: none
 }
+
+/* fork #523: the upstream caliBlur theme also hid `.random-books`, which is the
+   "Discover (Random Books)" strip shown when a user enables "Show Random Books
+   in Detail View". caliBlur is the only shipped theme, so that leftover hide
+   left the whole feature dead for every user. The strip's cards reuse the
+   standard `#books_rand` / `.book` styling caliBlur already defines, so it
+   renders consistently once shown. Reported by @chloeroform. */
 
 #main-nav + #scnd-nav::-webkit-scrollbar, #main-nav + .col-sm-2::-webkit-scrollbar, .navbar-collapse.collapse::-webkit-scrollbar, body > div.container-fluid > div.row-fluid > div.col-sm-2::-webkit-scrollbar, body > div.container-fluid > div > div.col-sm-10::-webkit-scrollbar {
     width: 14px;

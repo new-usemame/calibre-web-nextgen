@@ -323,3 +323,27 @@ a#advanced_search > span.hidden-sm {
 }
 /* The mobile (<=767px) repositioning of .cwa-toast-stack lives in
    fork-mobile-cards.css alongside the other mobile adaptations. */
+
+/* fork #523: render the "Discover (Random Books)" strip heading as a section
+   title above the cover row. caliBlur (caliBlur.css) used to hide `.random-books`
+   outright; now that the strip is shown, caliBlur's `.discover > h2` rule would
+   pin THIS heading to the fixed header bar (position:fixed; top:60; left:240),
+   where it collides with the page title and renders as garbled overlapping text.
+   Match caliBlur's selector depth + the .random-books classes so this wins, and
+   put the heading back in normal flow above the covers. Reported by @chloeroform. */
+body:not(.admin) > div.container-fluid > div > div.col-sm-10 > div.discover.random-books > h2.random-books {
+    position: static !important;
+    top: auto !important;
+    left: auto !important;
+    width: auto !important;
+    max-width: none !important;
+    height: auto !important;
+    line-height: 1.3 !important;
+    margin: 0 0 14px !important;
+    padding: 4px 0 10px 2px !important;
+    font-size: 18px !important;
+    font-weight: 600 !important;
+    color: #fff !important;
+    white-space: normal !important;
+    overflow: visible !important;
+}

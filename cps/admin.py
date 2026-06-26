@@ -1904,8 +1904,19 @@ def _broadcast_recipient_users():
     rows = ub.session.query(ub.User).filter(
         ub.User.email.isnot(None), func.trim(ub.User.email) != ""
     ).order_by(func.lower(ub.User.name)).all()
-    return [{"id": u.id, "name": u.name, "email": u.email}
-            for u in rows if strip_whitespaces(u.email or "") and not u.role_anonymous()]
+    # Only offer users whose stored email yields at least one valid address,
+    # using the SAME canonicalizer the sender uses — so the picker shows exactly
+    # who would be mailed (no whitespace-only/malformed row that appears
+    # selectable then gets silently skipped) and displays the cleaned
+    # address(es).
+    out = []
+    for u in rows:
+        if u.role_anonymous():
+            continue
+        addrs = helper.valid_broadcast_addresses(u.email)
+        if addrs:
+            out.append({"id": u.id, "name": u.name, "email": ", ".join(addrs)})
+    return out
 
 
 def _render_broadcast_page(subject="", body=""):

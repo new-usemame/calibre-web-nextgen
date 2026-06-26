@@ -143,6 +143,29 @@ class TestBuildBroadcastHtml:
 # 4. send_broadcast_email enqueue behaviour
 # --------------------------------------------------------------------------- #
 
+class TestValidBroadcastAddresses:
+    """The shared canonicalizer used by BOTH the recipient picker and the
+    sender, so they never disagree (Greptile #529 hardening)."""
+
+    def test_single_valid(self):
+        from cps.helper import valid_broadcast_addresses
+        assert valid_broadcast_addresses("a@b.com") == ["a@b.com"]
+
+    def test_comma_separated_expands(self):
+        from cps.helper import valid_broadcast_addresses
+        assert valid_broadcast_addresses("a@b.com, c@d.com") == ["a@b.com", "c@d.com"]
+
+    def test_whitespace_only_is_empty(self):
+        from cps.helper import valid_broadcast_addresses
+        assert valid_broadcast_addresses("   ") == []
+        assert valid_broadcast_addresses("") == []
+        assert valid_broadcast_addresses(None) == []
+
+    def test_malformed_is_empty_not_raising(self):
+        from cps.helper import valid_broadcast_addresses
+        assert valid_broadcast_addresses("not-an-email") == []
+
+
 class TestSendBroadcastEmail:
     @pytest.fixture
     def captured(self, monkeypatch):
@@ -191,6 +214,16 @@ class TestSendBroadcastEmail:
         queued, skipped = send_broadcast_email("S", "<p>B</p>", ["", "bad"], "admin")
         assert queued == 0 and skipped == 2
         assert captured == []
+
+    def test_comma_separated_value_fans_out_and_counts_each(self, captured):
+        """A single stored comma-list must enqueue one mail PER address and
+        count each (not silently treated as one). Greptile #529 hardening."""
+        from cps.helper import send_broadcast_email
+        queued, skipped = send_broadcast_email(
+            "S", "<p>B</p>", ["a@b.com, c@d.com"], "admin")
+        assert queued == 2
+        recips = {t.recipient for _, t in captured}
+        assert recips == {"a@b.com", "c@d.com"}
 
     # -- Greptile P1 (#529): a single stored field may hold a comma-separated
     # list (the convention send-to-eReader already uses). It must fan out to
@@ -265,17 +298,21 @@ class TestBroadcastRoutes:
         src = inspect.getsource(admin._broadcast_recipient_users)
         assert "role_anonymous()" in src
         assert "ub.User.email" in src
+        # picker uses the SAME canonicalizer as the sender (no whitespace/
+        # malformed row shown-then-skipped)
+        assert "valid_broadcast_addresses" in src
 
     def test_helper_excludes_whitespace_only_email(self):
         """Greptile P2 (#529): a whitespace-only stored email must NOT appear
         in the picker — otherwise the admin selects it, the send helper strips
         and skips it, and the confirmed count silently exceeds what's queued.
-        Trim on BOTH the DB query and the Python projection so neither layer
-        can leak a blank-after-trim address."""
+        Trim on the DB query AND canonicalize in the Python projection (via the
+        shared validator the sender uses) so neither layer can leak a
+        blank-after-trim address."""
         from cps import admin
         src = inspect.getsource(admin._broadcast_recipient_users)
         assert "func.trim(ub.User.email)" in src
-        assert "strip_whitespaces(u.email" in src
+        assert "valid_broadcast_addresses(u.email)" in src
 
 
 # --------------------------------------------------------------------------- #

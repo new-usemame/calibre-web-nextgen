@@ -180,23 +180,25 @@ def build_broadcast_html(body_html):
     )
 
 
-def _coerce_valid_recipient(raw_email):
-    """Return validated email(s), or None if empty/malformed.
+def valid_broadcast_addresses(raw_email):
+    """Return the list of individual, validated addresses in ``raw_email``.
 
-    Unlike :func:`valid_email` (which raises on the first bad address), this
-    is lenient: a broadcast skips an unparseable recipient rather than
-    aborting the whole send. A stored address field may itself hold a
-    comma-separated list (the same convention send-to-eReader uses), so the
-    return value can be a ``"a@x,b@y"`` string; the caller splits it and
-    enqueues one mail per individual address.
+    A stored ``user.email`` can legitimately be a comma-separated list (the
+    input validator :func:`valid_email` accepts and joins several), so one user
+    may map to several real recipients. Return each as its own clean address
+    (empty list if none parse). Unlike :func:`valid_email`, this never raises,
+    so one bad value can't abort a broadcast. Used both to decide who is
+    *selectable* and to expand the actual *send* list, so the recipient picker
+    and the sender stay consistent (a whitespace-only or malformed stored email
+    is neither offered nor silently dropped).
     """
     if not raw_email:
-        return None
+        return []
     try:
         cleaned = valid_email(raw_email)
     except Exception:
-        return None
-    return cleaned or None
+        return []
+    return [a for a in (strip_whitespaces(p) for p in cleaned.split(',')) if a]
 
 
 def send_broadcast_email(subject, body_html, recipients, sender_name):
@@ -215,17 +217,15 @@ def send_broadcast_email(subject, body_html, recipients, sender_name):
     skipped = 0
     seen = set()
     for raw in recipients:
-        cleaned = _coerce_valid_recipient(raw)
-        if not cleaned:
-            skipped += 1
+        addresses = valid_broadcast_addresses(raw)
+        if not addresses:
+            skipped += 1  # this value yielded no usable address
             continue
         # A single stored field may hold a comma-separated list; enqueue one
         # mail per individual address so the queued count and per-address
-        # de-duplication stay honest (a "select all" can never silently fan
-        # one selected row out to addresses the admin didn't pick).
-        for email in cleaned.split(","):
-            email = strip_whitespaces(email)
-            if not email or email.lower() in seen:
+        # de-duplication stay honest.
+        for email in addresses:
+            if email.lower() in seen:
                 skipped += 1
                 continue
             seen.add(email.lower())

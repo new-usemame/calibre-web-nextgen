@@ -33,6 +33,12 @@ is for things you can see or feel when running the app.
   random-books row for everyone, so the "No. of Random Books to Display" setting
   had no visible effect. The row now shows as a "Discover (Random Books)" strip
   above your book list, on desktop and mobile. Reported by @chloeroform.
+- **Changing the "Regular Expression for Title Sorting" now re-sorts your whole
+  library right away.** After editing that setting (Admin → UI Configuration),
+  the book order didn't change until you edited each book one by one — the new
+  rule only applied to books you touched afterwards. Saving the setting now
+  recomputes the sort order for every book immediately, the same way Calibre
+  desktop does. Reported by @chloeroform.
 
 ## [v4.0.172] - 2026-06-25
 

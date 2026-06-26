@@ -940,6 +940,16 @@ def update_view_configuration():
         # call time via closure in ``_register_sqlite_udfs``; updating the
         # config object is sufficient — no per-connection re-registration.
         db.CalibreDB.update_config(config)
+        # New regex only changes title_sort() output going forward; existing
+        # books keep their previously-stored ``sort`` column (the metadata.db
+        # trigger recomputes it only when a title changes), so listings stay
+        # in the old order until each book is edited. Recompute the whole
+        # library now, like Calibre desktop does on a regex change. (#522)
+        try:
+            updated = calibre_db.reapply_title_sort()
+            log.info("Title-sort regex changed; recomputed sort for %s books", updated)
+        except Exception as ex:
+            log.error("Title-sort recompute failed: %s", ex)
 
     if not check_valid_read_column(to_save.get("config_read_column", "0")):
         flash(_("Invalid Read Column"), category="error")

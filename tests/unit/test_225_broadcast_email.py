@@ -305,3 +305,18 @@ class TestBroadcastTemplate:
     def test_warns_when_mail_unconfigured(self, tpl):
         assert "not mail_configured" in tpl
         assert "edit_mailsettings" in tpl
+
+    def test_no_printf_placeholder_inside_gettext(self, tpl):
+        """Regression: a ``_('... %(x)s ...')`` in the template makes Jinja's
+        gettext interpolate at RENDER time and 500s with KeyError when no
+        mapping is passed (caught live on cwn-local). The client-side confirm
+        string must use a plain token (__NUM__), substituted in JS, not a
+        printf placeholder. Pin that no gettext call carries a %(...)s."""
+        import re
+        # Find every _('...') / _("...") literal and ensure none contains %(...)s
+        for m in re.finditer(r"_\(\s*(['\"])(.*?)\1", tpl, re.DOTALL):
+            assert "%(" not in m.group(2), (
+                "gettext literal must not contain a printf placeholder "
+                "(crashes at render): {!r}".format(m.group(2))
+            )
+        assert "__NUM__" in tpl  # the confirm count token survives

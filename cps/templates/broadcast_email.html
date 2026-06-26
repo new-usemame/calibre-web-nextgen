@@ -64,7 +64,9 @@
 <script>
   (function () {
     var announcementText = {{ announcement|tojson }};
-    var confirmTemplate = {{ _('Send this announcement to %(num)s recipient(s)?')|tojson }};
+    // Token (not %(num)s) so server-side gettext doesn't try to interpolate at
+    // render time; the count is substituted client-side below.
+    var confirmTemplate = {{ _('Send this announcement to __NUM__ recipient(s)?')|tojson }};
 
     var prefillBtn = document.getElementById('prefill_announcement');
     if (prefillBtn) {
@@ -98,7 +100,7 @@
           ? boxes.length
           : boxes.filter(function (b) { return b.checked; }).length;
         if (count === 0) { return; } // let server-side validation flash the error
-        if (!window.confirm(confirmTemplate.replace('%(num)s', count))) {
+        if (!window.confirm(confirmTemplate.replace('__NUM__', count))) {
           e.preventDefault();
         }
       });

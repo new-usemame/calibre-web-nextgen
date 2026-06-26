@@ -32,6 +32,11 @@ import pytest
 from sqlalchemy import create_engine, event, text
 from sqlalchemy.orm import sessionmaker
 
+# Without this marker the fast CI job (``pytest -m "smoke or unit"``) collects
+# then deselects every test in this file, so the regression could silently
+# return without failing CI (same gotcha caught on PR #526).
+pytestmark = pytest.mark.unit
+
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
@@ -50,8 +55,11 @@ def _title_sort(title):
         if regex:
             match = re.compile(regex, re.IGNORECASE).search(title)
             if match:
-                prep = match.group(0)
-                title = title[len(prep):] + ", " + prep.strip()
+                # Mirror production (cps/db.py::_title_sort) exactly: it reads
+                # the captured article via match.group(1), so a non-capturing
+                # regex would break sorting identically here and in production.
+                prep = match.group(1)
+                title = title[len(prep):] + ", " + prep
     except Exception:
         pass
     return title.strip()
@@ -130,7 +138,10 @@ def test_recompute_does_not_mutate_titles(session):
     _CFG["regex"] = r"^(A|An)\s+"
     session.execute(text("UPDATE books SET sort = title_sort(title)"))
     session.commit()
-    titles = session.execute(text("SELECT title FROM books ORDER BY id")).scalars().all()
+    # ``Result.scalars()`` is SQLAlchemy 1.4+; the project allows >=1.3.0, so
+    # index the rows directly to stay portable across the supported range.
+    titles = [row[0] for row in
+              session.execute(text("SELECT title FROM books ORDER BY id"))]
     assert titles == ["The Time Machine", "An Apple", "Zorro"]
 
 
@@ -144,15 +155,49 @@ def test_calibredb_exposes_reapply_title_sort():
 
 def test_reapply_uses_title_sort_udf_update():
     """Pin the exact SQL so the recompute keeps going through the UDF."""
-    src = open(os.path.join(REPO_ROOT, "cps", "db.py")).read()
+    src = open(os.path.join(REPO_ROOT, "cps", "db.py"), encoding="utf-8").read()
     func_src = src.split("def reapply_title_sort", 1)[1].split("\n    def ", 1)[0]
     assert "UPDATE books SET sort = title_sort(title)" in func_src
+
+
+def test_reapply_reraises_on_failure_not_silent_zero():
+    """A failed recompute must roll back and propagate, not return 0 (which the
+    caller cannot tell apart from a real zero-row update). Pin that the
+    OperationalError branch re-raises instead of swallowing the failure."""
+    src = open(os.path.join(REPO_ROOT, "cps", "db.py"), encoding="utf-8").read()
+    func_src = src.split("def reapply_title_sort", 1)[1].split("\n    def ", 1)[0]
+    except_block = func_src.split("except OperationalError", 1)[1]
+    assert "self.session.rollback()" in except_block
+    assert "raise" in except_block
+    assert "return 0" not in except_block, \
+        "recompute failure must propagate, not report a silent zero-row success"
+
+
+def test_viewconfig_flashes_error_when_recompute_fails():
+    """Pin that the viewconfig handler surfaces a recompute failure to the admin
+    (clear error state) rather than logging a misleading success."""
+    src = open(os.path.join(REPO_ROOT, "cps", "admin.py"), encoding="utf-8").read()
+    tree = ast.parse(src)
+    func = next(n for n in ast.walk(tree)
+                if isinstance(n, ast.FunctionDef) and n.name == "update_view_configuration")
+    # Find the try whose body calls reapply_title_sort, then assert its handler flashes.
+    for node in ast.walk(func):
+        if isinstance(node, ast.Try):
+            try_src = "\n".join(ast.get_source_segment(src, s) or "" for s in node.body)
+            if "reapply_title_sort" in try_src:
+                handler_src = "\n".join(
+                    ast.get_source_segment(src, s) or ""
+                    for h in node.handlers for s in h.body)
+                assert "flash(" in handler_src, \
+                    "viewconfig must flash an error when the title-sort recompute fails"
+                return
+    raise AssertionError("reapply_title_sort try/except not found in viewconfig")
 
 
 def test_viewconfig_handler_recomputes_on_regex_change():
     """Pin that update_view_configuration calls reapply_title_sort inside the
     config_title_regex change branch — the user-visible trigger for #522."""
-    src = open(os.path.join(REPO_ROOT, "cps", "admin.py")).read()
+    src = open(os.path.join(REPO_ROOT, "cps", "admin.py"), encoding="utf-8").read()
     tree = ast.parse(src)
     func = next(n for n in ast.walk(tree)
                 if isinstance(n, ast.FunctionDef) and n.name == "update_view_configuration")

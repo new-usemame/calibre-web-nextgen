@@ -950,6 +950,9 @@ def update_view_configuration():
             log.info("Title-sort regex changed; recomputed sort for %s books", updated)
         except Exception as ex:
             log.error("Title-sort recompute failed: %s", ex)
+            flash(_("The title-sort rule was saved, but reordering the existing "
+                    "library failed — books may keep their previous order until "
+                    "you retry or edit them."), category="error")
 
     if not check_valid_read_column(to_save.get("config_read_column", "0")):
         flash(_("Invalid Read Column"), category="error")

@@ -1015,7 +1015,9 @@ class CalibreDB:
         desktop's "regex change recalculates all title-sort values". The
         statement leaves ``title`` untouched, so ``books_update_trg`` does not
         fire (and ``PRAGMA recursive_triggers`` is off regardless). Returns
-        the number of rows updated.
+        the number of rows updated, and re-raises after rolling back if the
+        update fails so the caller can surface the failure instead of silently
+        reporting a zero-row success while listings stay stale.
         """
         if self.session is None:
             return 0
@@ -1027,7 +1029,7 @@ class CalibreDB:
         except OperationalError as ex:
             self.session.rollback()
             log.error("Failed to recompute title sort: {}".format(ex))
-            return 0
+            raise
 
     @classmethod
     def setup_db(cls, config_calibre_dir, app_db_path):

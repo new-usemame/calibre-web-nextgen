@@ -1902,10 +1902,10 @@ def _broadcast_recipient_users():
     recipient picker. The Anonymous/guest account is excluded.
     """
     rows = ub.session.query(ub.User).filter(
-        ub.User.email != "", ub.User.email.isnot(None)
+        ub.User.email.isnot(None), func.trim(ub.User.email) != ""
     ).order_by(func.lower(ub.User.name)).all()
     return [{"id": u.id, "name": u.name, "email": u.email}
-            for u in rows if u.email and not u.role_anonymous()]
+            for u in rows if strip_whitespaces(u.email or "") and not u.role_anonymous()]
 
 
 def _render_broadcast_page(subject="", body=""):

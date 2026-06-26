@@ -181,11 +181,14 @@ def build_broadcast_html(body_html):
 
 
 def _coerce_valid_recipient(raw_email):
-    """Return a single validated email, or None if empty/malformed.
+    """Return validated email(s), or None if empty/malformed.
 
     Unlike :func:`valid_email` (which raises on the first bad address), this
     is lenient: a broadcast skips an unparseable recipient rather than
-    aborting the whole send.
+    aborting the whole send. A stored address field may itself hold a
+    comma-separated list (the same convention send-to-eReader uses), so the
+    return value can be a ``"a@x,b@y"`` string; the caller splits it and
+    enqueues one mail per individual address.
     """
     if not raw_email:
         return None
@@ -212,22 +215,31 @@ def send_broadcast_email(subject, body_html, recipients, sender_name):
     skipped = 0
     seen = set()
     for raw in recipients:
-        email = _coerce_valid_recipient(raw)
-        if not email or email.lower() in seen:
+        cleaned = _coerce_valid_recipient(raw)
+        if not cleaned:
             skipped += 1
             continue
-        seen.add(email.lower())
-        WorkerThread.add(sender_name, TaskEmail(
-            subject=subject,
-            filepath=None,
-            attachment=None,
-            settings=settings,
-            recipient=email,
-            task_message=N_("Announcement Email to %(email)s", email=email),
-            text=text_fallback,
-            html=wrapped_html,
-        ))
-        queued += 1
+        # A single stored field may hold a comma-separated list; enqueue one
+        # mail per individual address so the queued count and per-address
+        # de-duplication stay honest (a "select all" can never silently fan
+        # one selected row out to addresses the admin didn't pick).
+        for email in cleaned.split(","):
+            email = strip_whitespaces(email)
+            if not email or email.lower() in seen:
+                skipped += 1
+                continue
+            seen.add(email.lower())
+            WorkerThread.add(sender_name, TaskEmail(
+                subject=subject,
+                filepath=None,
+                attachment=None,
+                settings=settings,
+                recipient=email,
+                task_message=N_("Announcement Email to %(email)s", email=email),
+                text=text_fallback,
+                html=wrapped_html,
+            ))
+            queued += 1
     return queued, skipped
 
 

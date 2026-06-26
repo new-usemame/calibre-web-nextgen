@@ -192,6 +192,30 @@ class TestSendBroadcastEmail:
         assert queued == 0 and skipped == 2
         assert captured == []
 
+    # -- Greptile P1 (#529): a single stored field may hold a comma-separated
+    # list (the convention send-to-eReader already uses). It must fan out to
+    # one TaskEmail PER individual address, with an honest queued count — not
+    # one task whose `recipient` is "a,b" (which SMTP would deliver to both
+    # while the admin sees a count of 1 and per-address dedupe never runs).
+    def test_comma_list_recipient_fans_out_to_each_address(self, captured):
+        from cps.helper import send_broadcast_email
+        queued, skipped = send_broadcast_email(
+            "Subject", "<p>Body</p>", ["a@b.com,c@d.com"], "admin")
+        assert queued == 2 and skipped == 0
+        recips = {t.recipient for _, t in captured}
+        assert recips == {"a@b.com", "c@d.com"}
+        # never a single combined To header
+        assert all("," not in t.recipient for _, t in captured)
+
+    def test_comma_list_dedupes_across_rows(self, captured):
+        from cps.helper import send_broadcast_email
+        queued, skipped = send_broadcast_email(
+            "Subject", "<p>Body</p>", ["a@b.com, c@d.com", "C@D.com"], "admin")
+        # a + c queued once each; the case-insensitive repeat of c is skipped
+        assert queued == 2 and skipped == 1
+        recips = {t.recipient for _, t in captured}
+        assert recips == {"a@b.com", "c@d.com"}
+
 
 # --------------------------------------------------------------------------- #
 # 5. Route source-pins (admin gate, mail gate, server-side recipient resolve)
@@ -241,6 +265,17 @@ class TestBroadcastRoutes:
         src = inspect.getsource(admin._broadcast_recipient_users)
         assert "role_anonymous()" in src
         assert "ub.User.email" in src
+
+    def test_helper_excludes_whitespace_only_email(self):
+        """Greptile P2 (#529): a whitespace-only stored email must NOT appear
+        in the picker — otherwise the admin selects it, the send helper strips
+        and skips it, and the confirmed count silently exceeds what's queued.
+        Trim on BOTH the DB query and the Python projection so neither layer
+        can leak a blank-after-trim address."""
+        from cps import admin
+        src = inspect.getsource(admin._broadcast_recipient_users)
+        assert "func.trim(ub.User.email)" in src
+        assert "strip_whitespaces(u.email" in src
 
 
 # --------------------------------------------------------------------------- #

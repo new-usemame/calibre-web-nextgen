@@ -256,7 +256,7 @@
         <tbody>
           <tr id="current_version">
             <td>Calibre-Web NextGen</td>
-            <td>{{cwa_version}} </td>
+            <td>{% if cwa_release_url %}<a href="{{cwa_release_url}}" target="_blank" rel="noopener noreferrer">{{cwa_version}}</a>{% else %}{{cwa_version}}{% endif %} </td>
             <td>
               {% if cwa_is_outdated and cwa_latest_tag %}
                 <i style="color:#cc7b19;">{{_('Update available')}}: <strong>{{cwa_latest_tag}}</strong></i>

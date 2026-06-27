@@ -17,6 +17,11 @@ is for things you can see or feel when running the app.
 ## [Unreleased]
 
 ### Added
+- **The version number on the Admin page links to its release notes.** The
+  "Calibre-Web NextGen" version in the Version Information table (Admin page) is
+  now a link to that release's notes on GitHub, so you can see what changed in
+  the build you're running. Dev/canary builds link to the releases list instead.
+  Requested by @chloeroform.
 - **Email your users straight from the admin area.** A new "Email Your Users"
   page (Admin → Email Your Users) lets you write a message and send it by email
   to everyone — or just the people you pick. Handy for announcing new books or

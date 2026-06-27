@@ -573,6 +573,8 @@ def cwa_get_update_indicator() -> tuple[bool, str]:
 def admin():
     cwa_version, kepubify_version, calibre_version = cwa_get_package_versions()
     is_outdated, latest_tag = cwa_get_update_indicator()
+    from .updater import release_url_for_version
+    cwa_release_url = release_url_for_version(cwa_version)
 
     all_user = ub.session.query(ub.User).all()
     # email_settings = mail_config.get_mail_settings()
@@ -583,6 +585,7 @@ def admin():
     return render_title_template("admin.html", allUser=all_user, config=config,
                                  cwa_version=cwa_version, kepubify_version=kepubify_version,
                                  calibre_version=calibre_version,
+                                 cwa_release_url=cwa_release_url,
                                  cwa_is_outdated=is_outdated,
                                  cwa_latest_tag=latest_tag,
                                  feature_support=feature_support,

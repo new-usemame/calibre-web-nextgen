@@ -113,7 +113,50 @@ export function useToggleRead(id: string | number) {
       apiPost<{ read: boolean }>(`/api/v1/books/${id}/read`, { read }),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['book', String(id)] });
+      void queryClient.invalidateQueries({ queryKey: ['books'] });
     },
+  });
+}
+
+/** Star/unstar a book for the current user. Server is presence-based; we just
+ *  refetch the detail so the star reflects the new state. */
+export function useToggleFavorite(id: string | number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => apiPost<{ favorited: boolean }>(`/api/v1/books/${id}/favorite`),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ['book', String(id)] }),
+  });
+}
+
+/** Archive/unarchive (sync-pause). */
+export function useToggleArchived(id: string | number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => apiPost<{ archived: boolean }>(`/api/v1/books/${id}/archived`),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['book', String(id)] });
+      void qc.invalidateQueries({ queryKey: ['books'] });
+    },
+  });
+}
+
+/** Hide/unhide for the current user (hide gated server-side on the admin flag). */
+export function useToggleHidden(id: string | number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => apiPost<{ hidden: boolean }>(`/api/v1/books/${id}/hidden`),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['book', String(id)] });
+      void qc.invalidateQueries({ queryKey: ['books'] });
+    },
+  });
+}
+
+/** Email a book to the user's e-reader (optionally converting / to other addresses). */
+export function useSendToEreader(id: string | number) {
+  return useMutation({
+    mutationFn: (v: { format: string; convert?: boolean; emails?: string }) =>
+      apiPost<{ ok: boolean; message: string }>(`/api/v1/books/${id}/send`, v),
   });
 }
 

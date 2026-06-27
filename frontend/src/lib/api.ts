@@ -1,11 +1,19 @@
 /* Typed fetch helpers — same-origin, credentials included. */
 
+export interface ServerFeatures {
+  hide_books: boolean;
+  mail_configured: boolean;
+  public_registration: boolean;
+  anon_browse: boolean;
+}
+
 export interface Me {
   id: number;
   name: string;
   locale: string;
   theme: string;
   role: Record<string, boolean>;
+  features?: ServerFeatures;
 }
 
 export interface Book {
@@ -50,6 +58,8 @@ export interface BookDetail {
   formats: BookFormat[];
   read: boolean;
   archived: boolean;
+  favorited: boolean;
+  hidden: boolean;
 }
 
 export interface BooksPage {

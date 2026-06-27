@@ -53,7 +53,7 @@ def serialize_book_list_item(book, read=False, archived=False):
     }
 
 
-def serialize_book_detail(book, read=False, archived=False):
+def serialize_book_detail(book, read=False, archived=False, favorited=False, hidden=False):
     """Full detail serializer — pure, no Flask/DB imports.
 
     Callers must enrich each language object with a ``.language_name`` attribute
@@ -133,4 +133,6 @@ def serialize_book_detail(book, read=False, archived=False):
         "formats": formats,
         "read": bool(read),
         "archived": bool(archived),
+        "favorited": bool(favorited),
+        "hidden": bool(hidden),
     }

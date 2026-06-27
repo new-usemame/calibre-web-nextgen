@@ -34,11 +34,29 @@ def auth_csrf():
     return jsonify({"csrf_token": token})
 
 
+def _server_features():
+    """Instance-level capability flags the SPA gates UI off (mirrors the Jinja
+    template gates: hide-books button, send-to-e-reader, register link, …).
+    Authoritative enforcement stays server-side on each endpoint."""
+    try:
+        mail_ok = bool(config.get_mail_server_configured())
+    except Exception:
+        mail_ok = False
+    return {
+        "hide_books": bool(getattr(config, "config_user_hide_enabled", False)),
+        "mail_configured": mail_ok,
+        "public_registration": bool(getattr(config, "config_public_reg", False)),
+        "anon_browse": bool(getattr(config, "config_anonbrowse", False)),
+    }
+
+
 @api_v1.route("/auth/me")
 def auth_me():
     if not current_user.is_authenticated:
         return jsonify({"error": {"code": "unauthenticated", "message": "Login required"}}), 401
-    return jsonify(serialize_user(current_user))
+    payload = serialize_user(current_user)
+    payload["features"] = _server_features()
+    return jsonify(payload)
 
 
 @api_v1.route("/auth/login", methods=["POST"])
@@ -57,7 +75,9 @@ def auth_login():
     user = ub.session.query(ub.User).filter(func.lower(ub.User.name) == username).first()
     if user and not user.role_anonymous() and check_password_hash(str(user.password), password):
         login_user(user, remember=bool(data.get("remember")))
-        return jsonify(serialize_user(user))
+        payload = serialize_user(user)
+        payload["features"] = _server_features()
+        return jsonify(payload)
     return jsonify({"error": {"code": "invalid_credentials",
                               "message": "Invalid username or password"}}), 401
 

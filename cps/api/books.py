@@ -183,10 +183,24 @@ def book_detail(book_id):
     for lang in getattr(book, "languages", None) or []:
         lang.language_name = isoLanguages.get_language_name(get_locale(), lang.lang_code)
 
+    # Per-user favorite + hidden state (presence-based rows). Anonymous/guest
+    # sessions have no real id, so they simply read back as not-favorited/hidden.
+    favorited = hidden = False
+    if current_user.is_authenticated and not current_user.is_anonymous:
+        uid = int(current_user.id)
+        favorited = (ub.session.query(ub.FavoriteBook)
+                     .filter(ub.FavoriteBook.user_id == uid, ub.FavoriteBook.book_id == book_id)
+                     .first() is not None)
+        hidden = (ub.session.query(ub.UserHiddenBook)
+                  .filter(ub.UserHiddenBook.user_id == uid, ub.UserHiddenBook.book_id == book_id)
+                  .first() is not None)
+
     return jsonify(serialize_book_detail(
         book,
         read=(read_status == ub.ReadBook.STATUS_FINISHED),
         archived=bool(is_archived),
+        favorited=favorited,
+        hidden=hidden,
     ))
 
 

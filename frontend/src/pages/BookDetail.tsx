@@ -1,11 +1,16 @@
+import { useState } from 'react';
 import { Link, useParams } from 'wouter';
-import { Download, Pencil } from 'lucide-react';
-import { useBook, useToggleRead, useMe } from '../lib/queries';
+import { Download, Pencil, Star, Archive, EyeOff, Eye, Send } from 'lucide-react';
+import {
+  useBook, useToggleRead, useToggleFavorite, useToggleArchived, useToggleHidden,
+  useSendToEreader, useMe,
+} from '../lib/queries';
 import { Pill } from '../components/Pill';
 import { AddToShelf } from '../components/AddToShelf';
 import { SpinnerCentered } from '../components/Spinner';
 import { EmptyState } from '../components/EmptyState';
 import type { BookFormat } from '../lib/api';
+import { ApiError } from '../lib/api';
 import styles from './BookDetail.module.css';
 
 function formatBytes(bytes: number): string {
@@ -33,13 +38,67 @@ function readableFormat(fmt: BookFormat): string | null {
   return null;
 }
 
+interface SendPanelProps {
+  formats: string[];
+  pending: boolean;
+  banner: { ok: boolean; text: string } | null;
+  onSend: (format: string, convert: boolean, emails: string) => void;
+}
+
+/** Compact send-to-e-reader form: pick a format, optionally convert, optionally
+ *  override the recipient(s). Empty recipient → user's configured e-reader email. */
+function SendPanel({ formats, pending, banner, onSend }: SendPanelProps) {
+  const [format, setFormat] = useState(formats[0] ?? '');
+  const [convert, setConvert] = useState(false);
+  const [emails, setEmails] = useState('');
+  return (
+    <div className={styles.sendPanel}>
+      <div className={styles.sendRow}>
+        <label className={styles.sendField}>
+          <span>Format</span>
+          <select value={format} onChange={(e) => setFormat(e.target.value)}>
+            {formats.map((f) => <option key={f} value={f}>{f.toUpperCase()}</option>)}
+          </select>
+        </label>
+        <label className={styles.sendField}>
+          <span>Recipient(s) — blank = your e-reader email</span>
+          <input
+            type="text" value={emails} placeholder="a@kindle.com, b@kindle.com"
+            onChange={(e) => setEmails(e.target.value)}
+          />
+        </label>
+      </div>
+      <div className={styles.sendActions}>
+        <label className={styles.sendConvert}>
+          <input type="checkbox" checked={convert} onChange={(e) => setConvert(e.target.checked)} />
+          Convert before sending
+        </label>
+        <button
+          className={styles.actionPrimary}
+          disabled={pending || !format}
+          onClick={() => onSend(format, convert, emails.trim())}
+        >
+          {pending ? 'Sending…' : 'Send'}
+        </button>
+      </div>
+      {banner && <p className={banner.ok ? styles.sendOk : styles.sendErr}>{banner.text}</p>}
+    </div>
+  );
+}
+
 export function BookDetail() {
   const params = useParams<{ id: string }>();
   const id = params.id;
 
   const { data: book, isLoading, error } = useBook(id);
   const toggleRead = useToggleRead(id);
+  const toggleFavorite = useToggleFavorite(id);
+  const toggleArchived = useToggleArchived(id);
+  const toggleHidden = useToggleHidden(id);
+  const sendToEreader = useSendToEreader(id);
   const me = useMe().data;
+  const [sendOpen, setSendOpen] = useState(false);
+  const [sendBanner, setSendBanner] = useState<{ ok: boolean; text: string } | null>(null);
 
   if (isLoading) return <SpinnerCentered size={40} />;
   if (error || !book) {
@@ -125,6 +184,42 @@ export function BookDetail() {
 
             <AddToShelf bookId={book.id} />
 
+            {/* Star / favorite */}
+            <button
+              className={book.favorited ? styles.readToggleActive : styles.readToggleGhost}
+              onClick={() => toggleFavorite.mutate()}
+              disabled={toggleFavorite.isPending}
+              aria-label={book.favorited ? 'Remove from favorites' : 'Add to favorites'}
+            >
+              <Star size={14} fill={book.favorited ? 'currentColor' : 'none'} />
+              {book.favorited ? 'Favorited' : 'Favorite'}
+            </button>
+
+            {/* Archive (sync-pause) */}
+            <button
+              className={book.archived ? styles.readToggleActive : styles.readToggleGhost}
+              onClick={() => toggleArchived.mutate()}
+              disabled={toggleArchived.isPending}
+              aria-label={book.archived ? 'Unarchive' : 'Archive'}
+            >
+              <Archive size={14} />
+              {book.archived ? 'Archived' : 'Archive'}
+            </button>
+
+            {/* Hide / unhide — only shown when hiding is enabled, or to unhide an
+                already-hidden book (so an admin disabling the flag can't strand it). */}
+            {(me?.features?.hide_books || book.hidden) && (
+              <button
+                className={book.hidden ? styles.readToggleActive : styles.readToggleGhost}
+                onClick={() => toggleHidden.mutate()}
+                disabled={toggleHidden.isPending}
+                aria-label={book.hidden ? 'Unhide' : 'Hide'}
+              >
+                {book.hidden ? <Eye size={14} /> : <EyeOff size={14} />}
+                {book.hidden ? 'Unhide' : 'Hide'}
+              </button>
+            )}
+
             {book.formats.map((fmt) => (
               <a
                 key={fmt.format}
@@ -137,6 +232,18 @@ export function BookDetail() {
               </a>
             ))}
 
+            {/* Send to e-reader — gated on mail being configured + download role */}
+            {me?.features?.mail_configured && me?.role?.download && book.formats.length > 0 && (
+              <button
+                className={styles.downloadBtn}
+                onClick={() => { setSendOpen((v) => !v); setSendBanner(null); }}
+                aria-label="Send to e-reader"
+              >
+                <Send size={14} />
+                Send to e-reader
+              </button>
+            )}
+
             {me?.role?.edit && (
               <Link href={`/book/${book.id}/edit`} className={styles.downloadBtn}>
                 <Pencil size={14} />
@@ -144,6 +251,26 @@ export function BookDetail() {
               </Link>
             )}
           </div>
+
+          {/* Send-to-e-reader panel */}
+          {sendOpen && (
+            <SendPanel
+              formats={book.formats.map((f) => f.format)}
+              pending={sendToEreader.isPending}
+              banner={sendBanner}
+              onSend={(format, convert, emails) => {
+                setSendBanner(null);
+                sendToEreader.mutate(
+                  { format, convert, emails: emails || undefined },
+                  {
+                    onSuccess: (r) => { setSendBanner({ ok: true, text: r.message }); },
+                    onError: (err) =>
+                      setSendBanner({ ok: false, text: err instanceof ApiError ? err.message : 'Send failed.' }),
+                  },
+                );
+              }}
+            />
+          )}
 
           {/* Tags */}
           {book.tags.length > 0 && (

@@ -190,7 +190,11 @@
   // ---------- Bulk operations ----------
 
   function postJson(url, payload) {
-    return fetch(url, {
+    // Fork #536: prepend getPath() so the four bulk endpoints
+    // (/ajax/view, /shelf/add_selected_to_shelf, /ajax/readselectedbooks,
+    // /ajax/deleteselectedbooks) resolve under a reverse-proxy sub-path.
+    // getPath() returns "" at root, so this is a no-op for non-proxy setups.
+    return fetch(getPath() + url, {
       method: "POST",
       credentials: "same-origin",
       headers: {

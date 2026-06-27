@@ -180,7 +180,9 @@
   function doMerge(keeperId, sourceId, overwriteFormats, onSuccess, onError) {
     var body = { Merge_books: [parseInt(keeperId, 10), parseInt(sourceId, 10)] };
     if (overwriteFormats && overwriteFormats.length) body.overwrite_formats = overwriteFormats;
-    fetch("/ajax/mergebooks", {
+    // Fork #536: prepend getPath() so the merge POST resolves under a
+    // reverse-proxy sub-path (getPath() returns "" at root = no-op there).
+    fetch(getPath() + "/ajax/mergebooks", {
       method: "POST",
       credentials: "same-origin",
       headers: {

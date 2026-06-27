@@ -28,6 +28,14 @@ is for things you can see or feel when running the app.
   delivery. Requested by @froggybottomboys.
 
 ### Fixed
+- **Bulk actions and drag-to-merge now work behind a reverse proxy on a
+  sub-path.** If you run NextGen under a proxy mounted at something like
+  `example.com/books/`, marking books read/unread, adding a selection to a
+  shelf, deleting selected books, the cover badge toggle, and dragging one
+  book onto another to merge all failed with a 404 — those requests went to
+  the server root instead of your sub-path. They now use the correct path in
+  every setup. Nothing changes if you don't use a sub-path proxy. Reported by
+  @chloeroform.
 - **The "Discover (Random Books)" row now actually appears.** Turning on "Show
   Random Books in Detail View" did nothing — a leftover theme rule hid the
   random-books row for everyone, so the "No. of Random Books to Display" setting

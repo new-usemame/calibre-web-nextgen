@@ -1,12 +1,14 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'wouter';
-import { X } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { apiGet } from '../lib/api';
 import { SpinnerCentered } from '../components/Spinner';
 import { EmptyState } from '../components/EmptyState';
 import { useT } from '../lib/i18n';
 import styles from './NativeReader.module.css';
 
 const AUDIO = new Set(['mp3', 'm4a', 'm4b', 'flac', 'ogg', 'opus', 'wav', 'aac']);
+const COMIC = new Set(['cbz', 'cbr', 'cbt']);
 
 /** Native in-browser reader for non-EPUB formats. PDF renders in the browser's
  *  built-in viewer (iframe), audiobooks in an <audio> player, plain text inline
@@ -57,14 +59,61 @@ export function NativeReader({ id, format }: { id: string; format: string }) {
               : <pre className={styles.text}>{text}</pre>
         )}
 
-        {!['pdf', 'txt'].includes(fmt) && !AUDIO.has(fmt) && (
-          // comic / djvu / other — server reader handles image extraction
+        {COMIC.has(fmt) && <ComicViewer id={id} />}
+
+        {!['pdf', 'txt'].includes(fmt) && !AUDIO.has(fmt) && !COMIC.has(fmt) && (
+          // djvu / other — server reader handles rendering
           <div className={styles.fallback}>
             <p>{t('This format opens in the full-screen reader.')}</p>
             <a className={styles.fallbackBtn} href={`/read/${id}/${fmt}`}>{t('Open reader')}</a>
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+/** Native comic viewer: server extracts pages; we show one <img> at a time with
+ *  prev/next + arrow-key nav. No client archive lib needed. */
+function ComicViewer({ id }: { id: string }) {
+  const t = useT();
+  const [pages, setPages] = useState<number | null>(null);
+  const [page, setPage] = useState(0);
+  const [err, setErr] = useState(false);
+
+  useEffect(() => {
+    let alive = true;
+    apiGet<{ pages: number }>(`/api/v1/books/${id}/comic`)
+      .then((d) => { if (alive) setPages(d.pages); })
+      .catch(() => { if (alive) setErr(true); });
+    return () => { alive = false; };
+  }, [id]);
+
+  const go = useCallback((d: number) => {
+    setPage((p) => Math.min(Math.max(0, p + d), (pages ?? 1) - 1));
+  }, [pages]);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowRight') go(1);
+      if (e.key === 'ArrowLeft') go(-1);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [go]);
+
+  if (err) return <EmptyState message={t('Could not read this comic archive.')} />;
+  if (pages === null) return <SpinnerCentered size={36} />;
+  if (pages === 0) return <EmptyState message={t('No pages found in this comic.')} />;
+
+  return (
+    <div className={styles.comic}>
+      <button className={styles.comicNav} onClick={() => go(-1)} disabled={page === 0}
+        aria-label={t('Previous page')}><ChevronLeft size={28} /></button>
+      <img className={styles.comicPage} src={`/api/v1/books/${id}/comic/${page}`} alt={`Page ${page + 1}`} />
+      <button className={styles.comicNav} onClick={() => go(1)} disabled={page >= pages - 1}
+        aria-label={t('Next page')}><ChevronRight size={28} /></button>
+      <div className={styles.comicPager}>{page + 1} / {pages}</div>
     </div>
   );
 }

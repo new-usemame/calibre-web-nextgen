@@ -19,3 +19,20 @@
 }
 .fallback { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; gap: var(--sp-3); color: var(--text-muted); }
 .fallbackBtn { background: var(--accent); color: #fff; border-radius: var(--r-md); padding: var(--sp-2) var(--sp-4); }
+
+.comic { position: relative; display: flex; align-items: center; justify-content: center; height: 100%; background: #000; }
+.comicPage { max-width: 100%; max-height: 100%; object-fit: contain; }
+.comicNav {
+  position: absolute; top: 0; bottom: 0; width: 15%; min-width: 56px;
+  display: flex; align-items: center; justify-content: center;
+  color: rgba(255,255,255,0.55); background: transparent;
+}
+.comicNav:first-of-type { left: 0; justify-content: flex-start; padding-left: var(--sp-3); }
+.comicNav:nth-of-type(2) { right: 0; justify-content: flex-end; padding-right: var(--sp-3); }
+.comicNav:hover:not(:disabled) { color: #fff; background: rgba(255,255,255,0.06); }
+.comicNav:disabled { opacity: 0.2; }
+.comicPager {
+  position: absolute; bottom: var(--sp-3); left: 50%; transform: translateX(-50%);
+  background: rgba(0,0,0,0.6); color: #fff; font-size: var(--fs-sm);
+  padding: var(--sp-1) var(--sp-3); border-radius: var(--r-full);
+}

@@ -445,6 +445,19 @@ export function useDeleteFormat(id: string | number) {
   });
 }
 
+/** Add a format (file) to an existing book via the ingest pipeline. */
+export function useAddFormat(id: string | number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (file: File) => {
+      const fd = new FormData();
+      fd.append('file', file);
+      return apiUpload<{ queued: string }>(`/api/v1/books/${id}/formats`, fd);
+    },
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ['book', String(id)] }),
+  });
+}
+
 /** Queue a format conversion (from -> to). */
 export function useConvertFormat(id: string | number) {
   return useMutation({

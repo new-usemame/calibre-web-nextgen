@@ -3,7 +3,7 @@ import { Link, useLocation } from 'wouter';
 import { ChevronLeft, Save, Trash2, RefreshCw, Image as ImageIcon, Upload as UploadIcon, ExternalLink, Sparkles, Search } from 'lucide-react';
 import {
   useBookMetadata, useUpdateMetadata, useBook, useMe, useDeleteFormat, useConvertFormat,
-  useSetCover, useMetadataSearch,
+  useSetCover, useMetadataSearch, useAddFormat,
 } from '../lib/queries';
 import { Button } from '../components/Button';
 import { Spinner, SpinnerCentered } from '../components/Spinner';
@@ -298,13 +298,26 @@ function FormatsManager({ id }: { id: string }) {
   const me = useMe().data;
   const deleteFormat = useDeleteFormat(id);
   const convertFormat = useConvertFormat(id);
+  const addFormat = useAddFormat(id);
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
   const formats = book?.formats.map((f) => f.format) ?? [];
-  if (formats.length === 0) return null;
+  if (!book) return null;
   const canDelete = !!me?.role?.delete_books;
+  const canUpload = !!me?.role?.upload;
+
+  const onAddFormat = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setMsg(null);
+    addFormat.mutate(file, {
+      onSuccess: () => setMsg({ ok: true, text: t('Format queued — it will appear once processed.') }),
+      onError: (err) => setMsg({ ok: false, text: err instanceof ApiError ? err.message : 'Upload failed.' }),
+    });
+    e.target.value = '';
+  };
 
   const onConvert = (e: React.FormEvent) => {
     e.preventDefault();
@@ -342,23 +355,32 @@ function FormatsManager({ id }: { id: string }) {
         ))}
       </ul>
 
-      <form className={styles.convertForm} onSubmit={onConvert}>
-        <label className={styles.fieldNarrow}>
-          <span className={styles.label}>{t('Convert from')}</span>
-          <select className={styles.inputNarrow} value={from || formats[0]} onChange={(e) => setFrom(e.target.value)}>
-            {formats.map((f) => <option key={f} value={f}>{f}</option>)}
-          </select>
+      {formats.length > 0 && (
+        <form className={styles.convertForm} onSubmit={onConvert}>
+          <label className={styles.fieldNarrow}>
+            <span className={styles.label}>{t('Convert from')}</span>
+            <select className={styles.inputNarrow} value={from || formats[0]} onChange={(e) => setFrom(e.target.value)}>
+              {formats.map((f) => <option key={f} value={f}>{f}</option>)}
+            </select>
+          </label>
+          <label className={styles.fieldNarrow}>
+            <span className={styles.label}>{t('to')}</span>
+            <input className={styles.inputNarrow} value={to} onChange={(e) => setTo(e.target.value)}
+              placeholder="e.g. MOBI" />
+          </label>
+          <Button type="submit" variant="ghost" disabled={convertFormat.isPending || !to.trim()}>
+            <RefreshCw size={15} /> {t('Convert')}
+          </Button>
+        </form>
+      )}
+
+      {canUpload && (
+        <label className={styles.coverUploadBtn} style={{ marginTop: 'var(--sp-3)' }}>
+          <UploadIcon size={15} /> {addFormat.isPending ? t('Uploading…') : t('Add a format')}
+          <input type="file" hidden onChange={onAddFormat} disabled={addFormat.isPending} />
         </label>
-        <label className={styles.fieldNarrow}>
-          <span className={styles.label}>{t('to')}</span>
-          <input className={styles.inputNarrow} value={to} onChange={(e) => setTo(e.target.value)}
-            placeholder="e.g. MOBI" />
-        </label>
-        <Button type="submit" variant="ghost" disabled={convertFormat.isPending || !to.trim()}>
-          <RefreshCw size={15} /> {t('Convert')}
-        </Button>
-        {msg && <span className={msg.ok ? styles.msgOk : styles.msgErr}>{msg.text}</span>}
-      </form>
+      )}
+      {msg && <span className={msg.ok ? styles.msgOk : styles.msgErr}>{msg.text}</span>}
     </section>
   );
 }

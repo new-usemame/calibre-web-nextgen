@@ -357,6 +357,65 @@ export function useUpdateMailConfig() {
   });
 }
 
+// --- Deep auth/security config (login type / LDAP / OAuth / SSL / reverse-proxy)
+// Secrets are write-only: GET returns has_password / has_secret booleans only.
+export interface IdName { id: number; name: string }
+export interface SecurityLdap {
+  provider_url: string; port: number; encryption: number; authentication: number;
+  serv_username: string; has_password: boolean; auto_create_users: boolean;
+  dn: string; user_object: string; member_user_object: string;
+  group_object_filter: string; group_members_field: string; group_name: string;
+  openldap: boolean; cacert_path: string; cert_path: string; key_path: string;
+}
+export interface SecurityOauthGeneric {
+  client_id: string; has_secret: boolean; base_url: string; authorize_url: string;
+  token_url: string; userinfo_url: string; admin_group: string; metadata_url: string;
+  scope: string; username_mapper: string; email_mapper: string; login_button: string;
+  active: boolean;
+}
+export interface SecurityConfig {
+  login_type: number;
+  login_types: IdName[];
+  ldap_auth_levels: IdName[];
+  ldap_encryption_levels: IdName[];
+  ldap: SecurityLdap;
+  oauth: {
+    redirect_host: string; disable_standard_login: boolean;
+    enable_group_admin_management: boolean; generic: SecurityOauthGeneric;
+  };
+  ssl: { use_https: boolean; certfile: string; keyfile: string };
+  remote_login: boolean;
+  reverse_proxy: { enabled: boolean; header_name: string; auto_create_users: boolean };
+  reboot_required?: boolean;
+}
+// The POST shape mirrors the GET shape but secrets are plain (write-only) fields.
+export interface SecurityUpdate {
+  login_type?: number;
+  remote_login?: boolean;
+  ldap?: Partial<Omit<SecurityLdap, 'has_password'>> & { serv_password?: string };
+  oauth?: {
+    redirect_host?: string; disable_standard_login?: boolean; enable_group_admin_management?: boolean;
+    generic?: Partial<Omit<SecurityOauthGeneric, 'has_secret' | 'active'>> & { client_secret?: string };
+  };
+  ssl?: { use_https?: boolean; certfile?: string; keyfile?: string };
+  reverse_proxy?: { enabled?: boolean; header_name?: string; auto_create_users?: boolean };
+}
+
+export function useSecurityConfig() {
+  return useQuery<SecurityConfig>({
+    queryKey: ['admin-security'],
+    queryFn: () => apiGet<SecurityConfig>('/api/v1/admin/security'),
+  });
+}
+
+export function useUpdateSecurityConfig() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (vars: SecurityUpdate) => apiPost<SecurityConfig>('/api/v1/admin/security', vars),
+    onSuccess: (data) => qc.setQueryData(['admin-security'], data),
+  });
+}
+
 export function useUpdateAdminUser() {
   const qc = useQueryClient();
   return useMutation({

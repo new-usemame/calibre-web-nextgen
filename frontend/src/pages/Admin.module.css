@@ -205,3 +205,48 @@
 .settingsIcon { color: var(--accent); flex-shrink: 0; }
 .settingsLabel { flex: 1; }
 .settingsExt { color: var(--text-muted); flex-shrink: 0; }
+
+/* --- Security config: checkbox fields, fieldsets, restart banner --- */
+.checkField {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  font-size: var(--fs-sm);
+  color: var(--text);
+  cursor: pointer;
+  align-self: flex-end;
+  padding-bottom: var(--sp-2);
+}
+.checkField input[type='checkbox'] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent);
+  cursor: pointer;
+  flex: none;
+}
+.fieldset {
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  padding: var(--sp-4);
+  margin: var(--sp-2) 0;
+  background: var(--surface-1);
+}
+.fieldset legend {
+  padding: 0 var(--sp-2);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.rebootBanner {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-2) var(--sp-3);
+  margin: var(--sp-2) 0;
+  border-radius: var(--r-md);
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: var(--fs-sm);
+}

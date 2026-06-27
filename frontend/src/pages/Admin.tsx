@@ -1,10 +1,12 @@
 import { useState } from 'react';
-import { Shield, Trash2, Mail, UserPlus, ExternalLink, Settings, Database, Server, Clock, FileText, Sliders, BarChart3, Files } from 'lucide-react';
+import { Shield, Trash2, Mail, UserPlus, ExternalLink, Settings, Database, Server, Clock, FileText, Sliders, BarChart3, Files, Lock, RefreshCw } from 'lucide-react';
 import { useEffect } from 'react';
 import {
   useAdminUsers, useUpdateAdminUser, useDeleteAdminUser, useCreateAdminUser, useMe,
   useAdminConfig, useUpdateAdminConfig, useMailConfig, useUpdateMailConfig,
+  useSecurityConfig, useUpdateSecurityConfig,
 } from '../lib/queries';
+import type { SecurityConfig, SecurityUpdate } from '../lib/queries';
 import { SpinnerCentered } from '../components/Spinner';
 import { EmptyState } from '../components/EmptyState';
 import type { AdminUser } from '../lib/api';
@@ -12,9 +14,10 @@ import { ApiError } from '../lib/api';
 import { useT } from '../lib/i18n';
 import styles from './Admin.module.css';
 
-// Server-configuration pages. Under the hybrid cutover these open the proven
-// legacy admin UI (rarely-touched set-once config) rather than being rebuilt in
-// React — no capability is dropped; an admin occasionally lands on a Jinja page.
+// Remaining legacy server-configuration pages — these are the deep, rarely-touched
+// infrastructure surfaces (DB path, ingest/convert internals, scheduled tasks)
+// that are not part of the day-to-day user/auth flows. Login/authentication
+// security (LDAP/OAuth/SSL/reverse-proxy) and SMTP are rebuilt natively below.
 const SERVER_SETTINGS: { href: string; label: string; icon: typeof Settings }[] = [
   { href: '/admin/view', label: 'Full user table & restrictions', icon: Shield },
   { href: '/admin/config', label: 'Basic configuration', icon: Settings },
@@ -202,6 +205,7 @@ export function Admin() {
 
       <AdminConfigForm />
       <MailConfigForm />
+      <SecurityConfigForm />
 
       <div className={styles.settingsHead}>
         <Settings size={18} className={styles.headerIcon} />
@@ -396,6 +400,241 @@ function MailConfigForm() {
       <div className={styles.newActions}>
         <button type="submit" className={styles.submitBtn} disabled={update.isPending}>
           {update.isPending ? t('Saving…') : t('Save email settings')}
+        </button>
+        {msg && <span className={msg.ok ? styles.msgOk : styles.msgErr}>{msg.text}</span>}
+      </div>
+    </form>
+  );
+}
+
+/** Native deep authentication / security config: login type (standard / LDAP /
+ *  OAuth), full LDAP + OAuth provider settings, server SSL, reverse-proxy header
+ *  login, and remote (magic-link) login. Secrets are write-only — blank keeps the
+ *  existing one. Validation is enforced server-side by the shared legacy helpers,
+ *  so the error messages here match the legacy form exactly. Changing the login
+ *  type / LDAP / OAuth needs a server restart, surfaced as a banner on save.
+ *  (Security-review gated before merge — writes auth/secret config.) */
+function SecurityConfigForm() {
+  const t = useT();
+  const { data: cfg } = useSecurityConfig();
+  const update = useUpdateSecurityConfig();
+  const [f, setF] = useState<SecurityConfig | null>(null);
+  const [ldapPw, setLdapPw] = useState('');
+  const [oauthSecret, setOauthSecret] = useState('');
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [reboot, setReboot] = useState(false);
+
+  useEffect(() => { if (cfg) setF(cfg); }, [cfg]);
+  if (!f) return null;
+
+  const setTop = <K extends keyof SecurityConfig>(k: K, v: SecurityConfig[K]) =>
+    setF((s) => (s ? { ...s, [k]: v } : s));
+  const setLdap = (k: keyof SecurityConfig['ldap'], v: string | number | boolean) =>
+    setF((s) => (s ? { ...s, ldap: { ...s.ldap, [k]: v } } : s));
+  const setOauth = (k: keyof SecurityConfig['oauth'], v: string | boolean) =>
+    setF((s) => (s ? { ...s, oauth: { ...s.oauth, [k]: v } } : s));
+  const setGen = (k: keyof SecurityConfig['oauth']['generic'], v: string | boolean) =>
+    setF((s) => (s ? { ...s, oauth: { ...s.oauth, generic: { ...s.oauth.generic, [k]: v } } } : s));
+  const setSsl = (k: keyof SecurityConfig['ssl'], v: string | boolean) =>
+    setF((s) => (s ? { ...s, ssl: { ...s.ssl, [k]: v } } : s));
+  const setRp = (k: keyof SecurityConfig['reverse_proxy'], v: string | boolean) =>
+    setF((s) => (s ? { ...s, reverse_proxy: { ...s.reverse_proxy, [k]: v } } : s));
+
+  const onSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setMsg(null);
+    const body: SecurityUpdate = {
+      login_type: f.login_type,
+      remote_login: f.remote_login,
+      ssl: { ...f.ssl },
+      reverse_proxy: { ...f.reverse_proxy },
+      oauth: {
+        redirect_host: f.oauth.redirect_host,
+        disable_standard_login: f.oauth.disable_standard_login,
+        enable_group_admin_management: f.oauth.enable_group_admin_management,
+      },
+    };
+    if (f.login_type === 1) {
+      const { ...ldap } = f.ldap;
+      body.ldap = { ...ldap, ...(ldapPw ? { serv_password: ldapPw } : {}) };
+    }
+    if (f.login_type === 2) {
+      body.oauth!.generic = { ...f.oauth.generic, ...(oauthSecret ? { client_secret: oauthSecret } : {}) };
+    }
+    update.mutate(body, {
+      onSuccess: (data) => {
+        setMsg({ ok: true, text: t('Security settings saved.') });
+        setLdapPw(''); setOauthSecret('');
+        setReboot(Boolean(data.reboot_required));
+      },
+      onError: (err: unknown) => setMsg({ ok: false, text: err instanceof ApiError ? err.message : t('Could not save.') }),
+    });
+  };
+
+  return (
+    <form className={styles.newForm} onSubmit={onSubmit}>
+      <div className={styles.settingsHead} style={{ marginTop: 0 }}>
+        <Lock size={18} className={styles.headerIcon} />
+        <h2 className={styles.settingsTitle}>{t('Authentication & security')}</h2>
+      </div>
+
+      <div className={styles.newRow}>
+        <label className={styles.field}>
+          <span>{t('Login method')}</span>
+          <select value={String(f.login_type)} onChange={(e) => setTop('login_type', Number(e.target.value))}>
+            {f.login_types.map((o) => <option key={o.id} value={o.id}>{t(o.name)}</option>)}
+          </select>
+        </label>
+        <label className={styles.checkField}>
+          <input type="checkbox" checked={f.remote_login}
+            onChange={(e) => setTop('remote_login', e.target.checked)} />
+          <span>{t('Allow remote (magic-link) login')}</span>
+        </label>
+      </div>
+
+      {f.login_type === 1 && (
+        <fieldset className={styles.fieldset}>
+          <legend>{t('LDAP')}</legend>
+          <div className={styles.newRow}>
+            <label className={styles.field}><span>{t('Server host')}</span>
+              <input value={f.ldap.provider_url} onChange={(e) => setLdap('provider_url', e.target.value)} /></label>
+            <label className={styles.field}><span>{t('Port')}</span>
+              <input type="number" value={String(f.ldap.port)} onChange={(e) => setLdap('port', Number(e.target.value))} /></label>
+            <label className={styles.field}><span>{t('Encryption')}</span>
+              <select value={String(f.ldap.encryption)} onChange={(e) => setLdap('encryption', Number(e.target.value))}>
+                {f.ldap_encryption_levels.map((o) => <option key={o.id} value={o.id}>{t(o.name)}</option>)}
+              </select></label>
+            <label className={styles.field}><span>{t('Authentication')}</span>
+              <select value={String(f.ldap.authentication)} onChange={(e) => setLdap('authentication', Number(e.target.value))}>
+                {f.ldap_auth_levels.map((o) => <option key={o.id} value={o.id}>{t(o.name)}</option>)}
+              </select></label>
+          </div>
+          <div className={styles.newRow}>
+            <label className={styles.field}><span>{t('Service account (DN)')}</span>
+              <input value={f.ldap.serv_username} onChange={(e) => setLdap('serv_username', e.target.value)} /></label>
+            <label className={styles.field}>
+              <span>{f.ldap.has_password ? t('Service password (leave blank to keep)') : t('Service password')}</span>
+              <input type="password" value={ldapPw} autoComplete="new-password" onChange={(e) => setLdapPw(e.target.value)} /></label>
+            <label className={styles.field}><span>{t('Base DN')}</span>
+              <input value={f.ldap.dn} onChange={(e) => setLdap('dn', e.target.value)} /></label>
+          </div>
+          <div className={styles.newRow}>
+            <label className={styles.field}><span>{t('User object filter')}</span>
+              <input value={f.ldap.user_object} onChange={(e) => setLdap('user_object', e.target.value)} placeholder="uid=%s" /></label>
+            <label className={styles.field}><span>{t('Member user filter')}</span>
+              <input value={f.ldap.member_user_object} onChange={(e) => setLdap('member_user_object', e.target.value)} /></label>
+            <label className={styles.field}><span>{t('Group name')}</span>
+              <input value={f.ldap.group_name} onChange={(e) => setLdap('group_name', e.target.value)} /></label>
+          </div>
+          <div className={styles.newRow}>
+            <label className={styles.field}><span>{t('Group object filter')}</span>
+              <input value={f.ldap.group_object_filter} onChange={(e) => setLdap('group_object_filter', e.target.value)} /></label>
+            <label className={styles.field}><span>{t('Group members field')}</span>
+              <input value={f.ldap.group_members_field} onChange={(e) => setLdap('group_members_field', e.target.value)} /></label>
+          </div>
+          <div className={styles.newRow}>
+            <label className={styles.field}><span>{t('CA certificate path')}</span>
+              <input value={f.ldap.cacert_path} onChange={(e) => setLdap('cacert_path', e.target.value)} /></label>
+            <label className={styles.field}><span>{t('Certificate path')}</span>
+              <input value={f.ldap.cert_path} onChange={(e) => setLdap('cert_path', e.target.value)} /></label>
+            <label className={styles.field}><span>{t('Key path')}</span>
+              <input value={f.ldap.key_path} onChange={(e) => setLdap('key_path', e.target.value)} /></label>
+          </div>
+          <div className={styles.newRow}>
+            <label className={styles.checkField}><input type="checkbox" checked={f.ldap.openldap}
+              onChange={(e) => setLdap('openldap', e.target.checked)} /><span>{t('OpenLDAP server')}</span></label>
+            <label className={styles.checkField}><input type="checkbox" checked={f.ldap.auto_create_users}
+              onChange={(e) => setLdap('auto_create_users', e.target.checked)} /><span>{t('Auto-create users on first login')}</span></label>
+          </div>
+        </fieldset>
+      )}
+
+      {f.login_type === 2 && (
+        <fieldset className={styles.fieldset}>
+          <legend>{t('OAuth / OpenID Connect')}</legend>
+          <div className={styles.newRow}>
+            <label className={styles.field}><span>{t('Redirect host (full URL)')}</span>
+              <input value={f.oauth.redirect_host} onChange={(e) => setOauth('redirect_host', e.target.value)} placeholder="https://books.example.com" /></label>
+            <label className={styles.field}><span>{t('Login button text')}</span>
+              <input value={f.oauth.generic.login_button} onChange={(e) => setGen('login_button', e.target.value)} /></label>
+          </div>
+          <div className={styles.newRow}>
+            <label className={styles.field}><span>{t('Client ID')}</span>
+              <input value={f.oauth.generic.client_id} onChange={(e) => setGen('client_id', e.target.value)} /></label>
+            <label className={styles.field}>
+              <span>{f.oauth.generic.has_secret ? t('Client secret (leave blank to keep)') : t('Client secret')}</span>
+              <input type="password" value={oauthSecret} autoComplete="new-password" onChange={(e) => setOauthSecret(e.target.value)} /></label>
+          </div>
+          <div className={styles.newRow}>
+            <label className={styles.field}><span>{t('Metadata URL (OIDC auto-discovery)')}</span>
+              <input value={f.oauth.generic.metadata_url} onChange={(e) => setGen('metadata_url', e.target.value)}
+                placeholder="https://idp/.well-known/openid-configuration" /></label>
+            <label className={styles.field}><span>{t('Issuer / base URL')}</span>
+              <input value={f.oauth.generic.base_url} onChange={(e) => setGen('base_url', e.target.value)} /></label>
+          </div>
+          <p className={styles.settingsHint} style={{ margin: '0 0 8px' }}>
+            {t('Set a metadata URL to auto-fill the endpoints below, or enter them manually.')}
+          </p>
+          <div className={styles.newRow}>
+            <label className={styles.field}><span>{t('Authorize URL')}</span>
+              <input value={f.oauth.generic.authorize_url} onChange={(e) => setGen('authorize_url', e.target.value)} /></label>
+            <label className={styles.field}><span>{t('Token URL')}</span>
+              <input value={f.oauth.generic.token_url} onChange={(e) => setGen('token_url', e.target.value)} /></label>
+            <label className={styles.field}><span>{t('Userinfo URL')}</span>
+              <input value={f.oauth.generic.userinfo_url} onChange={(e) => setGen('userinfo_url', e.target.value)} /></label>
+          </div>
+          <div className={styles.newRow}>
+            <label className={styles.field}><span>{t('Scopes')}</span>
+              <input value={f.oauth.generic.scope} onChange={(e) => setGen('scope', e.target.value)} /></label>
+            <label className={styles.field}><span>{t('Username claim')}</span>
+              <input value={f.oauth.generic.username_mapper} onChange={(e) => setGen('username_mapper', e.target.value)} /></label>
+            <label className={styles.field}><span>{t('Email claim')}</span>
+              <input value={f.oauth.generic.email_mapper} onChange={(e) => setGen('email_mapper', e.target.value)} /></label>
+            <label className={styles.field}><span>{t('Admin group')}</span>
+              <input value={f.oauth.generic.admin_group} onChange={(e) => setGen('admin_group', e.target.value)} /></label>
+          </div>
+          <div className={styles.newRow}>
+            <label className={styles.checkField}><input type="checkbox" checked={f.oauth.disable_standard_login}
+              onChange={(e) => setOauth('disable_standard_login', e.target.checked)} /><span>{t('Disable standard password login')}</span></label>
+            <label className={styles.checkField}><input type="checkbox" checked={f.oauth.enable_group_admin_management}
+              onChange={(e) => setOauth('enable_group_admin_management', e.target.checked)} /><span>{t('Manage admin role from OAuth group')}</span></label>
+          </div>
+        </fieldset>
+      )}
+
+      <fieldset className={styles.fieldset}>
+        <legend>{t('Server SSL / HTTPS')}</legend>
+        <div className={styles.newRow}>
+          <label className={styles.checkField}><input type="checkbox" checked={f.ssl.use_https}
+            onChange={(e) => setSsl('use_https', e.target.checked)} /><span>{t('Serve over HTTPS')}</span></label>
+          <label className={styles.field}><span>{t('Certificate file path')}</span>
+            <input value={f.ssl.certfile} onChange={(e) => setSsl('certfile', e.target.value)} /></label>
+          <label className={styles.field}><span>{t('Key file path')}</span>
+            <input value={f.ssl.keyfile} onChange={(e) => setSsl('keyfile', e.target.value)} /></label>
+        </div>
+      </fieldset>
+
+      <fieldset className={styles.fieldset}>
+        <legend>{t('Reverse-proxy header login')}</legend>
+        <div className={styles.newRow}>
+          <label className={styles.checkField}><input type="checkbox" checked={f.reverse_proxy.enabled}
+            onChange={(e) => setRp('enabled', e.target.checked)} /><span>{t('Trust authentication header')}</span></label>
+          <label className={styles.field}><span>{t('Header name')}</span>
+            <input value={f.reverse_proxy.header_name} onChange={(e) => setRp('header_name', e.target.value)} placeholder="Remote-User" /></label>
+          <label className={styles.checkField}><input type="checkbox" checked={f.reverse_proxy.auto_create_users}
+            onChange={(e) => setRp('auto_create_users', e.target.checked)} /><span>{t('Auto-create users')}</span></label>
+        </div>
+      </fieldset>
+
+      {reboot && (
+        <div className={styles.rebootBanner}>
+          <RefreshCw size={15} />
+          <span>{t('Saved. Restart the server for the login changes to take effect.')}</span>
+        </div>
+      )}
+      <div className={styles.newActions}>
+        <button type="submit" className={styles.submitBtn} disabled={update.isPending}>
+          {update.isPending ? t('Saving…') : t('Save security settings')}
         </button>
         {msg && <span className={msg.ok ? styles.msgOk : styles.msgErr}>{msg.text}</span>}
       </div>

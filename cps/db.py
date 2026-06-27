@@ -998,6 +998,39 @@ class CalibreDB:
     def update_config(cls, config):
         cls.config = config
 
+    def reapply_title_sort(self):
+        """Recompute the stored ``sort`` column for every book using the
+        current ``config_title_regex``.
+
+        Calibre's ``metadata.db`` only recomputes a book's ``sort`` value
+        when its *title* changes — the ``books_update_trg`` trigger fires
+        ``UPDATE books SET sort=title_sort(NEW.title) WHERE OLD.title <>
+        NEW.title``. Changing the title-sort regex in the admin view
+        therefore leaves every existing row's ``sort`` stale until the book
+        is edited, so UI/OPDS listings keep the old order (issue #522).
+
+        ``UPDATE books SET sort = title_sort(title)`` re-derives every row
+        through the registered ``title_sort`` UDF, which reads the now-updated
+        regex from ``CalibreDB.config`` at call time. This mirrors Calibre
+        desktop's "regex change recalculates all title-sort values". The
+        statement leaves ``title`` untouched, so ``books_update_trg`` does not
+        fire (and ``PRAGMA recursive_triggers`` is off regardless). Returns
+        the number of rows updated, and re-raises after rolling back if the
+        update fails so the caller can surface the failure instead of silently
+        reporting a zero-row success while listings stay stale.
+        """
+        if self.session is None:
+            return 0
+        try:
+            result = self.session.execute(
+                text("UPDATE books SET sort = title_sort(title)"))
+            self.session.commit()
+            return result.rowcount
+        except OperationalError as ex:
+            self.session.rollback()
+            log.error("Failed to recompute title sort: {}".format(ex))
+            raise
+
     @classmethod
     def setup_db(cls, config_calibre_dir, app_db_path):
         # Wrap entire method in lock to ensure atomic setup operation

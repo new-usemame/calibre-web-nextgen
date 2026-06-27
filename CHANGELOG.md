@@ -17,6 +17,11 @@ is for things you can see or feel when running the app.
 ## [Unreleased]
 
 ### Added
+- **The version number on the Admin page links to its release notes.** The
+  "Calibre-Web NextGen" version in the Version Information table (Admin page) is
+  now a link to that release's notes on GitHub, so you can see what changed in
+  the build you're running. Dev/canary builds link to the releases list instead.
+  Requested by @chloeroform.
 - **Email your users straight from the admin area.** A new "Email Your Users"
   page (Admin → Email Your Users) lets you write a message and send it by email
   to everyone — or just the people you pick. Handy for announcing new books or
@@ -28,11 +33,25 @@ is for things you can see or feel when running the app.
   delivery. Requested by @froggybottomboys.
 
 ### Fixed
+- **Bulk actions and drag-to-merge now work behind a reverse proxy on a
+  sub-path.** If you run NextGen under a proxy mounted at something like
+  `example.com/books/`, marking books read/unread, adding a selection to a
+  shelf, deleting selected books, the cover badge toggle, and dragging one
+  book onto another to merge all failed with a 404 — those requests went to
+  the server root instead of your sub-path. They now use the correct path in
+  every setup. Nothing changes if you don't use a sub-path proxy. Reported by
+  @chloeroform.
 - **The "Discover (Random Books)" row now actually appears.** Turning on "Show
   Random Books in Detail View" did nothing — a leftover theme rule hid the
   random-books row for everyone, so the "No. of Random Books to Display" setting
   had no visible effect. The row now shows as a "Discover (Random Books)" strip
   above your book list, on desktop and mobile. Reported by @chloeroform.
+- **Changing the "Regular Expression for Title Sorting" now re-sorts your whole
+  library right away.** After editing that setting (Admin → UI Configuration),
+  the book order didn't change until you edited each book one by one — the new
+  rule only applied to books you touched afterwards. Saving the setting now
+  recomputes the sort order for every book immediately, the same way Calibre
+  desktop does. Reported by @chloeroform.
 
 ## [v4.0.172] - 2026-06-25
 

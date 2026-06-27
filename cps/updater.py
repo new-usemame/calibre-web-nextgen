@@ -54,6 +54,31 @@ def _normalize_tag(tag_name):
         return None
 
 
+def release_url_for_version(version):
+    """GitHub web URL where the release notes for ``version`` can be read.
+
+    ``version`` is the string shown in the admin version table, read
+    verbatim from ``/app/CWA_RELEASE`` — so it may carry surrounding
+    whitespace, be ``"Unknown"`` when the probe failed, or be a non-release
+    marker (``DEV_BUILD-…``) on a dev/canary image. We point at the exact
+    release tag only when the string parses as a release tag (``vX.Y.Z`` /
+    ``X.Y.Z``); otherwise we fall back to the repository's releases listing,
+    which always resolves. Returns ``None`` when there is no meaningful
+    target (empty / ``"Unknown"``) so the caller renders plain text instead
+    of a dead link. The slug is shared with ``_REPOSITORY_API_URL`` so the
+    link follows the same ``CWA_RELEASE_REPO`` override.
+    """
+    if not version:
+        return None
+    tag = version.strip()
+    if not tag or tag.lower() == "unknown":
+        return None
+    base = "https://github.com/" + _REPOSITORY_SLUG
+    if _normalize_tag(tag) is not None:
+        return base + "/releases/tag/" + tag
+    return base + "/releases"
+
+
 def is_sha1(sha1):
     if len(sha1) != 40:
         return False

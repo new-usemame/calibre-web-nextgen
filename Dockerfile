@@ -121,7 +121,7 @@ RUN \
     *) echo "Unsupported arch: $(uname -m)"; exit 1 ;; \
   esac && \
   PBS_URL="https://github.com/astral-sh/python-build-standalone/releases/download/${PYTHON_BUILD_STANDALONE_RELEASE}/cpython-${PYTHON_VERSION}+${PYTHON_BUILD_STANDALONE_RELEASE}-${PBS_ARCH}-install_only.tar.gz" && \
-  curl -fL --retry 5 --retry-delay 3 --retry-all-errors "${PBS_URL}" -o /tmp/python.tar.gz && \
+  curl -fL --retry 8 --retry-delay 15 --retry-max-time 300 --retry-all-errors "${PBS_URL}" -o /tmp/python.tar.gz && \
   mkdir -p /opt && \
   tar -xzf /tmp/python.tar.gz -C /opt && \
   rm /tmp/python.tar.gz && \

@@ -46,8 +46,8 @@ ARG KEPUBIFY_RELEASE=v4.0.4
 # Python is installed from python-build-standalone (CDN-backed GitHub releases)
 # rather than the deadsnakes PPA, which has a history of being unavailable.
 # Both x86_64 and aarch64 prebuilds are published by astral-sh.
-ARG PYTHON_BUILD_STANDALONE_RELEASE=20260414
-ARG PYTHON_VERSION=3.13.13
+ARG PYTHON_BUILD_STANDALONE_RELEASE=20260623
+ARG PYTHON_VERSION=3.13.14
 
 FROM ghcr.io/linuxserver/baseimage-ubuntu:noble AS dependencies
 

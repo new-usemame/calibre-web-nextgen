@@ -66,34 +66,37 @@ function useMenu() {
 interface MenuItemProps {
   icon: ReactNode;
   label: string;
+  /** Internal SPA route (wouter, relative to the /app base) — client-side nav. */
+  to?: string;
+  /** External URL — opens in a new tab. */
   href?: string;
-  external?: boolean;
   danger?: boolean;
   onClick?: () => void;
   onSelect: () => void;
 }
 
-function MenuItem({ icon, label, href, external, danger, onClick, onSelect }: MenuItemProps) {
+function MenuItem({ icon, label, to, href, danger, onClick, onSelect }: MenuItemProps) {
   const cls = danger ? `${styles.menuItem} ${styles.menuItemDanger}` : styles.menuItem;
   const handle = () => { onClick?.(); onSelect(); };
+  const inner = <><span className={styles.menuItemIcon}>{icon}</span>{label}</>;
+  if (to) {
+    // Internal: wouter Link keeps it client-side (no full reload) and respects the base.
+    return (
+      <Link href={to} role="menuitem" className={cls} onClick={onSelect}>
+        {inner}
+      </Link>
+    );
+  }
   if (href) {
     return (
-      <a
-        role="menuitem"
-        className={cls}
-        href={href}
-        {...(external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
-        onClick={onSelect}
-      >
-        <span className={styles.menuItemIcon}>{icon}</span>
-        {label}
+      <a role="menuitem" className={cls} href={href} target="_blank" rel="noopener noreferrer" onClick={onSelect}>
+        {inner}
       </a>
     );
   }
   return (
     <button role="menuitem" type="button" className={cls} onClick={handle}>
-      <span className={styles.menuItemIcon}>{icon}</span>
-      {label}
+      {inner}
     </button>
   );
 }
@@ -116,9 +119,9 @@ function HelpMenu() {
       {open && (
         <div className={`${styles.panel} ${styles.panelHelp}`} role="menu">
           <p className={styles.panelHead}>{t('Help & support')}</p>
-          <MenuItem icon={<Bug size={15} />} label={t('Report an issue')} href={HELP_LINKS.issue} external onSelect={close} />
-          <MenuItem icon={<MessagesSquare size={15} />} label={t('Community chat')} href={HELP_LINKS.discord} external onSelect={close} />
-          <MenuItem icon={<BookOpen size={15} />} label={t('Documentation')} href={HELP_LINKS.docs} external onSelect={close} />
+          <MenuItem icon={<Bug size={15} />} label={t('Report an issue')} href={HELP_LINKS.issue} onSelect={close} />
+          <MenuItem icon={<MessagesSquare size={15} />} label={t('Community chat')} href={HELP_LINKS.discord} onSelect={close} />
+          <MenuItem icon={<BookOpen size={15} />} label={t('Documentation')} href={HELP_LINKS.docs} onSelect={close} />
         </div>
       )}
     </div>
@@ -143,7 +146,7 @@ function UserMenu({ userName, onLogout }: { userName: string; onLogout: () => vo
       </button>
       {open && (
         <div className={styles.panel} role="menu">
-          <MenuItem icon={<User size={15} />} label={t('My account')} href="/app/account" onSelect={close} />
+          <MenuItem icon={<User size={15} />} label={t('My account')} to="/account" onSelect={close} />
           <MenuItem icon={<LogOut size={15} />} label={t('Sign out')} danger onClick={onLogout} onSelect={close} />
         </div>
       )}

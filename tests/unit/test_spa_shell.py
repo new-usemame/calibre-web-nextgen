@@ -38,6 +38,17 @@ def test_spa_default_on_serves_shell(monkeypatch, tmp_path):
 
 
 @pytest.mark.unit
+def test_spa_explicit_empty_env_is_optout(monkeypatch):
+    """An explicit empty value (CWNG_SPA=) means opt-out — distinct from UNSET,
+    which keeps the default-on. (An operator blanking the var means 'off'.)"""
+    import cps.spa as spa_mod
+    monkeypatch.setenv("CWNG_SPA", "")
+    assert spa_mod._spa_enabled() is False
+    app = _spa_app(monkeypatch)
+    assert app.test_client().get("/app").status_code == 404
+
+
+@pytest.mark.unit
 def test_spa_missing_bundle_404(monkeypatch, tmp_path):
     """Enabled but no build artifact present -> 404 (don't serve a broken shell)."""
     monkeypatch.setenv("CWNG_SPA", "1")

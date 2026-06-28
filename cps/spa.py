@@ -12,7 +12,9 @@ spa = Blueprint("spa", __name__)
 
 _SPA_DIR = os.path.join(os.path.dirname(__file__), "static", "app")
 
-_DISABLE_VALUES = ("0", "false", "no", "off")
+# An explicit empty value ("CWNG_SPA=") is treated as opt-out too — an operator
+# blanking the var clearly means "off". UNSET (env absent) keeps the default-on.
+_DISABLE_VALUES = ("", "0", "false", "no", "off")
 
 
 def _spa_enabled():
@@ -21,8 +23,11 @@ def _spa_enabled():
     Every updated instance should surface the new UI on its own so users can opt
     in, without the operator having to set anything (rollout goal: show the
     'Try the new UI' nudge to everyone, then eventually make it the default). Set
-    CWNG_SPA to a falsey value (0/false/no/off) to turn the new UI off entirely."""
-    return (os.environ.get("CWNG_SPA") or "").strip().lower() not in _DISABLE_VALUES
+    CWNG_SPA to a falsey value (empty/0/false/no/off) to turn the new UI off."""
+    value = os.environ.get("CWNG_SPA")
+    if value is None:  # env absent → default ON
+        return True
+    return value.strip().lower() not in _DISABLE_VALUES
 
 
 def _spa_bundle_present():

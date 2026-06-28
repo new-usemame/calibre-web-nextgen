@@ -129,14 +129,19 @@ RUN --mount=type=secret,id=github_token,required=false \
   if [ -n "${GH_TOKEN}" ]; then echo "Authenticated GitHub download"; AUTH_HEADER=(--header "Authorization: Bearer ${GH_TOKEN}"); else echo "Unauthenticated GitHub download"; AUTH_HEADER=(); fi && \
   echo "Downloading Python from ${PBS_URL}" && \
   DL_OK=0 && \
-  for attempt in 1 2 3 4 5 6 7 8 9 10; do \
+  # The GitHub release-asset CDN intermittently 404s a subset of requests
+  # (proven: within one build, repeated 404s then a 200 — an edge/CDN dip, not
+  # our code). Ride it out with a generous, bounded retry budget: up to 30
+  # attempts × 20s ≈ 10 min worst case, but instant on the normal (first-try)
+  # path. Pure patience — no extra tooling, no behavior change when healthy.
+  for attempt in $(seq 1 30); do \
     if curl -fL "${AUTH_HEADER[@]}" --connect-timeout 30 --retry 3 --retry-delay 3 --retry-all-errors "${PBS_URL}" -o /tmp/python.tar.gz; then \
       echo "Python download succeeded on attempt ${attempt}"; DL_OK=1; break; \
     fi; \
-    echo "Python download attempt ${attempt} failed (HTTP error / 404 from the release CDN); retrying in 15s…"; \
-    sleep 15; \
+    echo "Python download attempt ${attempt}/30 failed (release-CDN 404 dip); retrying in 20s…"; \
+    sleep 20; \
   done && \
-  if [ "${DL_OK}" != "1" ]; then echo "ERROR: Python download failed after 10 attempts"; exit 22; fi && \
+  if [ "${DL_OK}" != "1" ]; then echo "ERROR: Python download failed after 30 attempts (~10 min); the GitHub release CDN is down for this runner"; exit 22; fi && \
   mkdir -p /opt && \
   tar -xzf /tmp/python.tar.gz -C /opt && \
   rm /tmp/python.tar.gz && \

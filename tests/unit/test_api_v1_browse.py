@@ -213,3 +213,47 @@ def test_list_authors_pipe_replacement():
         data = json.loads(result.get_data(as_text=True))
 
     assert data["items"][0]["name"] == "Adams,Douglas"
+
+
+@pytest.mark.unit
+def test_list_ratings_items():
+    """GET /api/v1/ratings returns star-formatted names (calibre stores rating 0-10)."""
+    from cps.api import browse as browse_mod
+
+    rating = SimpleNamespace(id=2, rating=8)  # 8/2 = 4 stars
+    app = flask.Flask(__name__)
+    with app.test_request_context("/api/v1/ratings"):
+        mq = MagicMock()
+        mq.join.return_value = mq
+        mq.filter.return_value = mq
+        mq.group_by.return_value = mq
+        mq.order_by.return_value = mq
+        mq.all.return_value = [(rating, 3)]
+        with patch.object(browse_mod.calibre_db, "session") as ms, \
+             patch.object(browse_mod.calibre_db, "common_filters", return_value=True):
+            ms.query.return_value = mq
+            result = inspect.unwrap(browse_mod.list_ratings)()
+    data = result if isinstance(result, dict) else json.loads(result.get_data(as_text=True))
+    assert data["items"] == [{"id": 2, "name": "4★", "count": 3}]
+
+
+@pytest.mark.unit
+def test_list_formats_items():
+    """GET /api/v1/formats returns the format string as both id and name."""
+    from cps.api import browse as browse_mod
+
+    app = flask.Flask(__name__)
+    with app.test_request_context("/api/v1/formats"):
+        mq = MagicMock()
+        mq.join.return_value = mq
+        mq.filter.return_value = mq
+        mq.group_by.return_value = mq
+        mq.order_by.return_value = mq
+        mq.all.return_value = [("EPUB", 13), ("PDF", 1)]
+        with patch.object(browse_mod.calibre_db, "session") as ms, \
+             patch.object(browse_mod.calibre_db, "common_filters", return_value=True):
+            ms.query.return_value = mq
+            result = inspect.unwrap(browse_mod.list_formats)()
+    data = result if isinstance(result, dict) else json.loads(result.get_data(as_text=True))
+    assert {"id": "EPUB", "name": "EPUB", "count": 13} in data["items"]
+    assert {"id": "PDF", "name": "PDF", "count": 1} in data["items"]

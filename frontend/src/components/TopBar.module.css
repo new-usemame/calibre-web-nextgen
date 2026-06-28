@@ -80,3 +80,38 @@
 .userName:hover {
   color: var(--accent);
 }
+
+/* Persistent library search (center of the top bar). */
+.search {
+  flex: 1 1 auto;
+  max-width: 420px;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2, 8px);
+  margin: 0 16px;
+  padding: 0 12px;
+  height: 38px;
+  background: var(--surface-2, rgba(127, 127, 127, 0.08));
+  border: 1px solid var(--border);
+  border-radius: var(--r-full, 999px);
+  transition: border-color var(--dur-fast) var(--ease);
+}
+.search:focus-within {
+  border-color: var(--accent);
+}
+.searchIcon {
+  color: var(--text-muted, #888);
+  flex: none;
+}
+.searchInput {
+  flex: 1 1 auto;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  color: var(--text, inherit);
+  font-size: var(--fs-sm);
+  outline: none;
+}
+@media (max-width: 640px) {
+  .search { display: none; }
+}

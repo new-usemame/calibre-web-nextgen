@@ -5,6 +5,7 @@ import { Login } from './pages/Login';
 import { Catalog } from './pages/Catalog';
 import { BookDetail } from './pages/BookDetail';
 import { BrowseList } from './pages/BrowseList';
+import { NotFound } from './pages/NotFound';
 import { Shelves } from './pages/Shelves';
 import { Shelf } from './pages/Shelf';
 import { AdvancedSearch } from './pages/AdvancedSearch';
@@ -97,6 +98,16 @@ export function App() {
             {(p) => <Catalog entityKind="language" entityId={decodeURIComponent(p.id)} />}
           </Route>
 
+          <Route path="/ratings">{() => <BrowseList plural="ratings" title="Ratings" />}</Route>
+          <Route path="/ratings/:id">
+            {(p) => <Catalog entityKind="rating" entityId={decodeURIComponent(p.id)} />}
+          </Route>
+
+          <Route path="/formats">{() => <BrowseList plural="formats" title="Formats" />}</Route>
+          <Route path="/formats/:id">
+            {(p) => <Catalog entityKind="format" entityId={decodeURIComponent(p.id)} />}
+          </Route>
+
           {/* Shelves */}
           <Route path="/shelves">{() => <Shelves />}</Route>
           <Route path="/shelf/:id">{(p) => <Shelf id={p.id} />}</Route>
@@ -130,6 +141,9 @@ export function App() {
           <Route path="/magic">{() => <MagicShelf />}</Route>
 
           <Route path="/">{() => <Catalog />}</Route>
+
+          {/* Graceful 404 for any unmatched in-shell route (no blank page). */}
+          <Route>{() => <NotFound />}</Route>
             </Switch>
           </AppShell>
         </Route>

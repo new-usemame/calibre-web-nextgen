@@ -71,3 +71,34 @@ def list_languages():
     # speaking_language returns [[Category, count], ...] where Category.id = lang_code, Category.name = display name
     items = [{"id": cat.id, "name": cat.name, "count": cnt} for cat, cnt in lang_list]
     return {"items": items}
+
+
+@api_v1.route("/ratings")
+@login_required_if_no_ano
+def list_ratings():
+    """Browse by star rating. Calibre stores rating as 0-10 (stars*2); the SPA
+    filters books by the Ratings row id (matches list_books ?rating=)."""
+    rows = (calibre_db.session.query(db.Ratings, func.count('books_ratings_link.book').label('count'))
+            .join(db.books_ratings_link)
+            .join(db.Books)
+            .filter(calibre_db.common_filters())
+            .group_by(text('books_ratings_link.rating'))
+            .order_by(db.Ratings.rating.desc())
+            .all())
+    items = [{"id": r.id, "name": "%g★" % (r.rating / 2), "count": cnt} for r, cnt in rows]
+    return {"items": items}
+
+
+@api_v1.route("/formats")
+@login_required_if_no_ano
+def list_formats():
+    """Browse by file format (EPUB, PDF, …). The format string is the id; the SPA
+    filters books by it (matches list_books ?format=)."""
+    rows = (calibre_db.session.query(db.Data.format, func.count(db.Data.book).label('count'))
+            .join(db.Books, db.Books.id == db.Data.book)
+            .filter(calibre_db.common_filters())
+            .group_by(db.Data.format)
+            .order_by(db.Data.format)
+            .all())
+    items = [{"id": fmt, "name": fmt, "count": cnt} for fmt, cnt in rows]
+    return {"items": items}

@@ -1,7 +1,7 @@
 import { Link, useLocation } from 'wouter';
 import {
   Library, Users, Layers, Tag, Building2, Languages, BookCopy, UploadCloud, Shield,
-  Flame, Shuffle, Star, Archive, Info, ListChecks, Table2, Wand2, Files,
+  Flame, Shuffle, Star, Archive, Info, ListChecks, Table2, Wand2, Files, FileType,
 } from 'lucide-react';
 import { useShelves, useMe, useMagicShelves } from '../lib/queries';
 import { useT } from '../lib/i18n';
@@ -14,6 +14,8 @@ const NAV = [
   { href: '/tags', label: 'Tags', icon: Tag },
   { href: '/publishers', label: 'Publishers', icon: Building2 },
   { href: '/languages', label: 'Languages', icon: Languages },
+  { href: '/ratings', label: 'Ratings', icon: Star },
+  { href: '/formats', label: 'Formats', icon: FileType },
 ];
 
 // Discovery views — fixed server-side filter categories (parity with the

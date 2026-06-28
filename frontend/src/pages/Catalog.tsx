@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Link } from 'wouter';
+import { Link, useSearch } from 'wouter';
 import { Search, ChevronLeft, SlidersHorizontal, ListChecks } from 'lucide-react';
 import { BookCard } from '../components/BookCard';
 import { BulkBar } from '../components/BulkBar';
@@ -43,6 +43,8 @@ const KIND_LABEL: Record<EntityKind, string> = {
   tag: 'Tag',
   publisher: 'Publisher',
   language: 'Language',
+  rating: 'Rating',
+  format: 'Format',
 };
 
 interface CatalogProps {
@@ -87,6 +89,16 @@ export function Catalog({ entityKind, entityId, view }: CatalogProps) {
   const entityName = filtered
     ? entityListQuery.data?.items.find((e) => String(e.id) === String(entityId))?.name
     : undefined;
+
+  // Seed the search box from a ?q= query param (the persistent top-bar search
+  // navigates here as /?q=<term>). Library view only.
+  const rawSearch = useSearch();
+  const urlQ = new URLSearchParams(rawSearch).get('q') || '';
+  useEffect(() => {
+    if (filtered || isView) return;
+    setSearchInput(urlQ);
+    setSearch(urlQ);
+  }, [urlQ, filtered, isView]);
 
   // Debounce the search box (library view only).
   useEffect(() => {

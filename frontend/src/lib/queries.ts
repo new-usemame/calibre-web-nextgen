@@ -9,7 +9,7 @@ import type {
 
 /** Entity kinds the catalog can be filtered by. Singular here; the browse-list
  *  endpoints/routes use the plural (author -> authors). */
-export type EntityKind = 'author' | 'series' | 'tag' | 'publisher' | 'language';
+export type EntityKind = 'author' | 'series' | 'tag' | 'publisher' | 'language' | 'rating' | 'format';
 export type ReadFilter = 'all' | 'read' | 'unread';
 /** Discovery "views" — server-side ?filter= categories beyond read/unread. */
 export type DiscoveryView = 'hot' | 'discover' | 'rated' | 'favorites' | 'archived';
@@ -21,6 +21,8 @@ export const ENTITY_PLURAL: Record<EntityKind, string> = {
   tag: 'tags',
   publisher: 'publishers',
   language: 'languages',
+  rating: 'ratings',
+  format: 'formats',
 };
 
 export interface BooksQuery {

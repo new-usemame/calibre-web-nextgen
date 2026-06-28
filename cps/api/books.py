@@ -35,7 +35,7 @@ def _row_to_item(e):
     return serialize_book_list_item(book, read=read, archived=archived)
 
 
-def _build_entity_filter(author, series, tag, publisher, language):
+def _build_entity_filter(author, series, tag, publisher, language, rating=None, book_format=None):
     """Build an entity db_filter from query params; returns True (no-op) if none supplied.
 
     Only the first supplied entity param is honoured — multiple entity filters
@@ -51,6 +51,10 @@ def _build_entity_filter(author, series, tag, publisher, language):
         parts.append(db.Books.tags.any(db.Tags.id == tag))
     if publisher is not None:
         parts.append(db.Books.publishers.any(db.Publishers.id == publisher))
+    if rating is not None:
+        parts.append(db.Books.ratings.any(db.Ratings.id == rating))
+    if book_format:
+        parts.append(db.Books.data.any(db.Data.format == book_format.upper()))
     if language is not None:
         # "none" is the synthetic category speaking_language() appends for books
         # with no language link — match books that have no Languages rows, not a
@@ -193,7 +197,10 @@ def list_books():
                         "page": page, "per_page": per_page, "total": total})
 
     # --- entity + read/unread path ---
-    entity_filter = _build_entity_filter(author_id, series_id, tag_id, publisher_id, language_code)
+    rating_id = request.args.get("rating", type=int)
+    book_format = request.args.get("format")
+    entity_filter = _build_entity_filter(author_id, series_id, tag_id, publisher_id, language_code,
+                                         rating=rating_id, book_format=book_format)
     read_filter = _build_read_filter(filter_val) if filter_val in ("read", "unread") else True
 
     if entity_filter is True and read_filter is True:

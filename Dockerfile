@@ -171,12 +171,12 @@ RUN \
   | awk '/tag_name/{print $4;exit}' FS='[""]'); \
   fi && \
   if [ "$(uname -m)" == "x86_64" ]; then \
-  curl -o \
-  /usr/bin/kepubify -L \
+  curl -fL --retry 5 --retry-delay 3 --retry-all-errors -o \
+  /usr/bin/kepubify \
   https://github.com/pgaskin/kepubify/releases/download/${KEPUBIFY_RELEASE}/kepubify-linux-64bit; \
   elif [ "$(uname -m)" == "aarch64" ]; then \
-  curl -o \
-  /usr/bin/kepubify -L \
+  curl -fL --retry 5 --retry-delay 3 --retry-all-errors -o \
+  /usr/bin/kepubify \
   https://github.com/pgaskin/kepubify/releases/download/${KEPUBIFY_RELEASE}/kepubify-linux-arm64; \
   fi && \
   chmod +x /usr/bin/kepubify
@@ -187,12 +187,12 @@ RUN \
   mkdir -p /app/calibre && \
   # STEP 5.2 - Download the desired version of Calibre, determined by the CALIBRE_RELEASE variable and the architecture of the build environment
   if [ "$(uname -m)" == "x86_64" ]; then \
-  curl -o \
-  /calibre.txz -L \
+  curl -fL --retry 5 --retry-delay 3 --retry-all-errors -o \
+  /calibre.txz \
   "https://download.calibre-ebook.com/${CALIBRE_RELEASE}/calibre-${CALIBRE_RELEASE}-x86_64.txz"; \
   elif [ "$(uname -m)" == "aarch64" ]; then \
-  curl -o \
-  /calibre.txz -L \
+  curl -fL --retry 5 --retry-delay 3 --retry-all-errors -o \
+  /calibre.txz \
   "https://download.calibre-ebook.com/${CALIBRE_RELEASE}/calibre-${CALIBRE_RELEASE}-arm64.txz"; \
   fi && \
   # STEP 5.3 - Extract the downloaded file to /app/calibre

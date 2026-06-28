@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { BookMarked } from 'lucide-react';
+import { BookMarked, KeyRound } from 'lucide-react';
 import { Button } from '../components/Button';
 import { Spinner } from '../components/Spinner';
 import { useLogin, useAuthConfig, useRegister, useForgotPassword } from '../lib/queries';
@@ -139,6 +139,14 @@ export function Login() {
               <a key={p.id} href={p.url} className={styles.oauthBtn}>{p.name}</a>
             ))}
           </div>
+        )}
+
+        {/* Magic-link (remote) login — admin toggle config_remote_login */}
+        {mode === 'login' && cfg?.remote_login && cfg.remote_login_url && (
+          <a href={cfg.remote_login_url} className={styles.magicLink}>
+            <KeyRound size={15} />
+            {t('Log in with a magic link')}
+          </a>
         )}
 
         {/* Mode switches */}

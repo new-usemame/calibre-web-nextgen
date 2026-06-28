@@ -134,3 +134,23 @@
   color: var(--accent); font-size: var(--fs-sm);
 }
 .linkBtn:hover { text-decoration: underline; }
+
+/* Magic-link (remote) login entry — bordered button matching the OAuth buttons. */
+.magicLink {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-2);
+  margin-top: var(--sp-4);
+  padding: var(--sp-2) var(--sp-3);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  color: var(--text);
+  font-size: var(--fs-sm);
+  text-decoration: none;
+  transition: background var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
+}
+.magicLink:hover {
+  background: var(--surface-2);
+  border-color: var(--border-strong);
+}

@@ -1,13 +1,13 @@
 # -*- coding: utf-8 -*-
 # SPDX-License-Identifier: GPL-3.0-or-later
 """Auth endpoints for /api/v1 — reuse the existing cw_login session + CSRF."""
-from flask import jsonify, request
+from flask import jsonify, request, url_for
 from sqlalchemy import func
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from . import api_v1
 from .serializers import serialize_user
-from .. import ub, config, limiter
+from .. import ub, config, constants, limiter
 from ..cw_login import current_user, login_user, logout_user
 from ..helper import (
     check_username, check_email, check_valid_domain, reset_password,
@@ -20,13 +20,29 @@ def _err(code, message, status):
 
 
 def _oauth_providers():
-    """Configured OAuth providers, as {id, name, url} for the SPA login buttons.
-    URLs match the legacy login template's oauth.* routes."""
-    urls = {1: "/link/github", 2: "/link/google", 3: "/link/generic"}
+    """OAuth/OIDC providers for the SPA login buttons, as {id, name, url}.
+
+    Matches the classic login page EXACTLY: providers are only offered when the
+    instance's login type is OAuth (config_login_type == LOGIN_OAUTH) AND the
+    provider is registered in oauth_check. Without the login-type gate the buttons
+    would appear on a standard- or LDAP-login instance and error on click (the
+    provider isn't configured). URLs are built with url_for so they're correct
+    behind a reverse-proxy subpath. Endpoints map to the same oauth.* routes the
+    classic template links to."""
+    if config.config_login_type != constants.LOGIN_OAUTH:
+        return []
+    endpoints = {1: "oauth.github_login", 2: "oauth.google_login", 3: "oauth.generic_login"}
     try:
         from ..oauth_bb import oauth_check
-        return [{"id": cid, "name": name, "url": urls.get(cid, "")}
-                for cid, name in oauth_check.items() if cid in urls]
+        out = []
+        for cid, name in oauth_check.items():
+            ep = endpoints.get(cid)
+            if ep:
+                try:
+                    out.append({"id": cid, "name": name, "url": url_for(ep)})
+                except Exception:
+                    pass
+        return out
     except Exception:
         return []
 
@@ -116,12 +132,21 @@ def auth_config():
         mail_ok = bool(config.get_mail_server_configured())
     except Exception:
         mail_ok = False
+    # Magic-link ("remote") login — admin toggle config_remote_login. Same gate as
+    # the classic login page; URL via url_for so it's reverse-proxy-subpath safe.
+    remote_login = bool(getattr(config, "config_remote_login", False))
+    try:
+        remote_login_url = url_for("remotelogin.remote_login") if remote_login else ""
+    except Exception:
+        remote_login_url = ""
     return jsonify({
         "public_registration": bool(getattr(config, "config_public_reg", False)),
         "register_email": bool(getattr(config, "config_register_email", False)),
         "mail_configured": mail_ok,
         "standard_login_disabled": bool(getattr(config, "config_disable_standard_login", False)),
         "oauth_providers": _oauth_providers(),
+        "remote_login": remote_login,
+        "remote_login_url": remote_login_url,
     })
 
 

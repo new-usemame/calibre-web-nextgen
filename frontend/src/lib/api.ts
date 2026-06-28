@@ -209,6 +209,8 @@ export interface AuthConfig {
   mail_configured: boolean;
   standard_login_disabled: boolean;
   oauth_providers: OAuthProvider[];
+  remote_login: boolean;
+  remote_login_url: string;
 }
 
 export interface AboutInfo {

@@ -133,6 +133,11 @@ jobs:
           build-args: |
             BUILD_DATE=${{ github.event.repository.updated_at }}
             VERSION=DEV_BUILD-${{ env.IMAGE_TAG }}-${{ vars.CURRENT_DEV_BUILD_NUM }}
+          # Authenticate the in-Dockerfile python-build-standalone download so it
+          # isn't subject to the unauthenticated release-asset rate limit on the
+          # shared Actions egress IPs (which returns 404 and broke every build).
+          secrets: |
+            github_token=${{ secrets.GITHUB_TOKEN }}
 
       # --- 4. Export Digest for Merge Job ---
       - name: Export digest
@@ -248,6 +253,11 @@ jobs:
           build-args: |
             BUILD_DATE=${{ github.event.repository.updated_at }}
             VERSION=DEV_BUILD-${{ env.IMAGE_TAG }}-${{ vars.CURRENT_DEV_BUILD_NUM }}
+          # Authenticate the in-Dockerfile python-build-standalone download so it
+          # isn't subject to the unauthenticated release-asset rate limit on the
+          # shared Actions egress IPs (which returns 404 and broke every build).
+          secrets: |
+            github_token=${{ secrets.GITHUB_TOKEN }}
 
       # --- 4. Rotate Cache (Prevent Infinite Growth) ---
       - name: Move cache

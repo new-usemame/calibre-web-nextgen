@@ -93,6 +93,11 @@ jobs:
           build-args: |
             BUILD_DATE=${{ github.event.release.created_at || github.event.repository.updated_at }}
             VERSION=${{ steps.ver.outputs.tag }}
+          # Authenticate the in-Dockerfile python-build-standalone download so it
+          # isn't subject to the unauthenticated release-asset rate limit on the
+          # shared Actions egress IPs (which returns 404 and broke every build).
+          secrets: |
+            github_token=${{ secrets.GITHUB_TOKEN }}
           labels: |
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
             org.opencontainers.image.revision=${{ github.sha }}

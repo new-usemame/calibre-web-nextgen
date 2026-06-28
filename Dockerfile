@@ -1,5 +1,18 @@
 # syntax=docker/dockerfile:1
 
+# ── Global Python pin (single source of truth) ──────────────────────────────
+# Declared before any FROM so it's a TRUE global ARG (usable in FROM lines). It
+# pins the interpreter AND addresses our GHCR tarball mirror. To bump Python,
+# change ONLY these two lines — the mirror stage below and the CI mirror-build
+# both derive from them. See notes/PYTHON-BUILD-MIRROR.md.
+ARG PYTHON_VERSION=3.13.14
+ARG PYTHON_BUILD_STANDALONE_RELEASE=20260623
+
+# PBS tarball mirror stage: our GHCR image holding /python.tar.gz for the build
+# platform. We COPY from this in STEP 1.5 instead of curling the GitHub release
+# CDN, which intermittently 404s the Actions egress and broke every build.
+FROM ghcr.io/new-usemame/pbs-cache:cpython-${PYTHON_VERSION}-${PYTHON_BUILD_STANDALONE_RELEASE} AS pbs_mirror
+
 # Simple Example Build Command:
 # docker build \
 # --tag crocodilestick/calibre-web-automated:dev \
@@ -43,16 +56,8 @@ RUN npm run build
 # ==========================================================================
 ARG CALIBRE_RELEASE=9.1.0
 ARG KEPUBIFY_RELEASE=v4.0.4
-# Python is installed from python-build-standalone (CDN-backed GitHub releases)
-# rather than the deadsnakes PPA, which has a history of being unavailable.
-# Both x86_64 and aarch64 prebuilds are published by astral-sh.
-ARG PYTHON_BUILD_STANDALONE_RELEASE=20260623
-ARG PYTHON_VERSION=3.13.14
-# Our GHCR mirror of the python-build-standalone tarball, tag DERIVED from the
-# two ARGs above so it can never drift. FROM expands the ARGs inline (COPY --from
-# can't), so we alias the mirror image as a stage here and COPY from the alias in
-# STEP 1.5. Bump the two ARGs and everything (this stage + the CI mirror) follows.
-FROM ghcr.io/new-usemame/pbs-cache:cpython-${PYTHON_VERSION}-${PYTHON_BUILD_STANDALONE_RELEASE} AS pbs_mirror
+# (PYTHON_VERSION / PYTHON_BUILD_STANDALONE_RELEASE are declared as global ARGs
+# at the top of this file; the dependencies stage re-declares them below.)
 
 FROM ghcr.io/linuxserver/baseimage-ubuntu:noble AS dependencies
 

@@ -1,16 +1,20 @@
 # Python (python-build-standalone) is installed from our GHCR mirror
 
 ## TL;DR for the next person (or agent)
-The Docker image installs Python 3.13 by `COPY`ing a tarball from our own GHCR
-image **`ghcr.io/new-usemame/pbs-cache`**, NOT by downloading from GitHub's
-release CDN. **To bump Python, change only these two `ARG`s in `Dockerfile`:**
+The Docker image installs **Python** AND **kepubify** by `COPY`ing them from our
+own GHCR image **`ghcr.io/new-usemame/pbs-cache`**, NOT by downloading from
+GitHub's release CDN (both used to come from there, which is what kept 404ing).
+**To bump Python or kepubify, change only the matching `ARG` at the top of `Dockerfile`:**
 
 ```
-ARG PYTHON_BUILD_STANDALONE_RELEASE=20260623
 ARG PYTHON_VERSION=3.13.14
+ARG PYTHON_BUILD_STANDALONE_RELEASE=20260623
+ARG KEPUBIFY_RELEASE=v4.0.4
 ```
 
 Everything else follows automatically. Don't touch the workflows or the script.
+(Two mirror tags: `cpython-<ver>-<rel>` and `kepubify-<rel>`. Calibre comes from
+calibre-ebook.com — a different host — and is left on curl-with-retries.)
 
 ## Why this exists
 GitHub's release-asset CDN intermittently returns **404 to the GitHub-Actions

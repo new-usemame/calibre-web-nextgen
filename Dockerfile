@@ -14,10 +14,12 @@ ARG PYTHON_BUILD_STANDALONE_RELEASE=20260623
 ARG CALIBRE_RELEASE=9.1.0
 ARG KEPUBIFY_RELEASE=v4.0.4
 
-# PBS tarball mirror stage: our GHCR image holding /python.tar.gz for the build
-# platform. We COPY from this in STEP 1.5 instead of curling the GitHub release
-# CDN, which intermittently 404s the Actions egress and broke every build.
+# Mirror stages: our GHCR images holding build deps that otherwise come from the
+# GitHub release CDN, which intermittently 404s the Actions egress and broke every
+# build. We COPY from these instead of curling at build time. The CI ensure-mirror
+# job (scripts/ensure-python-mirror.sh) builds them from the pins above.
 FROM ghcr.io/new-usemame/pbs-cache:cpython-${PYTHON_VERSION}-${PYTHON_BUILD_STANDALONE_RELEASE} AS pbs_mirror
+FROM ghcr.io/new-usemame/pbs-cache:kepubify-${KEPUBIFY_RELEASE} AS kepubify_mirror
 
 # Simple Example Build Command:
 # docker build \
@@ -168,23 +170,9 @@ RUN \
   /lsiopy/bin/pip install -U --no-cache-dir --find-links https://wheel-index.linuxserver.io/ubuntu/ -r \
   /app/calibre-web-automated/requirements.txt -r /app/calibre-web-automated/optional-requirements.txt
 
-# STEP 4 - Install kepubify
-RUN \
-  echo "**** install kepubify ****" && \
-  if [[ $KEPUBIFY_RELEASE == 'newest' ]]; then \
-  KEPUBIFY_RELEASE=$(curl -sX GET "https://api.github.com/repos/pgaskin/kepubify/releases/latest" \
-  | awk '/tag_name/{print $4;exit}' FS='[""]'); \
-  fi && \
-  if [ "$(uname -m)" == "x86_64" ]; then \
-  curl -fL --retry 30 --retry-delay 15 --retry-all-errors -o \
-  /usr/bin/kepubify \
-  https://github.com/pgaskin/kepubify/releases/download/${KEPUBIFY_RELEASE}/kepubify-linux-64bit; \
-  elif [ "$(uname -m)" == "aarch64" ]; then \
-  curl -fL --retry 30 --retry-delay 15 --retry-all-errors -o \
-  /usr/bin/kepubify \
-  https://github.com/pgaskin/kepubify/releases/download/${KEPUBIFY_RELEASE}/kepubify-linux-arm64; \
-  fi && \
-  chmod +x /usr/bin/kepubify
+# STEP 4 - Install kepubify from our GHCR mirror (not the GitHub release CDN).
+# The mirror image ships /kepubify already mode 0755 for the build platform.
+COPY --from=kepubify_mirror /kepubify /usr/bin/kepubify
 
 # STEP 5 - Install Calibre
 RUN \

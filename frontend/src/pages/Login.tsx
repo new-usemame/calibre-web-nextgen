@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { BookMarked, KeyRound } from 'lucide-react';
+import { Link } from 'wouter';
+import { BookMarked, KeyRound, Eye, EyeOff } from 'lucide-react';
 import { Button } from '../components/Button';
 import { Spinner } from '../components/Spinner';
 import { useLogin, useAuthConfig, useRegister, useForgotPassword } from '../lib/queries';
@@ -14,6 +15,8 @@ export function Login() {
   const [mode, setMode] = useState<Mode>('login');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [remember, setRemember] = useState(true);
   const [email, setEmail] = useState('');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [okMsg, setOkMsg] = useState<string | null>(null);
@@ -28,7 +31,7 @@ export function Login() {
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     reset();
-    login.mutate({ username, password }, {
+    login.mutate({ username, password, remember }, {
       onError: (err) =>
         setErrorMsg(err instanceof ApiError && err.status === 401
           ? 'Invalid username or password.' : 'Sign in failed. Please try again.'),
@@ -83,8 +86,21 @@ export function Login() {
             </label>
             <label className={styles.field}>
               <span className={styles.label}>{t('Password')}</span>
-              <input type="password" className={styles.input} value={password}
-                onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" required />
+              <div className={styles.passwordWrap}>
+                <input type={showPassword ? 'text' : 'password'} className={styles.input} value={password}
+                  onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" required />
+                <button type="button" className={styles.revealBtn}
+                  onClick={() => setShowPassword((v) => !v)}
+                  aria-label={showPassword ? t('Hide password') : t('Show password')}
+                  aria-pressed={showPassword} tabIndex={-1}>
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
+            </label>
+            <label className={styles.checkboxRow}>
+              <input type="checkbox" className={styles.checkbox} checked={remember}
+                onChange={(e) => setRemember(e.target.checked)} />
+              <span>{t('Remember me')}</span>
             </label>
             {errorMsg && <div className={styles.error} role="alert">{errorMsg}</div>}
             <Button type="submit" variant="primary" className={styles.submitBtn} disabled={login.isPending}>
@@ -141,12 +157,13 @@ export function Login() {
           </div>
         )}
 
-        {/* Magic-link (remote) login — admin toggle config_remote_login */}
-        {mode === 'login' && cfg?.remote_login && cfg.remote_login_url && (
-          <a href={cfg.remote_login_url} className={styles.magicLink}>
+        {/* Magic-link (remote) login — admin toggle config_remote_login. Routes to
+            the native SPA page (not the legacy /remote/login Jinja view). */}
+        {mode === 'login' && cfg?.remote_login && (
+          <Link href="/magic-link" className={styles.magicLink}>
             <KeyRound size={15} />
             {t('Log in with a magic link')}
-          </a>
+          </Link>
         )}
 
         {/* Mode switches */}

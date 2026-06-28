@@ -1,4 +1,5 @@
 import inspect
+from datetime import datetime
 import pytest
 import flask
 from unittest.mock import patch, MagicMock
@@ -209,6 +210,106 @@ def test_oauth_providers_maps_ids_to_urls_when_oauth():
     by_id = {p["id"]: p for p in provs}
     assert by_id[1]["url"] == "/oauth/github_login"
     assert by_id[2]["name"] == "Google"
+
+
+# ── Magic-link (remote) login ────────────────────────────────────────────────
+
+@pytest.mark.unit
+def test_magic_link_start_disabled_returns_403():
+    app = _app()
+    with patch.object(cps.api.auth, "config") as cfg:
+        cfg.config_remote_login = False
+        resp = app.test_client().post("/api/v1/auth/magic-link/start")
+    assert resp.status_code == 403
+    assert resp.get_json()["error"]["code"] == "magic_link_disabled"
+
+
+@pytest.mark.unit
+def test_magic_link_start_mints_token():
+    app = _app()
+    fake_token = MagicMock()
+    fake_token.auth_token = "abc123"
+    anon = MagicMock()
+    anon.is_authenticated = False
+    with patch.object(cps.api.auth, "config") as cfg, \
+         patch.object(cps.api.auth, "ub") as ub, \
+         patch.object(cps.api.auth, "current_user", anon), \
+         patch.object(cps.api.auth, "url_for", return_value="http://x/verify/abc123"), \
+         patch.object(cps.api.auth, "_build_qr_data_url", return_value="data:image/jpeg;base64,QR"):
+        cfg.config_remote_login = True
+        ub.RemoteAuthToken.return_value = fake_token
+        d = app.test_client().post("/api/v1/auth/magic-link/start").get_json()
+    assert d["token"] == "abc123"
+    assert d["verify_url"] == "http://x/verify/abc123"
+    assert d["qrcode"] == "data:image/jpeg;base64,QR"
+    assert d["expires_in_minutes"] == 10
+
+
+@pytest.mark.unit
+def test_magic_link_poll_not_found_for_unknown_token():
+    app = _app()
+    with patch.object(cps.api.auth, "config") as cfg, \
+         patch.object(cps.api.auth, "ub") as ub:
+        cfg.config_remote_login = True
+        ub.session.query.return_value.filter.return_value.first.return_value = None
+        d = app.test_client().post("/api/v1/auth/magic-link/poll",
+                                   json={"token": "nope"}).get_json()
+    assert d["status"] == "not_found"
+
+
+@pytest.mark.unit
+def test_magic_link_poll_not_verified():
+    app = _app()
+    tok = MagicMock()
+    tok.verified = False
+    tok.expiration = datetime(2999, 1, 1)
+    with patch.object(cps.api.auth, "config") as cfg, \
+         patch.object(cps.api.auth, "ub") as ub:
+        cfg.config_remote_login = True
+        ub.session.query.return_value.filter.return_value.first.return_value = tok
+        d = app.test_client().post("/api/v1/auth/magic-link/poll",
+                                   json={"token": "t"}).get_json()
+    assert d["status"] == "not_verified"
+
+
+@pytest.mark.unit
+def test_magic_link_poll_success_logs_in_and_consumes_token():
+    """A verified token logs the waiting device in, returns the serialized user,
+    and the token is deleted (consumed)."""
+    app = _app()
+    from cps import constants
+    tok = MagicMock()
+    tok.verified = True
+    tok.expiration = datetime(2999, 1, 1)
+    tok.user_id = 7
+    user = MagicMock()
+    user.id, user.name, user.locale, user.theme = 7, "maggie", "en", 1
+    user.role = constants.ROLE_USER
+    user.role_anonymous.return_value = False
+    with patch.object(cps.api.auth, "config") as cfg, \
+         patch.object(cps.api.auth, "ub") as ub, \
+         patch.object(cps.api.auth, "login_user") as lu, \
+         patch.object(cps.api.auth, "serialize_user", return_value={"name": "maggie"}), \
+         patch.object(cps.api.auth, "_server_features", return_value={}):
+        cfg.config_remote_login = True
+        # token lookup, then user lookup
+        q = ub.session.query.return_value.filter.return_value
+        q.first.side_effect = [tok, user]
+        d = app.test_client().post("/api/v1/auth/magic-link/poll",
+                                   json={"token": "t"}).get_json()
+    assert d["status"] == "success"
+    assert d["user"]["name"] == "maggie"
+    lu.assert_called_once_with(user)
+    ub.session.delete.assert_called_once_with(tok)
+
+
+@pytest.mark.unit
+def test_magic_link_endpoints_are_public():
+    """The before_request gate must let the magic-link endpoints through while
+    logged out — they're for the unauthenticated device by definition."""
+    from cps.api import _PUBLIC_ENDPOINTS
+    assert "api_v1.auth_magic_link_start" in _PUBLIC_ENDPOINTS
+    assert "api_v1.auth_magic_link_poll" in _PUBLIC_ENDPOINTS
 
 
 @pytest.mark.unit

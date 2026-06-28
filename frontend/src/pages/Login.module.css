@@ -82,6 +82,53 @@
   border-color: var(--accent);
 }
 
+/* Password field with an inline reveal (Show Password) toggle. */
+.passwordWrap {
+  position: relative;
+  display: flex;
+}
+.passwordWrap .input {
+  flex: 1 1 auto;
+  width: 100%;
+  padding-right: calc(var(--sp-3) + 28px);
+}
+.revealBtn {
+  position: absolute;
+  top: 0;
+  right: 0;
+  height: 100%;
+  width: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  border-radius: 0 var(--r-md) var(--r-md) 0;
+  transition: color var(--dur-fast) var(--ease);
+}
+.revealBtn:hover { color: var(--text); }
+
+/* Remember-me checkbox row. */
+.checkboxRow {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+  cursor: pointer;
+  user-select: none;
+  margin-top: calc(-1 * var(--sp-2));
+}
+.checkbox {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent);
+  cursor: pointer;
+  flex: none;
+}
+
 .error {
   background: var(--danger-soft);
   color: var(--danger);

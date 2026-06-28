@@ -17,6 +17,15 @@ is for things you can see or feel when running the app.
 ## [Unreleased]
 
 ### Added
+- **"Remember me" and a show-password toggle are back on the new sign-in screen.**
+  The redesigned login page now has the "Remember me" checkbox (on by default, so
+  you stay signed in) and an eye button to reveal what you typed — matching the
+  classic login.
+- **Magic-link sign-in now has a polished page in the new UI.** Choosing "Log in
+  with a magic link" opens a redesigned screen with the QR code, a one-tap copy of
+  the verification link, a live "waiting…" indicator and an expiry countdown. Scan
+  or open it on a device you're already signed in on and the waiting device logs in
+  automatically. (Previously this dropped you onto the old-style page.)
 - **The version number on the Admin page links to its release notes.** The
   "Calibre-Web NextGen" version in the Version Information table (Admin page) is
   now a link to that release's notes on GitHub, so you can see what changed in

@@ -26,6 +26,10 @@ _PUBLIC_ENDPOINTS = {
     "api_v1.auth_config",
     "api_v1.auth_register",
     "api_v1.auth_forgot",
+    # Magic-link (remote) login is for the logged-out device by definition — the
+    # endpoints self-gate on config_remote_login and consume a one-time token.
+    "api_v1.auth_magic_link_start",
+    "api_v1.auth_magic_link_poll",
     "api_v1.i18n_catalog",
 }
 

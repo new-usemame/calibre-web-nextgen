@@ -55,11 +55,48 @@ export function useMe() {
 export function useLogin() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (vars: { username: string; password: string }) =>
+    mutationFn: (vars: { username: string; password: string; remember?: boolean }) =>
       apiPost<Me>('/api/v1/auth/login', vars),
     onSuccess: (data) => {
       queryClient.setQueryData(['me'], data);
       void queryClient.invalidateQueries({ queryKey: ['me'] });
+    },
+  });
+}
+
+export interface MagicLinkSession {
+  token: string;
+  verify_url: string;
+  qrcode: string;
+  expires_in_minutes: number;
+}
+
+export type MagicLinkPoll =
+  | { status: 'not_verified' }
+  | { status: 'expired' }
+  | { status: 'not_found' }
+  | { status: 'success'; user: Me };
+
+/** Start a magic-link (remote) login session: mint a token + QR for this device. */
+export function useMagicLinkStart() {
+  return useMutation({
+    mutationFn: () => apiPost<MagicLinkSession>('/api/v1/auth/magic-link/start'),
+  });
+}
+
+/** Poll a magic-link token until another signed-in device authorises it. On
+ *  success the session cookie is set server-side; we seed the me-cache so the
+ *  app flips to the authenticated tree. */
+export function useMagicLinkPoll() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (token: string) =>
+      apiPost<MagicLinkPoll>('/api/v1/auth/magic-link/poll', { token }),
+    onSuccess: (data) => {
+      if (data.status === 'success') {
+        queryClient.setQueryData(['me'], data.user);
+        void queryClient.invalidateQueries({ queryKey: ['me'] });
+      }
     },
   });
 }

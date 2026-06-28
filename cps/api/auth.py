@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 # SPDX-License-Identifier: GPL-3.0-or-later
 """Auth endpoints for /api/v1 — reuse the existing cw_login session + CSRF."""
+from datetime import datetime
+
 from flask import jsonify, request, url_for
 from sqlalchemy import func
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -148,6 +150,92 @@ def auth_config():
         "remote_login": remote_login,
         "remote_login_url": remote_login_url,
     })
+
+
+def _build_qr_data_url(verify_url):
+    """Return a data: URL for a QR encoding verify_url, or "" if qrcode/PIL isn't
+    available. Mirrors remotelogin.remote_login's QR build (single source of the
+    same dependency surface) so the SPA page matches the classic one."""
+    try:
+        import qrcode
+        from base64 import b64encode
+        from io import BytesIO
+        qr = qrcode.QRCode(version=1, error_correction=qrcode.constants.ERROR_CORRECT_H,
+                           box_size=5, border=4)
+        qr.add_data(verify_url)
+        qr.make(fit=True)
+        img = qr.make_image()
+        buf = BytesIO()
+        img.save(buf, format="jpeg")
+        return "data:image/jpeg;base64, %s" % b64encode(buf.getvalue()).decode()
+    except Exception:
+        return ""
+
+
+@api_v1.route("/auth/magic-link/start", methods=["POST"])
+@limiter.limit("40/day", key_func=lambda: get_remote_address())
+@limiter.limit("6/minute", key_func=lambda: get_remote_address())
+def auth_magic_link_start():
+    """Begin a magic-link (remote) login: mint a RemoteAuthToken and return the
+    verify URL + QR for the SPA to render. The waiting (logged-out) device then
+    polls /auth/magic-link/poll while an already-signed-in device authorises the
+    token by visiting verify_url (/verify/<token>, login-gated). Same mechanism
+    the classic /remote/login page uses; gated on the same config_remote_login."""
+    if not bool(getattr(config, "config_remote_login", False)):
+        return _err("magic_link_disabled", "Magic-link login is disabled", 403)
+    if current_user.is_authenticated:
+        return _err("already_authenticated", "You're already signed in", 400)
+    auth_token = ub.RemoteAuthToken()
+    ub.session.add(auth_token)
+    ub.session_commit()
+    try:
+        verify_url = url_for("remotelogin.verify_token", token=auth_token.auth_token, _external=True)
+    except Exception:
+        verify_url = ""
+    return jsonify({
+        "token": auth_token.auth_token,
+        "verify_url": verify_url,
+        "qrcode": _build_qr_data_url(verify_url),
+        "expires_in_minutes": 10,
+    })
+
+
+@api_v1.route("/auth/magic-link/poll", methods=["POST"])
+@limiter.limit("240/hour", key_func=lambda: get_remote_address())
+def auth_magic_link_poll():
+    """Poll a magic-link token. Returns one of: not_verified | success | expired |
+    not_found. On success the waiting device is logged in (session cookie set) and
+    the token is consumed. Mirrors remotelogin.token_verified, JSON-shaped for the
+    SPA (serialized user instead of a flash + redirect)."""
+    if not bool(getattr(config, "config_remote_login", False)):
+        return _err("magic_link_disabled", "Magic-link login is disabled", 403)
+    data = request.get_json(silent=True) or request.form
+    token = (data.get("token") or "").strip()
+    if not token:
+        return jsonify({"status": "not_found"})
+    auth_token = ub.session.query(ub.RemoteAuthToken).filter(
+        ub.RemoteAuthToken.auth_token == token,
+        ub.RemoteAuthToken.token_type == 0,
+    ).first()
+    if auth_token is None:
+        return jsonify({"status": "not_found"})
+    if datetime.now() > auth_token.expiration:
+        ub.session.delete(auth_token)
+        ub.session_commit()
+        return jsonify({"status": "expired"})
+    if not auth_token.verified:
+        return jsonify({"status": "not_verified"})
+    user = ub.session.query(ub.User).filter(ub.User.id == auth_token.user_id).first()
+    if user is None or user.role_anonymous():
+        ub.session.delete(auth_token)
+        ub.session_commit()
+        return jsonify({"status": "not_found"})
+    login_user(user)
+    ub.session.delete(auth_token)
+    ub.session_commit("User {} logged in via SPA magic-link, token deleted".format(user.name))
+    payload = serialize_user(user)
+    payload["features"] = _server_features()
+    return jsonify({"status": "success", "user": payload})
 
 
 @api_v1.route("/auth/register", methods=["POST"])

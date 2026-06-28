@@ -2,6 +2,7 @@ import { lazy, Suspense } from 'react';
 import { Router, Route, Switch } from 'wouter';
 import { useMe, useLogout } from './lib/queries';
 import { Login } from './pages/Login';
+import { MagicLink } from './pages/MagicLink';
 import { Catalog } from './pages/Catalog';
 import { BookDetail } from './pages/BookDetail';
 import { BrowseList } from './pages/BrowseList';
@@ -39,7 +40,17 @@ export function App() {
   }
 
   if (!me) {
-    return <Login />;
+    // Logged-out tree is routed too, so the magic-link page gets a real URL and
+    // Login can navigate to it via wouter. On success the me-cache flips and the
+    // authenticated tree below mounts.
+    return (
+      <Router base="/app">
+        <Switch>
+          <Route path="/magic-link">{() => <MagicLink />}</Route>
+          <Route>{() => <Login />}</Route>
+        </Switch>
+      </Router>
+    );
   }
 
   return (

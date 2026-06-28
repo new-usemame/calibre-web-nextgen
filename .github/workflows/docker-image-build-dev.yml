@@ -42,10 +42,31 @@ permissions:
   packages: write
 jobs:
   # --------------------------------------------------------------------------------
+  # JOB 0: Ensure the python-build-standalone GHCR mirror exists before building.
+  # The image build COPYs Python from ghcr.io/new-usemame/pbs-cache instead of the
+  # flaky GitHub release CDN. This job (idempotent — a no-op when the mirror is
+  # already present) builds it the first time after a Python bump. See
+  # scripts/ensure-python-mirror.sh + notes/PYTHON-BUILD-MIRROR.md.
+  # --------------------------------------------------------------------------------
+  ensure-mirror:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    steps:
+      - name: Checkout (read Python pin from Dockerfile)
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ (github.event_name == 'workflow_dispatch' && inputs.ref) || github.ref }}
+      - name: Ensure python-build-standalone mirror exists
+        env:
+          GHCR_TOKEN: ${{ secrets.GH_PAT || secrets.GITHUB_TOKEN }}
+        run: bash scripts/ensure-python-mirror.sh
+
+  # --------------------------------------------------------------------------------
   # JOB 1: Build Intel (amd64) on GitHub Runners
   # --------------------------------------------------------------------------------
   build-amd64:
     runs-on: ubuntu-latest
+    needs: ensure-mirror
     if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     steps:
       - name: Set build ref
@@ -96,7 +117,9 @@ jobs:
         with:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          # GH_PAT (read:packages) so BuildKit can COPY --from our private
+          # pbs-cache mirror; falls back to GITHUB_TOKEN for push-only contexts.
+          password: ${{ secrets.GH_PAT || secrets.GITHUB_TOKEN }}
 
       # --- 3. Build & Push (Digest Only) ---
       - name: Set up Docker Buildx
@@ -133,11 +156,6 @@ jobs:
           build-args: |
             BUILD_DATE=${{ github.event.repository.updated_at }}
             VERSION=DEV_BUILD-${{ env.IMAGE_TAG }}-${{ vars.CURRENT_DEV_BUILD_NUM }}
-          # Authenticate the in-Dockerfile python-build-standalone download so it
-          # isn't subject to the unauthenticated release-asset rate limit on the
-          # shared Actions egress IPs (which returns 404 and broke every build).
-          secrets: |
-            github_token=${{ secrets.GITHUB_TOKEN }}
 
       # --- 4. Export Digest for Merge Job ---
       - name: Export digest
@@ -165,6 +183,7 @@ jobs:
     # repo is also a meaningful attack surface (any PR can execute on
     # operator hardware), so GitHub-hosted is the safer default.
     runs-on: ubuntu-24.04-arm
+    needs: ensure-mirror
     if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     steps:
       - name: Set build ref
@@ -215,7 +234,9 @@ jobs:
         with:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          # GH_PAT (read:packages) so BuildKit can COPY --from our private
+          # pbs-cache mirror; falls back to GITHUB_TOKEN for push-only contexts.
+          password: ${{ secrets.GH_PAT || secrets.GITHUB_TOKEN }}
 
       # --- 3. Build & Push (Digest Only) ---
       - name: Set up Docker Buildx
@@ -253,11 +274,6 @@ jobs:
           build-args: |
             BUILD_DATE=${{ github.event.repository.updated_at }}
             VERSION=DEV_BUILD-${{ env.IMAGE_TAG }}-${{ vars.CURRENT_DEV_BUILD_NUM }}
-          # Authenticate the in-Dockerfile python-build-standalone download so it
-          # isn't subject to the unauthenticated release-asset rate limit on the
-          # shared Actions egress IPs (which returns 404 and broke every build).
-          secrets: |
-            github_token=${{ secrets.GITHUB_TOKEN }}
 
       # --- 4. Rotate Cache (Prevent Infinite Growth) ---
       - name: Move cache
@@ -352,7 +368,9 @@ jobs:
         with:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          # GH_PAT (read:packages) so BuildKit can COPY --from our private
+          # pbs-cache mirror; falls back to GITHUB_TOKEN for push-only contexts.
+          password: ${{ secrets.GH_PAT || secrets.GITHUB_TOKEN }}
 
       # --- 3. Merge Digests ---
       - name: Download digests

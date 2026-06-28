@@ -35,9 +35,24 @@ env:
 
 jobs:
   # ------------------------------------------------------------------
+  # Ensure the python-build-standalone GHCR mirror exists (idempotent). The
+  # image build COPYs Python from it instead of the flaky GitHub release CDN.
+  # See scripts/ensure-python-mirror.sh + notes/PYTHON-BUILD-MIRROR.md.
+  # ------------------------------------------------------------------
+  ensure-mirror:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+      - name: Ensure python-build-standalone mirror exists
+        env:
+          GHCR_TOKEN: ${{ secrets.GH_PAT || secrets.GITHUB_TOKEN }}
+        run: bash scripts/ensure-python-mirror.sh
+
+  # ------------------------------------------------------------------
   # Per-arch build, push by digest only (no tag yet)
   # ------------------------------------------------------------------
   build:
+    needs: ensure-mirror
     strategy:
       fail-fast: false
       matrix:
@@ -73,7 +88,9 @@ jobs:
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.repository_owner }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          # GH_PAT (read:packages) so BuildKit can COPY --from our private
+          # pbs-cache mirror; falls back to GITHUB_TOKEN for push-only contexts.
+          password: ${{ secrets.GH_PAT || secrets.GITHUB_TOKEN }}
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd  # v4.0.0
@@ -93,11 +110,6 @@ jobs:
           build-args: |
             BUILD_DATE=${{ github.event.release.created_at || github.event.repository.updated_at }}
             VERSION=${{ steps.ver.outputs.tag }}
-          # Authenticate the in-Dockerfile python-build-standalone download so it
-          # isn't subject to the unauthenticated release-asset rate limit on the
-          # shared Actions egress IPs (which returns 404 and broke every build).
-          secrets: |
-            github_token=${{ secrets.GITHUB_TOKEN }}
           labels: |
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
             org.opencontainers.image.revision=${{ github.sha }}
@@ -161,7 +173,9 @@ jobs:
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.repository_owner }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          # GH_PAT (read:packages) so BuildKit can COPY --from our private
+          # pbs-cache mirror; falls back to GITHUB_TOKEN for push-only contexts.
+          password: ${{ secrets.GH_PAT || secrets.GITHUB_TOKEN }}
 
       - name: Download digests
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c  # v8.0.1

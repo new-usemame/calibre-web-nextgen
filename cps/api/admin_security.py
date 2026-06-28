@@ -195,15 +195,23 @@ def admin_update_security():
             to_save[form_key] = "on"
 
     # --- login type ---------------------------------------------------------
+    # SECURITY/ROBUSTNESS: do NOT commit config_login_type yet. The legacy LDAP
+    # helper calls config.save() *before* its own validation, so committing the
+    # login type up front and then failing LDAP/OAuth validation would persist a
+    # broken auth mode and lock the admin out after the restart this endpoint asks
+    # for. We compute the *target* type, validate everything against it, and only
+    # commit the login-type switch at the very end once all validation has passed.
+    target_lt = config.config_login_type
     if "login_type" in data:
         try:
-            to_save["config_login_type"] = int(data["login_type"])
+            target_lt = int(data["login_type"])
         except (TypeError, ValueError):
             return _err("invalid_request", "login_type must be a number", 400)
-    reboot_required |= _config_int(to_save, "config_login_type")
+        if target_lt not in {o["id"] for o in _LOGIN_TYPES}:
+            return _err("invalid_request", "Unknown login type", 400)
 
-    # --- LDAP (only when LDAP is the active login type) ----------------------
-    if config.config_login_type == constants.LOGIN_LDAP:
+    # --- LDAP (only when LDAP is the target login type) ---------------------
+    if target_lt == constants.LOGIN_LDAP:
         ldap = data.get("ldap") or {}
         for skey, fkey in (("provider_url", "config_ldap_provider_url"),
                            ("serv_username", "config_ldap_serv_username"),
@@ -253,7 +261,7 @@ def admin_update_security():
     if "redirect_host" in oauth:
         to_save["config_oauth_redirect_host"] = str(oauth["redirect_host"] or "")
         _config_string(to_save, "config_oauth_redirect_host")
-    if config.config_login_type == constants.LOGIN_OAUTH:
+    if target_lt == constants.LOGIN_OAUTH:
         gen = oauth.get("generic") or {}
         current = _generic_oauth_row()
         # Direct-indexed keys the helper requires (KeyError if absent).
@@ -303,6 +311,19 @@ def admin_update_security():
     # --- reverse-proxy header login ----------------------------------------
     if "reverse_proxy" in data:
         rp = data.get("reverse_proxy") or {}
+        # Validate the *effective* values (incoming, falling back to current) BEFORE
+        # mutating config, so an invalid combination returns 400 without leaving the
+        # running process in a divergent half-applied state.
+        eff_enabled = bool(rp["enabled"]) if "enabled" in rp else config.config_allow_reverse_proxy_header_login
+        eff_auto = bool(rp["auto_create_users"]) if "auto_create_users" in rp else config.config_reverse_proxy_auto_create_users
+        eff_header = (str(rp["header_name"]) if "header_name" in rp
+                      else (config.config_reverse_proxy_login_header_name or "")).strip()
+        if eff_auto and not eff_enabled:
+            return _err("invalid_request",
+                        "Auto-creating reverse-proxy users requires reverse-proxy header login to be enabled", 400)
+        if eff_auto and not eff_header:
+            return _err("invalid_request",
+                        "Auto-creating reverse-proxy users requires a header name", 400)
         put_bool("config_allow_reverse_proxy_header_login", rp.get("enabled"))
         if "header_name" in rp:
             to_save["config_reverse_proxy_login_header_name"] = str(rp["header_name"] or "")
@@ -310,13 +331,11 @@ def admin_update_security():
         put_bool("config_reverse_proxy_auto_create_users", rp.get("auto_create_users"))
         _config_checkbox(to_save, "config_allow_reverse_proxy_header_login")
         _config_checkbox(to_save, "config_reverse_proxy_auto_create_users")
-        # Mirror legacy cross-field validation.
-        if config.config_reverse_proxy_auto_create_users and not config.config_allow_reverse_proxy_header_login:
-            return _err("invalid_request",
-                        "Auto-creating reverse-proxy users requires reverse-proxy header login to be enabled", 400)
-        if config.config_reverse_proxy_auto_create_users and not config.config_reverse_proxy_login_header_name:
-            return _err("invalid_request",
-                        "Auto-creating reverse-proxy users requires a header name", 400)
+
+    # --- commit the login-type switch LAST, now that all validation passed --
+    if "login_type" in data:
+        to_save["config_login_type"] = target_lt
+        reboot_required |= _config_int(to_save, "config_login_type")
 
     try:
         config.save()

@@ -149,3 +149,64 @@ def test_helper_error_message_falls_back():
     from cps.api import admin_security as mod
     resp = flask.Response("not json at all", mimetype="application/json")
     assert mod._helper_error_message(resp) == "Invalid security configuration"
+
+
+# ── lockout-prevention regression (the login-type switch must not be persisted
+#    before LDAP/OAuth validation passes) ──────────────────────────────────────
+
+@pytest.mark.unit
+def test_login_type_not_committed_when_ldap_validation_fails(monkeypatch):
+    """REGRESSION: posting login_type=LDAP with an invalid LDAP config must return
+    400 WITHOUT ever committing config_login_type — otherwise the admin is locked
+    out after the restart this endpoint requests. The login-type commit goes
+    through _config_int at the very end, so if validation fails _config_int must
+    never be called for config_login_type."""
+    from cps.api import admin_security as mod
+    from cps.api import admin as admin_mod
+    import unittest.mock as um
+
+    bad = flask.Response(json.dumps({"result": [{"type": "danger",
+          "message": 'LDAP User Object Filter needs to Have One "%s" Format Identifier'}]}),
+          mimetype="application/json")
+    config_int_spy = um.MagicMock(return_value=False)
+    with _ctx(method="POST", body={"login_type": 1, "ldap": {"user_object": "bad-no-format"}}):
+        with patch.object(admin_mod, "current_user", _admin()), \
+             patch.object(mod, "config", _fake_config()), \
+             patch.object(mod, "_configuration_ldap_helper", lambda to_save: (False, bad)), \
+             patch.object(mod, "_config_int", config_int_spy):
+            resp = inspect.unwrap(mod.admin_update_security)()
+    assert resp[1] == 400
+    # login-type was never pushed through _config_int -> never committed.
+    called_keys = [c.args[1] for c in config_int_spy.call_args_list if len(c.args) > 1]
+    assert "config_login_type" not in called_keys
+
+
+@pytest.mark.unit
+def test_unknown_login_type_rejected():
+    from cps.api import admin_security as mod
+    from cps.api import admin as admin_mod
+    with _ctx(method="POST", body={"login_type": 999}):
+        with patch.object(admin_mod, "current_user", _admin()), \
+             patch.object(mod, "config", _fake_config()):
+            resp = inspect.unwrap(mod.admin_update_security)()
+    assert resp[1] == 400
+    assert "login type" in resp[0].get_json()["error"]["message"].lower()
+
+
+@pytest.mark.unit
+def test_reverse_proxy_auto_without_enabled_rejected_before_mutation():
+    """auto-create-users without header-login enabled must 400 BEFORE any config
+    mutation (no divergent half-applied state)."""
+    from cps.api import admin_security as mod
+    from cps.api import admin as admin_mod
+    import unittest.mock as um
+    checkbox_spy = um.MagicMock(return_value=False)
+    with _ctx(method="POST",
+              body={"reverse_proxy": {"enabled": False, "auto_create_users": True, "header_name": ""}}):
+        with patch.object(admin_mod, "current_user", _admin()), \
+             patch.object(mod, "config", _fake_config()), \
+             patch.object(mod, "_config_checkbox", checkbox_spy):
+            resp = inspect.unwrap(mod.admin_update_security)()
+    assert resp[1] == 400
+    # validation fired before we applied any reverse-proxy checkbox to config.
+    checkbox_spy.assert_not_called()

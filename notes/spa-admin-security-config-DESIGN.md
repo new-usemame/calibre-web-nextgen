@@ -1,9 +1,18 @@
 # SPA native deep admin security config — design + security note
 
-Status: **implemented on the SPA branch, behind `CWNG_SPA`. NOT yet merged.**
-Requires `/security-review` + operator merge before shipping (CLAUDE.md hard-rule
-3c — writes auth/session/secret config and adds new routes). Must NOT be
-admin-auto-merged.
+Status: **implemented on the SPA branch, behind `CWNG_SPA`. Security-reviewed
+(clean) + lockout hardening applied. Cleared for operator merge.**
+
+`/security-review` was run (independent identification + adversarial refutation
+pass): **no security vulnerabilities** — secret leakage, auth gating (anon→401,
+non-admin→403), CSRF non-exemption, the OAuth blank-secret re-feed, and the
+reverse-proxy toggle all verified safe with cited code and live curl. The
+adversarial pass surfaced one non-security **admin-lockout footgun** (login-type
+persisted before LDAP/OAuth validation, via the legacy save-before-validate), now
+**fixed**: the login-type switch is committed only after all validation passes,
+unknown login types are rejected, and reverse-proxy cross-field rules are checked
+before any config mutation. Regression-tested (red/green) + verified live (a bad
+LDAP/absent-LDAP/unknown-type POST returns 400 and leaves `login_type=0`).
 
 ## What this is
 

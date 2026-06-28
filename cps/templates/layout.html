@@ -149,20 +149,24 @@
     {# "Switch to New UI" — entry point into the React SPA at /app. Amber pill so
        it stands out in the caliBlur navbar without a stylesheet edit. #}
     <style>
-      #main-nav > li.cwng-switch-li { padding: 8px 6px; }
+      #main-nav > li.cwng-switch-li { padding: 8px 6px; display: flex; align-items: center; }
       a.cwng-switch-ui {
         display: inline-flex !important;
         align-items: center;
-        gap: 7px;
-        padding: 7px 15px !important;
+        gap: 6px;
+        padding: 6px 13px !important;
+        /* Pin sizing so it doesn't inherit caliBlur's oversized navbar text. */
+        font-size: 13px !important;
+        line-height: 1.1 !important;
+        height: auto !important;
         border-radius: 999px;
         background: linear-gradient(180deg, #e0902a 0%, #cc7b19 100%);
         color: #1a1206 !important;
         font-weight: 600;
-        line-height: 1;
         box-shadow: 0 2px 8px rgba(0,0,0,.32), inset 0 1px 0 rgba(255,255,255,.22);
         transition: transform .12s cubic-bezier(.2,.7,.2,1), box-shadow .12s ease, filter .12s ease;
       }
+      a.cwng-switch-ui .cwng-switch-label { font-size: 13px !important; }
       a.cwng-switch-ui:hover, a.cwng-switch-ui:focus {
         background: linear-gradient(180deg, #ec9d3a 0%, #d98521 100%);
         color: #1a1206 !important;

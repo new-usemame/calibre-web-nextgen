@@ -19,10 +19,22 @@ def _spa_app(monkeypatch, tmp_spa_dir=None):
 
 
 @pytest.mark.unit
-def test_spa_disabled_404(monkeypatch):
-    monkeypatch.delenv("CWNG_SPA", raising=False)
+def test_spa_optout_404(monkeypatch):
+    """Explicit opt-out (CWNG_SPA=0) disables /app entirely."""
+    monkeypatch.setenv("CWNG_SPA", "0")
     app = _spa_app(monkeypatch)
     assert app.test_client().get("/app").status_code == 404
+
+
+@pytest.mark.unit
+def test_spa_default_on_serves_shell(monkeypatch, tmp_path):
+    """Default (CWNG_SPA unset) is ENABLED — every updated instance surfaces the
+    new UI without operator config. Serves the shell when the bundle is present."""
+    monkeypatch.delenv("CWNG_SPA", raising=False)
+    app = _spa_app(monkeypatch, tmp_path)
+    resp = app.test_client().get("/app")
+    assert resp.status_code == 200
+    assert b"NextGen" in resp.data
 
 
 @pytest.mark.unit
@@ -62,11 +74,34 @@ def test_spa_serves_all_client_routes(monkeypatch, tmp_path, path):
 
 
 @pytest.mark.unit
-def test_spa_context_processor_exposes_flag(monkeypatch):
-    """The legacy 'Switch to New UI' button is gated on cwng_spa_enabled, injected
-    app-wide by the spa blueprint's context processor."""
+def test_spa_context_processor_default_on_with_bundle(monkeypatch, tmp_path):
+    """Default-on + bundle present -> cwng_spa_enabled True, and the running
+    version is exposed (so the nudge banner can reset its dismissal per update)."""
     import cps.spa as spa_mod
-    monkeypatch.setenv("CWNG_SPA", "1")
-    assert spa_mod._inject_spa_flag() == {"cwng_spa_enabled": True}
+    (tmp_path / "index.html").write_text("x")
+    monkeypatch.setattr(spa_mod, "_SPA_DIR", str(tmp_path))
     monkeypatch.delenv("CWNG_SPA", raising=False)
-    assert spa_mod._inject_spa_flag() == {"cwng_spa_enabled": False}
+    out = spa_mod._inject_spa_flag()
+    assert out["cwng_spa_enabled"] is True
+    assert "cwng_app_version" in out
+
+
+@pytest.mark.unit
+def test_spa_context_processor_optout_false(monkeypatch, tmp_path):
+    """Explicit opt-out -> flag False even with a bundle present."""
+    import cps.spa as spa_mod
+    (tmp_path / "index.html").write_text("x")
+    monkeypatch.setattr(spa_mod, "_SPA_DIR", str(tmp_path))
+    monkeypatch.setenv("CWNG_SPA", "0")
+    assert spa_mod._inject_spa_flag()["cwng_spa_enabled"] is False
+
+
+@pytest.mark.unit
+def test_spa_context_processor_no_bundle_false(monkeypatch, tmp_path):
+    """Default-on but no bundle on disk -> flag False (don't nudge toward a 404)."""
+    import cps.spa as spa_mod
+    empty = tmp_path / "empty"
+    empty.mkdir()
+    monkeypatch.setattr(spa_mod, "_SPA_DIR", str(empty))
+    monkeypatch.delenv("CWNG_SPA", raising=False)
+    assert spa_mod._inject_spa_flag()["cwng_spa_enabled"] is False

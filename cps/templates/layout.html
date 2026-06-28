@@ -176,6 +176,68 @@
       @media (max-width: 767px) {
         a.cwng-switch-ui { width: 100%; justify-content: center; }
       }
+
+      /* Opt-in nudge banner — dismissible, reappears on each update (dismissal is
+         keyed to the running version in localStorage). Theme-agnostic light-amber
+         bar so it reads on both caliBlur (dark) and the standard (light) theme. */
+      .cwng-newui-banner {
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 100000;
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        padding: 12px 20px;
+        background: #fff7ec;
+        color: #3a2a12;
+        border-top: 3px solid #cc7b19;
+        box-shadow: 0 -4px 20px rgba(0,0,0,.35);
+        font-size: 14px;
+        animation: cwngNewuiUp .28s cubic-bezier(.2,.7,.2,1);
+      }
+      @keyframes cwngNewuiUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+      @media (prefers-reduced-motion: reduce) { .cwng-newui-banner { animation: none; } }
+      .cwng-newui-banner[hidden] { display: none !important; }
+      .cwng-newui-banner .cwng-newui-icon { color: #cc7b19; top: 1px; }
+      .cwng-newui-banner .cwng-newui-text { flex: 1 1 auto; }
+      .cwng-newui-banner .cwng-newui-text strong { font-weight: 700; }
+      a.cwng-newui-try {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 15px;
+        border-radius: 999px;
+        background: linear-gradient(180deg, #e0902a 0%, #cc7b19 100%);
+        color: #1a1206 !important;
+        font-weight: 600;
+        white-space: nowrap;
+        text-decoration: none;
+        box-shadow: 0 2px 8px rgba(204,123,25,.32), inset 0 1px 0 rgba(255,255,255,.25);
+        transition: transform .12s cubic-bezier(.2,.7,.2,1), box-shadow .12s ease;
+      }
+      a.cwng-newui-try:hover, a.cwng-newui-try:focus {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 14px rgba(204,123,25,.45), inset 0 1px 0 rgba(255,255,255,.3);
+        text-decoration: none;
+        color: #1a1206 !important;
+      }
+      .cwng-newui-banner .cwng-newui-dismiss {
+        background: transparent;
+        border: 0;
+        color: #8a6a3a;
+        font-size: 24px;
+        line-height: 1;
+        cursor: pointer;
+        padding: 0 4px;
+        opacity: .85;
+      }
+      .cwng-newui-banner .cwng-newui-dismiss:hover { color: #3a2a12; opacity: 1; }
+      @media (max-width: 600px) {
+        .cwng-newui-banner { flex-wrap: wrap; gap: 8px; font-size: 13px; padding: 10px 14px; }
+        .cwng-newui-banner .cwng-newui-text { flex-basis: 100%; }
+      }
     </style>
     {% endif %}
     <!-- Static navbar -->
@@ -274,7 +336,38 @@
         </div><!--/.nav-collapse -->
       </div>
     </div>
-    
+
+    {% if cwng_spa_enabled and (current_user.is_authenticated or g.allow_anonymous) %}
+    {# Opt-in nudge into the React SPA. Shown by default; dismissal is remembered
+       per running version, so it returns after each update to keep nudging until
+       the new UI becomes the default. The element starts hidden and is revealed
+       by JS only when not dismissed for this version — no flash for dismissers. #}
+    <div id="cwng-newui-banner" class="cwng-newui-banner" data-version="{{ cwng_app_version }}"
+         role="region" aria-label="{{_('New interface available')}}" hidden>
+      <span class="cwng-newui-icon glyphicon glyphicon-flash" aria-hidden="true"></span>
+      <span class="cwng-newui-text">{{_('A faster, redesigned Calibre-Web NextGen interface is ready.')}} <strong>{{_('Your classic view stays the default until you switch.')}}</strong></span>
+      <a class="cwng-newui-try" href="{{ url_for('spa.spa_shell') }}">
+        <span class="glyphicon glyphicon-flash" aria-hidden="true" style="font-size:11px;top:1px;"></span>
+        {{_('Try the new UI')}}
+      </a>
+      <button type="button" class="cwng-newui-dismiss" aria-label="{{_('Dismiss')}}">&times;</button>
+    </div>
+    <script>
+      (function () {
+        var b = document.getElementById('cwng-newui-banner');
+        if (!b) return;
+        var key = 'cwng_newui_banner_dismissed_' + (b.getAttribute('data-version') || '');
+        try { if (window.localStorage && localStorage.getItem(key) === '1') return; } catch (e) {}
+        b.hidden = false;
+        var x = b.querySelector('.cwng-newui-dismiss');
+        if (x) x.addEventListener('click', function () {
+          b.hidden = true;
+          try { localStorage.setItem(key, '1'); } catch (e) {}
+        });
+      })();
+    </script>
+    {% endif %}
+
     <div class="row-fluid text-center">
       <div id="message_library_refresh" style="display: none;" class="alert alert-info refresh-cwa">
         <p id="library_refresh_message"></p>

@@ -16,6 +16,15 @@ is for things you can see or feel when running the app.
 
 ## [Unreleased]
 
+### Changed
+- **The new interface is now offered to everyone — opt in when you're ready.**
+  After updating, a dismissible bar invites you to try the redesigned interface;
+  your classic view stays the default until you tap "Try the new UI" (or the
+  "Switch to New UI" button in the top bar). Dismiss it and it stays gone until
+  the next update, when it gently reminds you again. You can still turn the new
+  interface off entirely by setting `CWNG_SPA=0`. (Previously the new UI was
+  hidden unless an admin opted the whole instance in.)
+
 ### Added
 - **A "Discover" shelf of random picks on your library home (new UI).** The
   redesigned library now opens with a set-apart "Discover" box — a row of random

@@ -1,14 +1,16 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link, useSearch } from 'wouter';
-import { Search, ChevronLeft, SlidersHorizontal, ListChecks } from 'lucide-react';
+import { Search, ChevronLeft, SlidersHorizontal, ListChecks, Settings } from 'lucide-react';
 import { BookCard } from '../components/BookCard';
 import { BulkBar } from '../components/BulkBar';
 import { Button } from '../components/Button';
 import { Spinner, SpinnerCentered } from '../components/Spinner';
 import { EmptyState } from '../components/EmptyState';
+import { DiscoverSection } from '../components/DiscoverSection';
 import { useBooks, useEntityList, ENTITY_PLURAL } from '../lib/queries';
 import type { EntityKind, ReadFilter, DiscoveryView } from '../lib/queries';
 import type { Book } from '../lib/api';
+import { usePersistentBool } from '../lib/usePersistentBool';
 import { useT } from '../lib/i18n';
 import styles from './Catalog.module.css';
 
@@ -80,6 +82,11 @@ export function Catalog({ entityKind, entityId, view }: CatalogProps) {
   const [selecting, setSelecting] = useState(false);
   const [selected, setSelected] = useState<Set<number>>(new Set());
 
+  // Discover section visibility (persisted; toggled by the gear menu or its ×).
+  const [discoverHidden, setDiscoverHidden] = usePersistentBool('cwng_discover_hidden_v1', false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const settingsRef = useRef<HTMLDivElement>(null);
+
   const accKeyRef = useRef<string>('');
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -109,6 +116,21 @@ export function Catalog({ entityKind, entityId, view }: CatalogProps) {
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
   }, [searchInput, filtered]);
+
+  // Close the settings menu on outside-click / Escape.
+  useEffect(() => {
+    if (!settingsOpen) return;
+    const onDoc = (e: MouseEvent) => {
+      if (settingsRef.current && !settingsRef.current.contains(e.target as Node)) setSettingsOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setSettingsOpen(false); };
+    document.addEventListener('mousedown', onDoc);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDoc);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [settingsOpen]);
 
   const resetKey = [search, sort, readFilter, entityKind ?? '', entityId ?? '', view ?? ''].join('|');
 
@@ -238,7 +260,44 @@ export function Catalog({ entityKind, entityId, view }: CatalogProps) {
           <ListChecks size={15} />
           <span className={styles.selectLabel}>{selecting ? t('Done') : t('Select')}</span>
         </button>
+
+        {/* View settings (library landing only) — currently houses the Discover
+            section toggle; a natural home for future per-view preferences. */}
+        {!hideLibraryControls && (
+          <div className={styles.settingsWrap} ref={settingsRef}>
+            <button
+              type="button"
+              className={settingsOpen ? styles.gearBtnActive : styles.gearBtn}
+              onClick={() => setSettingsOpen((o) => !o)}
+              aria-haspopup="true"
+              aria-expanded={settingsOpen}
+              title={t('View settings')}
+              aria-label={t('View settings')}
+            >
+              <Settings size={15} />
+            </button>
+            {settingsOpen && (
+              <div className={styles.settingsMenu} role="menu">
+                <p className={styles.settingsHead}>{t('View settings')}</p>
+                <label className={styles.settingsItem}>
+                  <input
+                    type="checkbox"
+                    className={styles.settingsCheck}
+                    checked={!discoverHidden}
+                    onChange={(e) => setDiscoverHidden(!e.target.checked)}
+                  />
+                  <span>{t('Show Discover section')}</span>
+                </label>
+              </div>
+            )}
+          </div>
+        )}
       </div>
+
+      {/* Discover: random picks, library landing only (not while searching). */}
+      {!hideLibraryControls && !search && !discoverHidden && (
+        <DiscoverSection onClose={() => setDiscoverHidden(true)} />
+      )}
 
       {isFirstLoad ? (
         <SpinnerCentered size={36} />

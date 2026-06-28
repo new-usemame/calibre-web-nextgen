@@ -17,6 +17,12 @@ is for things you can see or feel when running the app.
 ## [Unreleased]
 
 ### Added
+- **A "Discover" shelf of random picks on your library home (new UI).** The
+  redesigned library now opens with a set-apart "Discover" box — a row of random
+  books from your collection to stumble onto something to read. Hit the shuffle
+  button for a fresh set, dismiss it with the × in its corner, and bring it back
+  any time from the new gear (View settings → "Show Discover section"). Your
+  choice is remembered on that device.
 - **"Remember me" and a show-password toggle are back on the new sign-in screen.**
   The redesigned login page now has the "Remember me" checkbox (on by default, so
   you stay signed in) and an eye button to reveal what you typed — matching the

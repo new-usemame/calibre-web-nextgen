@@ -101,6 +101,17 @@ export function useMagicLinkPoll() {
   });
 }
 
+/** A short strip of random books for the library "Discover" section. `nonce`
+ *  lets the caller reshuffle (bump it to refetch a fresh random set). Reuses the
+ *  same server-side discover filter as the full /discover view. */
+export function useDiscover(count: number, nonce: number) {
+  return useQuery<BooksPage>({
+    queryKey: ['discover-strip', count, nonce],
+    queryFn: () => apiGet<BooksPage>(`/api/v1/books?filter=discover&per_page=${count}`),
+    staleTime: 0,
+  });
+}
+
 export function useAuthConfig() {
   return useQuery<AuthConfig>({
     queryKey: ['auth-config'],

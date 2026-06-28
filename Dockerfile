@@ -49,11 +49,10 @@ ARG KEPUBIFY_RELEASE=v4.0.4
 ARG PYTHON_BUILD_STANDALONE_RELEASE=20260623
 ARG PYTHON_VERSION=3.13.14
 # Our GHCR mirror of the python-build-standalone tarball, tag DERIVED from the
-# two ARGs above so it can never drift. ARG expansion is allowed in FROM (but
-# NOT in COPY --from), so we alias the mirror image as a stage here and COPY
-# from the alias in STEP 1.5. Bump the two ARGs and everything follows.
-ARG PBS_CACHE_REF=ghcr.io/new-usemame/pbs-cache:cpython-${PYTHON_VERSION}-${PYTHON_BUILD_STANDALONE_RELEASE}
-FROM ${PBS_CACHE_REF} AS pbs_mirror
+# two ARGs above so it can never drift. FROM expands the ARGs inline (COPY --from
+# can't), so we alias the mirror image as a stage here and COPY from the alias in
+# STEP 1.5. Bump the two ARGs and everything (this stage + the CI mirror) follows.
+FROM ghcr.io/new-usemame/pbs-cache:cpython-${PYTHON_VERSION}-${PYTHON_BUILD_STANDALONE_RELEASE} AS pbs_mirror
 
 FROM ghcr.io/linuxserver/baseimage-ubuntu:noble AS dependencies
 

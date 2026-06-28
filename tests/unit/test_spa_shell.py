@@ -59,3 +59,14 @@ def test_spa_serves_all_client_routes(monkeypatch, tmp_path, path):
     resp = app.test_client().get(path)
     assert resp.status_code == 200, f"{path} should serve the SPA shell"
     assert b"NextGen" in resp.data
+
+
+@pytest.mark.unit
+def test_spa_context_processor_exposes_flag(monkeypatch):
+    """The legacy 'Switch to New UI' button is gated on cwng_spa_enabled, injected
+    app-wide by the spa blueprint's context processor."""
+    import cps.spa as spa_mod
+    monkeypatch.setenv("CWNG_SPA", "1")
+    assert spa_mod._inject_spa_flag() == {"cwng_spa_enabled": True}
+    monkeypatch.delenv("CWNG_SPA", raising=False)
+    assert spa_mod._inject_spa_flag() == {"cwng_spa_enabled": False}

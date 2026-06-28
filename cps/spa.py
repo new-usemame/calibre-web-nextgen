@@ -17,6 +17,14 @@ def _spa_enabled():
     return os.environ.get("CWNG_SPA", "").strip().lower() in ("1", "true", "yes")
 
 
+@spa.app_context_processor
+def _inject_spa_flag():
+    """Expose whether the new SPA is available to ALL Jinja templates, so the
+    legacy layout can show a 'Switch to New UI' entry only when /app will actually
+    load (app_context_processor = app-wide, not just this blueprint)."""
+    return {"cwng_spa_enabled": _spa_enabled()}
+
+
 @spa.route("/app")
 @spa.route("/app/")
 @spa.route("/app/<path:path>")

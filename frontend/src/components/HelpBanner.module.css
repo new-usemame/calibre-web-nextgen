@@ -1,0 +1,78 @@
+/* Cool teal heads-up banner — intentionally off-palette from the amber accent so
+   it reads as a distinct, friendly notice. Sits directly under the top bar. */
+.banner {
+  --hb-edge: #3a8f86;
+  --hb-text: #d7f1ed;
+  --hb-icon: #6fd8cb;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-2) var(--sp-5);
+  background: linear-gradient(90deg, #173842 0%, #18484a 60%, #1a4f49 100%);
+  border-bottom: 1px solid var(--hb-edge);
+  box-shadow: inset 3px 0 0 var(--hb-icon);
+  color: var(--hb-text);
+  font-size: var(--fs-sm);
+  animation: hbSlideDown var(--dur-base) var(--ease-out);
+}
+
+@keyframes hbSlideDown {
+  from { opacity: 0; transform: translateY(-100%); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.iconWrap {
+  display: inline-flex;
+  flex: none;
+  color: var(--hb-icon);
+}
+
+.text {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.text strong {
+  color: #ffffff;
+  font-weight: var(--fw-semi);
+}
+
+.arrow {
+  color: var(--hb-icon);
+  flex: none;
+  animation: hbNudge 1.8s var(--ease) infinite;
+}
+
+@keyframes hbNudge {
+  0%, 100% { transform: translate(0, 0); }
+  50%      { transform: translate(2px, -2px); }
+}
+
+.close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: transparent;
+  border-radius: var(--r-sm);
+  color: var(--hb-text);
+  opacity: 0.75;
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease), opacity var(--dur-fast) var(--ease);
+}
+
+.close:hover {
+  background: rgba(255, 255, 255, 0.12);
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .banner { animation: none; }
+  .arrow { animation: none; }
+}

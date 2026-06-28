@@ -71,14 +71,181 @@
   gap: var(--sp-3);
 }
 
-.userName {
+/* ---- Top-bar menus: Help (?) + user dropdown ------------------------------
+   Both triggers share the ghost-box look of the old Sign-out button (transparent
+   fill, hairline border, --r-md, 32px tall). The Help button is a square of the
+   same height; the user button is an auto-width rectangle with a chevron. */
+.menu {
+  position: relative;
+  display: inline-flex;
+}
+
+.trigger,
+.triggerSquare {
+  display: inline-flex;
+  align-items: center;
+  height: 32px;
+  box-sizing: border-box;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  color: var(--text);
+  font-family: var(--font-body);
   font-size: var(--fs-sm);
+  font-weight: var(--fw-semi);
+  cursor: pointer;
+  transition:
+    background var(--dur-fast) var(--ease),
+    border-color var(--dur-fast) var(--ease),
+    color var(--dur-fast) var(--ease);
+}
+
+.trigger {
+  gap: var(--sp-2);
+  padding: 0 var(--sp-2) 0 var(--sp-3);
+}
+
+.triggerSquare {
+  width: 32px;
+  justify-content: center;
+  padding: 0;
+}
+
+.trigger:hover,
+.triggerSquare:hover,
+.trigger:focus-visible,
+.triggerSquare:focus-visible,
+.triggerOpen {
+  background: var(--surface-2);
+  border-color: var(--border-strong);
+  outline: none;
+}
+
+.triggerSquare:hover .qmark,
+.triggerSquare:focus-visible .qmark {
+  color: var(--accent);
+}
+
+.qmark {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: var(--fw-bold);
+  line-height: 1;
   color: var(--text-muted);
   transition: color var(--dur-fast) var(--ease);
 }
 
-.userName:hover {
-  color: var(--accent);
+.triggerLeadIcon {
+  color: var(--text-muted);
+  flex: none;
+}
+
+.triggerLabel {
+  max-width: 9rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chevron {
+  color: var(--text-muted);
+  flex: none;
+  transition: transform var(--dur-base) var(--ease);
+}
+
+.chevronOpen {
+  transform: rotate(180deg);
+}
+
+/* ---- Dropdown panel ---- */
+.panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  min-width: 188px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  box-shadow: var(--elev-2);
+  padding: var(--sp-1);
+  z-index: var(--z-overlay);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  transform-origin: top right;
+  animation: menuIn var(--dur-fast) var(--ease-out);
+}
+
+.panelHelp {
+  min-width: 216px;
+}
+
+@keyframes menuIn {
+  from { opacity: 0; transform: translateY(-4px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.panelHead {
+  margin: 0;
+  padding: var(--sp-2) var(--sp-2) var(--sp-1);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semi);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+.menuItem {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  width: 100%;
+  box-sizing: border-box;
+  padding: var(--sp-2);
+  border: none;
+  background: transparent;
+  border-radius: var(--r-sm);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
+}
+
+.menuItem:hover,
+.menuItem:focus-visible {
+  background: var(--surface-3);
+  outline: none;
+}
+
+.menuItemIcon {
+  display: inline-flex;
+  color: var(--text-muted);
+}
+
+.menuItemDanger {
+  color: var(--danger);
+}
+
+.menuItemDanger:hover,
+.menuItemDanger:focus-visible {
+  background: var(--danger-soft);
+}
+
+.menuItemDanger .menuItemIcon {
+  color: var(--danger);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .panel { animation: none; }
+  .chevron { transition: none; }
+}
+
+@media (max-width: 420px) {
+  .triggerLabel { display: none; }
 }
 
 /* Persistent library search (center of the top bar). */

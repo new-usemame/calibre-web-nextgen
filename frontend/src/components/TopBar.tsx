@@ -1,7 +1,6 @@
-import { useState } from 'react';
-import { BookMarked, LogOut, Menu, Search } from 'lucide-react';
+import { useState, useRef, useEffect, useCallback, type ReactNode } from 'react';
+import { BookMarked, LogOut, Menu, Search, ChevronDown, User, Bug, MessagesSquare, BookOpen } from 'lucide-react';
 import { Link, useLocation } from 'wouter';
-import { Button } from './Button';
 import { useT } from '../lib/i18n';
 import styles from './TopBar.module.css';
 
@@ -9,6 +8,147 @@ interface TopBarProps {
   userName: string;
   onLogout: () => void;
   onMenu?: () => void;
+}
+
+/** Project support channels surfaced in the Help menu — the fork's own GitHub
+ *  tracker + Discord (already shipped in the legacy admin page) + README. */
+const HELP_LINKS = {
+  issue: 'https://github.com/new-usemame/Calibre-Web-NextGen/issues/new',
+  discord: 'https://discord.gg/B8NXZmcp32',
+  docs: 'https://github.com/new-usemame/Calibre-Web-NextGen#readme',
+};
+
+/** Shared open/close behaviour for the top-bar menus: opens on hover (desktop)
+ *  AND on click/tap (so it works on touch devices with no hover), pins open once
+ *  clicked, and closes on outside-click, Escape, or pointer-leave (when not
+ *  pinned). Returns the props to spread on the wrapper + trigger. */
+function useMenu() {
+  const [open, setOpen] = useState(false);
+  const pinnedRef = useRef(false);
+  const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const ref = useRef<HTMLDivElement>(null);
+
+  const close = useCallback(() => {
+    pinnedRef.current = false;
+    setOpen(false);
+  }, []);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDocPointer = (e: PointerEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) close();
+    };
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') close(); };
+    document.addEventListener('pointerdown', onDocPointer);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('pointerdown', onDocPointer);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [open, close]);
+
+  const clearClose = () => { if (closeTimer.current) clearTimeout(closeTimer.current); };
+  const onMouseEnter = () => { clearClose(); setOpen(true); };
+  const onMouseLeave = () => {
+    if (pinnedRef.current) return;
+    clearClose();
+    closeTimer.current = setTimeout(() => setOpen(false), 140);
+  };
+  const onTriggerClick = () => {
+    const next = !open;
+    pinnedRef.current = next;
+    setOpen(next);
+  };
+
+  return { open, close, ref, wrapperProps: { ref, onMouseEnter, onMouseLeave }, onTriggerClick };
+}
+
+interface MenuItemProps {
+  icon: ReactNode;
+  label: string;
+  href?: string;
+  external?: boolean;
+  danger?: boolean;
+  onClick?: () => void;
+  onSelect: () => void;
+}
+
+function MenuItem({ icon, label, href, external, danger, onClick, onSelect }: MenuItemProps) {
+  const cls = danger ? `${styles.menuItem} ${styles.menuItemDanger}` : styles.menuItem;
+  const handle = () => { onClick?.(); onSelect(); };
+  if (href) {
+    return (
+      <a
+        role="menuitem"
+        className={cls}
+        href={href}
+        {...(external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
+        onClick={onSelect}
+      >
+        <span className={styles.menuItemIcon}>{icon}</span>
+        {label}
+      </a>
+    );
+  }
+  return (
+    <button role="menuitem" type="button" className={cls} onClick={handle}>
+      <span className={styles.menuItemIcon}>{icon}</span>
+      {label}
+    </button>
+  );
+}
+
+function HelpMenu() {
+  const t = useT();
+  const { open, close, wrapperProps, onTriggerClick } = useMenu();
+  return (
+    <div className={styles.menu} {...wrapperProps}>
+      <button
+        type="button"
+        className={styles.triggerSquare}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-label={t('Help')}
+        onClick={onTriggerClick}
+      >
+        <span className={styles.qmark} aria-hidden="true">?</span>
+      </button>
+      {open && (
+        <div className={`${styles.panel} ${styles.panelHelp}`} role="menu">
+          <p className={styles.panelHead}>{t('Help & support')}</p>
+          <MenuItem icon={<Bug size={15} />} label={t('Report an issue')} href={HELP_LINKS.issue} external onSelect={close} />
+          <MenuItem icon={<MessagesSquare size={15} />} label={t('Community chat')} href={HELP_LINKS.discord} external onSelect={close} />
+          <MenuItem icon={<BookOpen size={15} />} label={t('Documentation')} href={HELP_LINKS.docs} external onSelect={close} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function UserMenu({ userName, onLogout }: { userName: string; onLogout: () => void }) {
+  const t = useT();
+  const { open, close, wrapperProps, onTriggerClick } = useMenu();
+  return (
+    <div className={styles.menu} {...wrapperProps}>
+      <button
+        type="button"
+        className={`${styles.trigger} ${open ? styles.triggerOpen : ''}`}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        onClick={onTriggerClick}
+      >
+        <User size={15} className={styles.triggerLeadIcon} />
+        <span className={styles.triggerLabel}>{userName}</span>
+        <ChevronDown size={15} className={`${styles.chevron} ${open ? styles.chevronOpen : ''}`} />
+      </button>
+      {open && (
+        <div className={styles.panel} role="menu">
+          <MenuItem icon={<User size={15} />} label={t('My account')} href="/app/account" onSelect={close} />
+          <MenuItem icon={<LogOut size={15} />} label={t('Sign out')} danger onClick={onLogout} onSelect={close} />
+        </div>
+      )}
+    </div>
+  );
 }
 
 export function TopBar({ userName, onLogout, onMenu }: TopBarProps) {
@@ -48,13 +188,8 @@ export function TopBar({ userName, onLogout, onMenu }: TopBarProps) {
         />
       </form>
       <div className={styles.right}>
-        <Link href="/account" className={styles.userName} title={t('Account & settings')}>
-          {userName}
-        </Link>
-        <Button variant="ghost" size="sm" onClick={onLogout}>
-          <LogOut size={16} />
-          {t('Sign out')}
-        </Button>
+        <HelpMenu />
+        <UserMenu userName={userName} onLogout={onLogout} />
       </div>
     </header>
   );

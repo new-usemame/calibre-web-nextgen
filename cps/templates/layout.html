@@ -145,6 +145,39 @@
   {%- endif -%}
   <body class="{{ page }} {{ bodyClass }}{% if g.current_theme == 1 %} blur{% endif %}{% if cwa_settings and cwa_settings.get('enable_mobile_blur') %} allow-mobile-blur{% endif %}{% if _cover_hide_shelf_badges %} cover-hide-shelf-badges{% endif %}" data-text="{{_('Home')}}" data-textback="{{_('Back')}}">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    {% if cwng_spa_enabled %}
+    {# "Switch to New UI" — entry point into the React SPA at /app. Amber pill so
+       it stands out in the caliBlur navbar without a stylesheet edit. #}
+    <style>
+      #main-nav > li.cwng-switch-li { padding: 8px 6px; }
+      a.cwng-switch-ui {
+        display: inline-flex !important;
+        align-items: center;
+        gap: 7px;
+        padding: 7px 15px !important;
+        border-radius: 999px;
+        background: linear-gradient(180deg, #e0902a 0%, #cc7b19 100%);
+        color: #1a1206 !important;
+        font-weight: 600;
+        line-height: 1;
+        box-shadow: 0 2px 8px rgba(0,0,0,.32), inset 0 1px 0 rgba(255,255,255,.22);
+        transition: transform .12s cubic-bezier(.2,.7,.2,1), box-shadow .12s ease, filter .12s ease;
+      }
+      a.cwng-switch-ui:hover, a.cwng-switch-ui:focus {
+        background: linear-gradient(180deg, #ec9d3a 0%, #d98521 100%);
+        color: #1a1206 !important;
+        filter: none;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 14px rgba(204,123,25,.4), inset 0 1px 0 rgba(255,255,255,.28);
+        text-decoration: none;
+      }
+      a.cwng-switch-ui:active { transform: translateY(0); }
+      a.cwng-switch-ui .glyphicon { top: 1px; font-size: 12px; }
+      @media (max-width: 767px) {
+        a.cwng-switch-ui { width: 100%; justify-content: center; }
+      }
+    </style>
+    {% endif %}
     <!-- Static navbar -->
     <div class="navbar navbar-default navbar-static-top" role="navigation">
       <div class="container-fluid">
@@ -180,6 +213,14 @@
           {% endif %}
           <ul class="nav navbar-nav navbar-right" id="main-nav">
             {% if current_user.is_authenticated or g.allow_anonymous %}
+              {% if cwng_spa_enabled %}
+              <li class="cwng-switch-li">
+                <a class="cwng-switch-ui" href="/app" title="{{_('Switch to the new Calibre-Web NextGen interface')}}">
+                  <span class="glyphicon glyphicon-flash"></span>
+                  <span class="cwng-switch-label">{{_('Switch to New UI')}}</span>
+                </a>
+              </li>
+              {% endif %}
               {% if g.current_theme == 1 %}
               <li class="dropdown"><a href="#" class="dropdown-toggle profileDrop" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false"><span class="glyphicon glyphicon-user"></span></a>
                 <ul class="dropdown-menu profileDropli">

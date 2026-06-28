@@ -18,6 +18,23 @@
 # --tag crocodilestick/calibre-web-automated:latest .
 
 # ==========================================================================
+# GLOBAL build args — declared before the FIRST `FROM` so their defaults are
+# in scope for EVERY stage that re-declares them (a bare `ARG FOO` inside a
+# stage only inherits a default when FOO is a global arg). These were trapped
+# inside the frontend-build stage when that Node stage was prepended, which
+# blanked them in the dependencies stage and produced malformed download URLs
+# (e.g. .../download//cpython-+-...  -> 404). Keep them here, above any FROM.
+# Bump versions in this one place.
+# ==========================================================================
+ARG CALIBRE_RELEASE=9.1.0
+ARG KEPUBIFY_RELEASE=v4.0.4
+# Python is installed from python-build-standalone (CDN-backed GitHub releases)
+# rather than the deadsnakes PPA, which has a history of being unavailable.
+# Both x86_64 and aarch64 prebuilds are published by astral-sh.
+ARG PYTHON_BUILD_STANDALONE_RELEASE=20260623
+ARG PYTHON_VERSION=3.13.14
+
+# ==========================================================================
 # STAGE 0: Frontend - Build the React SPA bundle (Vite).
 # Build-time only: Node/npm never enter the runtime image. The compiled
 # bundle (cps/static/app) is copied into the final stage below. The source
@@ -41,14 +58,6 @@ RUN npm run build
 # ==========================================================================
 # STAGE 1: Dependencies - Install system packages and Python dependencies
 # ==========================================================================
-ARG CALIBRE_RELEASE=9.1.0
-ARG KEPUBIFY_RELEASE=v4.0.4
-# Python is installed from python-build-standalone (CDN-backed GitHub releases)
-# rather than the deadsnakes PPA, which has a history of being unavailable.
-# Both x86_64 and aarch64 prebuilds are published by astral-sh.
-ARG PYTHON_BUILD_STANDALONE_RELEASE=20260623
-ARG PYTHON_VERSION=3.13.14
-
 FROM ghcr.io/linuxserver/baseimage-ubuntu:noble AS dependencies
 
 ARG CALIBRE_RELEASE

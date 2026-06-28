@@ -121,7 +121,15 @@ RUN \
     *) echo "Unsupported arch: $(uname -m)"; exit 1 ;; \
   esac && \
   PBS_URL="https://github.com/astral-sh/python-build-standalone/releases/download/${PYTHON_BUILD_STANDALONE_RELEASE}/cpython-${PYTHON_VERSION}+${PYTHON_BUILD_STANDALONE_RELEASE}-${PBS_ARCH}-install_only.tar.gz" && \
-  curl -fL --retry 5 --retry-delay 3 "${PBS_URL}" -o /tmp/python.tar.gz && \
+  echo "Downloading Python from ${PBS_URL}" && \
+  for attempt in 1 2 3 4 5 6 7 8 9 10; do \
+    if curl -fL --connect-timeout 30 --retry 3 --retry-delay 3 --retry-all-errors "${PBS_URL}" -o /tmp/python.tar.gz; then \
+      echo "Python download succeeded on attempt ${attempt}"; break; \
+    fi; \
+    echo "Python download attempt ${attempt} failed (HTTP error / 404 from the release CDN); retrying in 15s…"; \
+    sleep 15; \
+    if [ "${attempt}" = "10" ]; then echo "ERROR: Python download failed after 10 attempts"; exit 22; fi; \
+  done && \
   mkdir -p /opt && \
   tar -xzf /tmp/python.tar.gz -C /opt && \
   rm /tmp/python.tar.gz && \

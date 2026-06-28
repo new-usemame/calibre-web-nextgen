@@ -25,6 +25,12 @@ PYTHON_* pins (and moved Python to a GHCR mirror) but left CALIBRE_RELEASE /
 KEPUBIFY_RELEASE trapped in the frontend-build stage, so the build advanced
 past Python and died at the kepubify download instead.
 
+The fix moved both binaries to GHCR mirror images (Python in #549, kepubify in
+#552), and #552 also hoisted CALIBRE_RELEASE / KEPUBIFY_RELEASE to the global
+ARG block. kepubify is now `COPY`-d from a `kepubify-${KEPUBIFY_RELEASE}` mirror
+stage rather than downloaded, so the guard below checks that the mirror FROM
+interpolates the pin; calibre is still fetched from its own CDN by URL.
+
 These tests fail on the broken layout (defaults trapped after the first FROM)
 and pass once the defaults are hoisted above every FROM. They also guard
 against a future stage being prepended above the ARG block again.
@@ -34,6 +40,14 @@ import re
 from pathlib import Path
 
 import pytest
+
+
+# These are pure file-parsing assertions (no Docker, no network): mark them
+# `unit` so CI's `pytest -m "smoke or unit"` selector actually collects them.
+# Without a marker, --strict-markers + that selector silently deselect the
+# whole module, leaving the regression guard dead — which is how a stale
+# assertion sat green in CI while failing on a direct run.
+pytestmark = pytest.mark.unit
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -91,16 +105,20 @@ def test_no_defaulted_version_arg_trapped_inside_a_stage(dockerfile_text: str, f
         )
 
 
-def test_download_urls_interpolate_their_release_args(dockerfile_text: str) -> None:
-    """The binary download lines must reference their release vars, and the
-    global defaults must be non-empty — together these guarantee the rendered
-    URLs carry a real version segment and never the empty-var `download//...`
-    form that 404s."""
-    # kepubify: .../releases/download/${KEPUBIFY_RELEASE}/kepubify-linux-...
+def test_binary_source_lines_interpolate_their_release_args(dockerfile_text: str) -> None:
+    """The binary source lines must reference their release vars, and the global
+    defaults must be non-empty — together these guarantee the rendered ref
+    carries a real version segment and never the empty-var form that 404s.
+
+    Since #552 kepubify comes from a GHCR mirror stage tagged
+    `kepubify-${KEPUBIFY_RELEASE}` (not a GitHub-release download), so the guard
+    checks the mirror FROM. calibre is still fetched from its own CDN by URL."""
+    # kepubify: FROM ghcr.io/.../...:kepubify-${KEPUBIFY_RELEASE} AS kepubify_mirror
     assert re.search(
-        r"releases/download/\$\{KEPUBIFY_RELEASE\}/kepubify-linux",
+        r"^FROM\s+ghcr\.io/[^\s:]+:kepubify-\$\{KEPUBIFY_RELEASE\}",
         dockerfile_text,
-    ), "kepubify download URL must interpolate KEPUBIFY_RELEASE"
+        re.MULTILINE,
+    ), "kepubify mirror FROM must interpolate KEPUBIFY_RELEASE"
     # calibre: https://download.calibre-ebook.com/${CALIBRE_RELEASE}/calibre-${CALIBRE_RELEASE}-...
     assert re.search(
         r"download\.calibre-ebook\.com/\$\{CALIBRE_RELEASE\}/calibre-\$\{CALIBRE_RELEASE\}",

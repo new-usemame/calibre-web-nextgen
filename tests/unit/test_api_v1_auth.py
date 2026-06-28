@@ -187,9 +187,42 @@ def test_forgot_always_ok_even_for_unknown_user():
 
 
 @pytest.mark.unit
-def test_oauth_providers_maps_ids_to_urls():
-    with patch.dict("cps.oauth_bb.oauth_check", {1: "GitHub", 2: "Google"}, clear=True):
+def test_oauth_providers_hidden_unless_login_type_oauth():
+    """REGRESSION: OAuth buttons must only appear when the instance login type is
+    OAuth — matching the classic login page. Otherwise they'd show + error on a
+    standard/LDAP-login instance where OAuth isn't configured."""
+    from cps import constants
+    with patch.object(cps.api.auth, "config") as cfg, \
+         patch.dict("cps.oauth_bb.oauth_check", {1: "GitHub", 3: "Generic"}, clear=True):
+        cfg.config_login_type = constants.LOGIN_STANDARD
+        assert cps.api.auth._oauth_providers() == []
+
+
+@pytest.mark.unit
+def test_oauth_providers_maps_ids_to_urls_when_oauth():
+    from cps import constants
+    with patch.object(cps.api.auth, "config") as cfg, \
+         patch.object(cps.api.auth, "url_for", side_effect=lambda ep: "/" + ep.replace(".", "/")), \
+         patch.dict("cps.oauth_bb.oauth_check", {1: "GitHub", 2: "Google"}, clear=True):
+        cfg.config_login_type = constants.LOGIN_OAUTH
         provs = cps.api.auth._oauth_providers()
     by_id = {p["id"]: p for p in provs}
-    assert by_id[1]["url"] == "/link/github"
+    assert by_id[1]["url"] == "/oauth/github_login"
     assert by_id[2]["name"] == "Google"
+
+
+@pytest.mark.unit
+def test_auth_config_exposes_remote_login():
+    """Magic-link (remote) login is surfaced for the SPA login when enabled."""
+    app = _app()
+    with patch.object(cps.api.auth, "config") as cfg, \
+         patch.object(cps.api.auth, "_oauth_providers", return_value=[]), \
+         patch.object(cps.api.auth, "url_for", return_value="/remote/login"):
+        cfg.config_public_reg = False
+        cfg.config_register_email = False
+        cfg.get_mail_server_configured.return_value = True
+        cfg.config_disable_standard_login = False
+        cfg.config_remote_login = True
+        d = app.test_client().get("/api/v1/auth/config").get_json()
+    assert d["remote_login"] is True
+    assert d["remote_login_url"] == "/remote/login"

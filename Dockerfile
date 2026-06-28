@@ -48,6 +48,12 @@ ARG KEPUBIFY_RELEASE=v4.0.4
 # Both x86_64 and aarch64 prebuilds are published by astral-sh.
 ARG PYTHON_BUILD_STANDALONE_RELEASE=20260623
 ARG PYTHON_VERSION=3.13.14
+# Our GHCR mirror of the python-build-standalone tarball, tag DERIVED from the
+# two ARGs above so it can never drift. ARG expansion is allowed in FROM (but
+# NOT in COPY --from), so we alias the mirror image as a stage here and COPY
+# from the alias in STEP 1.5. Bump the two ARGs and everything follows.
+ARG PBS_CACHE_REF=ghcr.io/new-usemame/pbs-cache:cpython-${PYTHON_VERSION}-${PYTHON_BUILD_STANDALONE_RELEASE}
+FROM ${PBS_CACHE_REF} AS pbs_mirror
 
 FROM ghcr.io/linuxserver/baseimage-ubuntu:noble AS dependencies
 
@@ -55,10 +61,6 @@ ARG CALIBRE_RELEASE
 ARG KEPUBIFY_RELEASE
 ARG PYTHON_BUILD_STANDALONE_RELEASE
 ARG PYTHON_VERSION
-# Our GHCR mirror of the python-build-standalone tarball, tag DERIVED from the
-# two ARGs above so it can never drift: bump the version/release and this ref
-# (and the CI mirror-build) follow automatically. See STEP 1.5 + notes/PYTHON-BUILD-MIRROR.md.
-ARG PBS_CACHE_REF=ghcr.io/new-usemame/pbs-cache:cpython-${PYTHON_VERSION}-${PYTHON_BUILD_STANDALONE_RELEASE}
 
 # Set the default shell for the following RUN instructions to bash instead of sh
 SHELL ["/bin/bash", "-c"]
@@ -125,7 +127,7 @@ RUN \
 # automatically by scripts/ensure-python-mirror.sh (a CI job that runs before
 # the image build). To bump Python: change PYTHON_VERSION / PYTHON_BUILD_STANDALONE_RELEASE
 # above — nothing else. Full explanation: notes/PYTHON-BUILD-MIRROR.md.
-COPY --from=${PBS_CACHE_REF} /python.tar.gz /tmp/python.tar.gz
+COPY --from=pbs_mirror /python.tar.gz /tmp/python.tar.gz
 RUN \
   echo "**** install Python ${PYTHON_VERSION} from mirrored python-build-standalone ****" && \
   mkdir -p /opt && \

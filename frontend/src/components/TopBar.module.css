@@ -226,6 +226,36 @@
   color: var(--text-muted);
 }
 
+/* Bug + brand sub-badge (Report Issue on GitHub / Discord). The badge is a tiny
+   dark chip pinned to the base glyph's bottom-right so it reads on both the panel
+   and hover backgrounds. */
+.iconBadgeWrap {
+  position: relative;
+  display: inline-flex;
+  line-height: 0;
+}
+
+.iconBadge {
+  position: absolute;
+  right: -4px;
+  bottom: -4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 11px;
+  height: 11px;
+  border-radius: var(--r-full);
+  background: var(--surface-1);
+  color: var(--text);
+  box-shadow: 0 0 0 1px var(--border);
+}
+
+.iconBadge svg {
+  width: 8px;
+  height: 8px;
+  display: block;
+}
+
 .menuItemDanger {
   color: var(--danger);
 }

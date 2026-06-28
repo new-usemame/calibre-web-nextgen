@@ -4,15 +4,20 @@
   --hb-edge: #3a8f86;
   --hb-text: #d7f1ed;
   --hb-icon: #6fd8cb;
+  position: relative;
   display: flex;
   align-items: center;
+  justify-content: center;          /* center the icon + message as a group */
   gap: var(--sp-3);
-  padding: var(--sp-2) var(--sp-5);
+  /* symmetric room on both sides so the centered content isn't nudged by the
+     absolutely-positioned dismiss button */
+  padding: var(--sp-2) 52px;
   background: linear-gradient(90deg, #173842 0%, #18484a 60%, #1a4f49 100%);
   border-bottom: 1px solid var(--hb-edge);
   box-shadow: inset 3px 0 0 var(--hb-icon);
   color: var(--hb-text);
   font-size: var(--fs-sm);
+  text-align: center;
   animation: hbSlideDown var(--dur-base) var(--ease-out);
 }
 
@@ -30,8 +35,10 @@
 .text {
   display: inline-flex;
   align-items: center;
-  gap: var(--sp-2);
-  flex: 1 1 auto;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: var(--sp-1) var(--sp-2);
+  flex: 0 1 auto;
   min-width: 0;
 }
 
@@ -52,6 +59,10 @@
 }
 
 .close {
+  position: absolute;
+  right: var(--sp-3);
+  top: 50%;
+  transform: translateY(-50%);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -70,6 +81,18 @@
 .close:hover {
   background: rgba(255, 255, 255, 0.12);
   opacity: 1;
+}
+
+@media (max-width: 600px) {
+  .banner {
+    gap: var(--sp-2);
+    padding: var(--sp-2) 44px;
+    font-size: var(--fs-xs);
+    line-height: var(--lh-snug);
+  }
+  /* the icon is decorative; drop it on phones so the centered message keeps the
+     most room and stays on one or two tidy lines */
+  .iconWrap { display: none; }
 }
 
 @media (prefers-reduced-motion: reduce) {

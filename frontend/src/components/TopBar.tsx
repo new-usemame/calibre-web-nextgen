@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback, type ReactNode } from 'react';
-import { BookMarked, LogOut, Menu, Search, ChevronDown, User, Bug, MessagesSquare, BookOpen } from 'lucide-react';
+import { BookMarked, LogOut, Menu, Search, ChevronDown, User, Bug, BookOpen } from 'lucide-react';
 import { Link, useLocation } from 'wouter';
+import { GithubMark, DiscordMark } from './BrandIcons';
 import { useT } from '../lib/i18n';
 import styles from './TopBar.module.css';
 
@@ -63,6 +64,17 @@ function useMenu() {
   return { open, close, ref, wrapperProps: { ref, onMouseEnter, onMouseLeave }, onTriggerClick };
 }
 
+/** A primary glyph with a small brand sub-badge pinned bottom-right — used for the
+ *  "Report Issue on …" items (a bug + the GitHub/Discord mark it routes to). */
+function IconWithBadge({ base, badge }: { base: ReactNode; badge: ReactNode }) {
+  return (
+    <span className={styles.iconBadgeWrap}>
+      {base}
+      <span className={styles.iconBadge}>{badge}</span>
+    </span>
+  );
+}
+
 interface MenuItemProps {
   icon: ReactNode;
   label: string;
@@ -119,8 +131,13 @@ function HelpMenu() {
       {open && (
         <div className={`${styles.panel} ${styles.panelHelp}`} role="menu">
           <p className={styles.panelHead}>{t('Help & support')}</p>
-          <MenuItem icon={<Bug size={15} />} label={t('Report an issue')} href={HELP_LINKS.issue} onSelect={close} />
-          <MenuItem icon={<MessagesSquare size={15} />} label={t('Community chat')} href={HELP_LINKS.discord} onSelect={close} />
+          <MenuItem
+            icon={<IconWithBadge base={<Bug size={16} />} badge={<GithubMark />} />}
+            label={t('Report Issue on GitHub')} href={HELP_LINKS.issue} onSelect={close} />
+          <MenuItem
+            icon={<IconWithBadge base={<Bug size={16} />} badge={<DiscordMark />} />}
+            label={t('Report Issue on Discord')} href={HELP_LINKS.discord} onSelect={close} />
+          <MenuItem icon={<DiscordMark size={15} />} label={t('Ask in Discord')} href={HELP_LINKS.discord} onSelect={close} />
           <MenuItem icon={<BookOpen size={15} />} label={t('Documentation')} href={HELP_LINKS.docs} onSelect={close} />
         </div>
       )}

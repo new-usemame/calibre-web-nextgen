@@ -236,7 +236,7 @@ function useEreaderPreviews(id: string, candidates: CoverCandidate[], s: Ereader
     const MAX = 6;
 
     const renderOne = async (c: CoverCandidate) => {
-      const key = `${candKey(c)}|${settingsKey}`;
+      const key = `${candKey(c)}|${c.cover_url}|${settingsKey}`;
       const cached = cache.current.get(key);
       if (cached) { if (!cancelled) setPreviews((p) => ({ ...p, [candKey(c)]: cached })); return; }
       setPreviews((p) => ({ ...p, [candKey(c)]: 'loading' }));
@@ -300,6 +300,9 @@ function CandidateCard({ candidate: c, locked, preview, onPick }: {
   const [failed, setFailed] = useState(false);
   const showPreview = preview && preview !== 'loading';
   const src = showPreview ? (preview as string) : c.cover_url;
+  // A refresh can reuse this component instance (same key) with a new image URL;
+  // clear a prior load error so the new image mounts instead of staying hidden.
+  useEffect(() => { setFailed(false); }, [src]);
   const dims = c.width && c.height ? `${c.width}×${c.height}` : null;
   const lowRes = c.flags?.includes('low_res');
   return (
@@ -388,21 +391,24 @@ function UrlTab({ id, locked, onApplied, onError }: {
   const [valid, setValid] = useState<UrlValidation | null>(null);
   const [checking, setChecking] = useState(false);
   const [applying, setApplying] = useState(false);
+  const seq = useRef(0); // ignore stale validation responses that resolve out of order
 
   useEffect(() => {
     const v = url.trim();
     if (!v) { setValid(null); setChecking(false); return; }
     setChecking(true);
+    const mySeq = ++seq.current;
     const h = setTimeout(async () => {
-      try { setValid(await coverApi.validate(id, v)); }
-      catch { setValid(null); }
-      finally { setChecking(false); }
+      try { const r = await coverApi.validate(id, v); if (mySeq === seq.current) setValid(r); }
+      catch { if (mySeq === seq.current) setValid(null); }
+      finally { if (mySeq === seq.current) setChecking(false); }
     }, 400);
     return () => clearTimeout(h);
   }, [url, id]);
 
   const apply = async () => {
-    if (!valid?.valid || locked) return;
+    // Guard against applying a URL that's no longer the one shown/validated.
+    if (!valid?.valid || checking || valid?.url !== url.trim() || locked) return;
     setApplying(true);
     try { const r = await coverApi.applyUrl(id, valid.url); onApplied(r.cover_url); setUrl(''); setValid(null); }
     catch (e) { onError(e); }
@@ -426,7 +432,7 @@ function UrlTab({ id, locked, onApplied, onError }: {
           </div>
         </div>
       )}
-      <Button onClick={apply} disabled={!valid?.valid || locked || applying} className={styles.fullBtn}>
+      <Button onClick={apply} disabled={!valid?.valid || checking || valid?.url !== url.trim() || locked || applying} className={styles.fullBtn}>
         {applying ? <Loader2 size={14} className={styles.spin} /> : <Check size={14} />} {t('Use this cover')}
       </Button>
       {locked && <p className={styles.lockedHint}>{t('Unlock the cover above to apply a new one.')}</p>}

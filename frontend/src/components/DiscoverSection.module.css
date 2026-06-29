@@ -112,7 +112,12 @@
   gap: var(--sp-4);
   overflow-x: auto;
   scroll-snap-type: x proximity;
-  padding-bottom: var(--sp-2);
+  /* A scroll container with overflow-x:auto also clips the Y axis, so a card's
+     hover-lift (translateY) + focus outline would be cut off at the top/sides.
+     Pad the scroll viewport to give them headroom; negative margins cancel the
+     padding so the box's outer spacing is unchanged. */
+  padding: var(--sp-3) var(--sp-2);
+  margin: calc(-1 * var(--sp-3)) calc(-1 * var(--sp-2)) calc(-1 * var(--sp-1));
   -webkit-overflow-scrolling: touch;
   scrollbar-width: thin;
   scrollbar-color: var(--border-strong) transparent;

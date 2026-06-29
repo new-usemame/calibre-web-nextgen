@@ -91,3 +91,36 @@ def test_get_ingest_path_normal_filename_unchanged(tmp_path, monkeypatch):
     # secure_filename collapses spaces to underscores but keeps the full title.
     assert "A_Tale_of_Two_Cities.epub" in component
     assert component.endswith(".epub")
+
+
+@pytest.mark.unit
+def test_truncate_ingest_name_caps_pathologically_long_extension():
+    """A filename whose final dot-segment (what ``splitext`` calls the
+    "extension") is itself longer than the byte budget must still be trimmed.
+    Otherwise the stem budget clamps to zero, the over-long extension is kept
+    verbatim, and the staging component escapes NAME_MAX — re-raising the very
+    ENAMETOOLONG this helper exists to prevent (issue #553, Greptile follow-up).
+    """
+    from cps.editbooks import _truncate_ingest_name
+    name = "book." + ("x" * 300)  # 305-byte component, no genuine extension
+    out = _truncate_ingest_name(name)
+    assert len((out + ".uploading").encode("utf-8")) <= 255
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("name", [
+    "x" * 400,                          # no extension at all
+    "book." + "x" * 300,                # over-long pseudo-extension
+    ("é" * 200) + "." + ("ü" * 200),    # multibyte stem and multibyte extension
+    "a" * 250 + ".epub",                # long stem, normal extension
+    "." + "z" * 300,                    # dotfile-style, all one segment
+])
+def test_truncate_ingest_name_always_fits_name_max(name):
+    """Invariant the helper must hold for every input: the returned staging
+    component plus the longest suffix the pipeline appends (".uploading", 10
+    bytes) never exceeds NAME_MAX, and the result is always valid UTF-8 — never
+    cut mid-codepoint."""
+    from cps.editbooks import _truncate_ingest_name
+    out = _truncate_ingest_name(name)
+    out.encode("utf-8")  # raises if a partial multibyte sequence slipped through
+    assert len((out + ".uploading").encode("utf-8")) <= 255

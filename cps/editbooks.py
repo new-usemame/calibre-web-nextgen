@@ -439,9 +439,17 @@ def _truncate_ingest_name(final_name):
     if len(final_name.encode("utf-8")) <= budget:
         return final_name
     stem, ext = os.path.splitext(final_name)
-    # Preserve the extension; give the rest of the budget to the stem, cut on
-    # a byte boundary without splitting a multi-byte UTF-8 sequence.
-    stem_budget = max(0, budget - len(ext.encode("utf-8")))
+    ext_bytes = ext.encode("utf-8")
+    # A pathologically long final dot-segment can exceed the budget on its own
+    # (no genuine extension is hundreds of bytes); keeping it verbatim would
+    # leave the component over NAME_MAX. In that case there's no extension worth
+    # preserving, so trim the whole name to the budget. Cut on a byte boundary
+    # so a multi-byte UTF-8 sequence is never split.
+    if len(ext_bytes) >= budget:
+        return final_name.encode("utf-8")[:budget].decode("utf-8", "ignore")
+    # Otherwise preserve the extension and give the rest of the budget to the
+    # stem, again cutting on a byte boundary.
+    stem_budget = budget - len(ext_bytes)
     stem = stem.encode("utf-8")[:stem_budget].decode("utf-8", "ignore")
     return stem + ext
 

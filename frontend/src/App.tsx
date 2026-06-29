@@ -12,6 +12,7 @@ import { Shelf } from './pages/Shelf';
 import { AdvancedSearch } from './pages/AdvancedSearch';
 import { Account } from './pages/Account';
 import { EditBook } from './pages/EditBook';
+import { CoverPicker } from './pages/CoverPicker';
 import { Upload } from './pages/Upload';
 import { Admin } from './pages/Admin';
 import { About } from './pages/About';
@@ -80,6 +81,7 @@ export function App() {
           <AppShell userName={me.name} onLogout={() => logout.mutate()}>
             <Switch>
           <Route path="/book/:id/edit">{(p) => <EditBook id={p.id} />}</Route>
+          <Route path="/book/:id/cover">{(p) => <CoverPicker id={p.id} />}</Route>
           <Route path="/book/:id/annotations">{(p) => <Annotations id={p.id} />}</Route>
           <Route path="/book/:id" component={BookDetail} />
 

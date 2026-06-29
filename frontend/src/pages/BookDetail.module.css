@@ -37,12 +37,53 @@
   top: calc(56px + var(--sp-5)); /* below TopBar */
 }
 
+.coverWrap { position: relative; }
+
 .cover {
   width: 100%;
   border-radius: var(--r-md);
   box-shadow: var(--cover-shadow);
   display: block;
 }
+
+/* "Change cover" affordance overlaid on the cover — discoverable for editors
+   without a trip through the edit page. Always present but quiet; lifts on
+   hover/focus. Visible on touch (no hover needed) and reachable by keyboard
+   (it's a focusable link, with a focus-visible ring). */
+.changeCover {
+  position: absolute;
+  left: 50%;
+  bottom: var(--sp-3);
+  transform: translateX(-50%);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--r-full);
+  background: rgba(20, 28, 36, .82);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  border: 1px solid var(--border-strong);
+  color: var(--text);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
+  text-decoration: none;
+  white-space: nowrap;
+  box-shadow: var(--elev-2);
+  opacity: .92;
+  transition: background var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease), opacity var(--dur-fast) var(--ease);
+}
+.coverWrap:hover .changeCover,
+.changeCover:hover,
+.changeCover:focus-visible {
+  background: var(--accent);
+  color: var(--on-accent);
+  border-color: var(--accent);
+  opacity: 1;
+  transform: translateX(-50%) translateY(-2px);
+}
+.changeCover:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--accent-ring); }
+@media (prefers-reduced-motion: reduce) { .changeCover { transition: none; } }
 
 .coverFallback {
   width: 100%;

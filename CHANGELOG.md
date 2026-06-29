@@ -26,6 +26,14 @@ is for things you can see or feel when running the app.
   hidden unless an admin opted the whole instance in.)
 
 ### Added
+- **A redesigned "Change cover" screen in the new UI.** Picking a new cover now
+  opens a polished page instead of the old one: your current cover with a one-tap
+  **lock** (so a metadata refresh can't overwrite it), a grid of candidates from
+  every source we search (plus the cover embedded in the book), and tabs to paste
+  a URL or upload your own. If you use a Kobo, flip on **E-reader preview** to see
+  how each candidate looks padded for your device before you choose. You can reach
+  it straight from a book — hover or tap its cover and choose **Change cover** —
+  or from the edit page. Keyboard- and screen-reader-friendly throughout.
 - **A "Discover" shelf of random picks on your library home (new UI).** The
   redesigned library now opens with a set-apart "Discover" box — a row of random
   books from your collection to stumble onto something to read. Hit the shuffle

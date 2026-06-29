@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useParams } from 'wouter';
-import { Download, Pencil, Star, Archive, EyeOff, Eye, Send, Highlighter } from 'lucide-react';
+import { Download, Pencil, Star, Archive, EyeOff, Eye, Send, Highlighter, Image as ImageIcon } from 'lucide-react';
 import {
   useBook, useToggleRead, useToggleFavorite, useToggleArchived, useToggleHidden,
   useSendToEreader, useMe,
@@ -134,17 +134,24 @@ export function BookDetail() {
       <div className={styles.layout}>
         {/* LEFT: cover */}
         <div className={styles.coverCol}>
-          {book.cover_url ? (
-            <img
-              src={book.cover_url}
-              alt={book.title}
-              className={styles.cover}
-            />
-          ) : (
-            <div className={styles.coverFallback} aria-label={book.title}>
-              <span className={styles.coverFallbackTitle}>{book.title}</span>
-            </div>
-          )}
+          <div className={styles.coverWrap}>
+            {book.cover_url ? (
+              <img
+                src={book.cover_url}
+                alt={book.title}
+                className={styles.cover}
+              />
+            ) : (
+              <div className={styles.coverFallback} aria-label={book.title}>
+                <span className={styles.coverFallbackTitle}>{book.title}</span>
+              </div>
+            )}
+            {me?.role?.edit && (
+              <Link href={`/book/${book.id}/cover`} className={styles.changeCover}>
+                <ImageIcon size={15} /> {t('Change cover')}
+              </Link>
+            )}
+          </div>
         </div>
 
         {/* RIGHT: info */}

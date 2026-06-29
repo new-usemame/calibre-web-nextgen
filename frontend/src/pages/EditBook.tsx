@@ -282,9 +282,9 @@ function CoverManager({ id }: { id: string }) {
             {t('Fetch')}
           </Button>
         </div>
-        <a className={styles.coverAdvanced} href={`/book/${id}/cover?origin=edit`}>
+        <Link className={styles.coverAdvanced} href={`/book/${id}/cover?origin=edit`}>
           <ExternalLink size={13} /> {t('More cover options (search providers, e-reader preview)')}
-        </a>
+        </Link>
         {msg && <span className={msg.ok ? styles.msgOk : styles.msgErr}>{msg.text}</span>}
       </div>
     </section>

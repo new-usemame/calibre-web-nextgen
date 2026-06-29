@@ -253,19 +253,29 @@
          no-JS case. */
       .cwng-newui-banner { padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px)); }
       body.cwng-has-newui-banner {
-        --cwng-banner-gap: calc(var(--cwng-banner-h, 56px) + env(safe-area-inset-bottom, 0px));
+        /* --cwng-banner-h is measured from offsetHeight, which ALREADY includes the
+           banner's own safe-area padding above — so do NOT add the inset again here
+           (it would be counted twice on home-indicator phones). Only the no-JS
+           fallback adds it, since there's no measured height to include it. */
+        --cwng-banner-gap: var(--cwng-banner-h, calc(56px + env(safe-area-inset-bottom, 0px)));
       }
       /* 1. Lift the fixed-bottom toasts/alerts above the banner so they're never
             clipped. caliBlur turns every .alert into a fixed bottom:20px toast and
-            stacks the persistent ones in .cwa-toast-stack (bottom:20px). */
-      body.cwng-has-newui-banner .cwa-toast-stack { bottom: calc(20px + var(--cwng-banner-gap)) !important; }
-      body.cwng-has-newui-banner .alert { bottom: calc(20px + var(--cwng-banner-gap)) !important; }
-      /* 2. Reserve scroll space so the last content rows / sidebar items clear the
-            banner instead of hiding behind it. caliBlur (body.blur) scrolls the
-            content column and sidebar as separate panes; the standard theme scrolls
-            <body>. */
-      body.cwng-has-newui-banner.blur > div.container-fluid > div.row-fluid > div.col-sm-10 { padding-bottom: var(--cwng-banner-gap) !important; }
-      body.cwng-has-newui-banner.blur #main-nav { padding-bottom: var(--cwng-banner-gap) !important; }
+            stacks the persistent ones in .cwa-toast-stack (bottom:20px). DESKTOP
+            ONLY: on mobile (<=767px) mobile-alert-toast-position.css relocates
+            toasts to the TOP, so there's no overlap there and a bottom offset would
+            fight that rule. */
+      @media (min-width: 768px) {
+        body.cwng-has-newui-banner .cwa-toast-stack { bottom: calc(20px + var(--cwng-banner-gap)) !important; }
+        body.cwng-has-newui-banner .alert { bottom: calc(20px + var(--cwng-banner-gap)) !important; }
+        /* 2. Reserve scroll space so the last content rows / sidebar items clear the
+              banner. caliBlur (body.blur) scrolls the content column (.col-sm-10) and
+              the sidebar list (#scnd-nav, inside .col-sm-2) as separate panes —
+              #main-nav is the top navbar, not the sidebar, so pad #scnd-nav. */
+        body.cwng-has-newui-banner.blur > div.container-fluid > div.row-fluid > div.col-sm-10 { padding-bottom: var(--cwng-banner-gap) !important; }
+        body.cwng-has-newui-banner.blur #scnd-nav { padding-bottom: var(--cwng-banner-gap) !important; }
+      }
+      /* Standard (non-caliBlur) theme scrolls <body>; reserve there at all widths. */
       body.cwng-has-newui-banner:not(.blur) { padding-bottom: var(--cwng-banner-gap); }
     </style>
     {% endif %}

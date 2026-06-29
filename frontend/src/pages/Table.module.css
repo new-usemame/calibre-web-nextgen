@@ -1,0 +1,43 @@
+.container { padding: var(--sp-5) var(--sp-5); }
+
+.header { display: flex; align-items: center; gap: var(--sp-3); margin-bottom: var(--sp-4); }
+.title { font-family: var(--font-display); font-size: var(--fs-xl); color: var(--text); }
+.count { color: var(--text-muted); font-size: var(--fs-sm); }
+
+.colWrap { position: relative; margin-left: auto; }
+.colBtn {
+  display: inline-flex; align-items: center; gap: var(--sp-2);
+  font-size: var(--fs-sm); color: var(--text-muted);
+  border: 1px solid var(--border); border-radius: var(--r-md); padding: var(--sp-2) var(--sp-3);
+}
+.colBtn:hover { color: var(--text); }
+.colMenu {
+  position: absolute; right: 0; top: calc(100% + 4px); z-index: 20;
+  background: var(--surface-1); border: 1px solid var(--border); border-radius: var(--r-md);
+  padding: var(--sp-2); display: flex; flex-direction: column; gap: var(--sp-1); min-width: 160px;
+  box-shadow: var(--shadow-md, 0 8px 24px rgba(0,0,0,.3));
+}
+.colItem { display: flex; align-items: center; gap: var(--sp-2); font-size: var(--fs-sm); color: var(--text); cursor: pointer; }
+
+.tableWrap { overflow-x: auto; border: 1px solid var(--border); border-radius: var(--r-lg); }
+.table { width: 100%; border-collapse: collapse; font-size: var(--fs-sm); }
+.table th {
+  text-align: left; padding: var(--sp-3); color: var(--text-muted); font-weight: 500;
+  border-bottom: 1px solid var(--border); white-space: nowrap; background: var(--surface-1);
+  position: sticky; top: 0;
+}
+.sortable { cursor: pointer; user-select: none; }
+.sortable:hover { color: var(--text); }
+.thInner { display: inline-flex; align-items: center; gap: 4px; }
+.table td { padding: var(--sp-2) var(--sp-3); border-bottom: 1px solid var(--border); color: var(--text); vertical-align: middle; }
+.table tr:last-child td { border-bottom: none; }
+.table tbody tr:hover { background: var(--surface-1); }
+
+.coverCol { width: 40px; }
+.coverThumb { width: 32px; height: 46px; object-fit: cover; border-radius: var(--r-sm); display: block; }
+.coverThumbEmpty { width: 32px; height: 46px; background: var(--surface-2, var(--surface-1)); border-radius: var(--r-sm); }
+.titleLink { color: var(--text); font-weight: 600; }
+.titleLink:hover { color: var(--accent); }
+.readYes { color: var(--success); }
+
+.loadMore { display: flex; justify-content: center; padding: var(--sp-4); }

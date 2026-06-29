@@ -26,3 +26,9 @@ requirements-dev.txt
 TEST*.md
 TESTING*.md
 .pytest_cache/
+
+# Frontend: node_modules is reinstalled in the frontend-build stage via
+# `npm ci`; the compiled bundle is produced there and COPY'd in, so a local
+# build must never leak into the context (keeps builds reproducible + lean).
+frontend/node_modules
+cps/static/app/

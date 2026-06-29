@@ -605,11 +605,6 @@ def create_annotation(payload, *, user_id, book, session, commit):
     request context — mirrors :func:`ingest_bookmarks`. Raises ``ValueError``
     on a payload with no usable anchor.
     """
-    start_span = (payload.get("start_kobospan") or "").strip()
-    if not start_span:
-        raise ValueError("create_annotation: missing start_kobospan anchor")
-    end_span = (payload.get("end_kobospan") or "").strip() or start_span
-
     color = (payload.get("highlight_color") or "yellow").strip().lower()
     if color not in WEBREADER_COLORS:
         color = "yellow"
@@ -624,6 +619,43 @@ def create_annotation(payload, *, user_id, book, session, commit):
         book_uuid = getattr(book, "uuid", None)
         if chapter and book_uuid:
             content_id = f"{book_uuid}!!{chapter}"
+
+    start_span = (payload.get("start_kobospan") or "").strip()
+    cfi_range = (payload.get("cfi_range") or "").strip()
+
+    # The SPA epub.js reader produces a portable EPUB CFI (not a KoboSpan). Accept
+    # a CFI-only web-reader highlight: it stands on its cfi_range, exports like any
+    # other, and renders back in the reader. KoboSpan stays the path for the kepub
+    # reader / device sync (no kobospan => nothing to push to a Kobo, which is
+    # correct for a web-origin highlight).
+    if not start_span:
+        if not cfi_range:
+            raise ValueError("create_annotation: missing start_kobospan or cfi_range anchor")
+        row = ub.Annotation(
+            user_id=user_id,
+            annotation_id=WEBREADER_ID_PREFIX + uuid.uuid4().hex,
+            book_id=book.id,
+            source="webreader",
+            highlighted_text=payload.get("highlighted_text"),
+            highlight_color=color,
+            note_text=payload.get("note_text"),
+            content_id=content_id,
+            cfi_range=cfi_range,
+            position_type="cfi",
+            start_container_path="cfi",
+            start_container_child_index=-99,
+            start_offset=0,
+            end_container_path="cfi",
+            end_container_child_index=-99,
+            end_offset=0,
+            context_string=payload.get("context_string"),
+            hidden=False,
+        )
+        session.add(row)
+        commit()
+        return row
+
+    end_span = (payload.get("end_kobospan") or "").strip() or start_span
 
     row = ub.Annotation(
         user_id=user_id,

@@ -510,9 +510,15 @@ def edit_book_param(param, vals):
             invalid = list()
             edit_book_languages(vals['value'], book, invalid=invalid)
             if invalid:
-                ret = Response(json.dumps({'success': False,
-                                           'msg': 'Invalid languages in request: {}'.format(','.join(invalid))}),
-                               mimetype='application/json')
+                # edit_book_languages already mutated book.languages (dropping the
+                # existing set) before flagging the invalid entries; the commit
+                # below would persist that loss. Roll the mutation back so an
+                # invalid request is a no-op instead of erasing the book's
+                # languages, and return without committing.
+                calibre_db.session.rollback()
+                return Response(json.dumps({'success': False,
+                                            'msg': 'Invalid languages in request: {}'.format(','.join(invalid))}),
+                                mimetype='application/json')
             else:
                 lang_names = list()
                 for lang in book.languages:
@@ -548,7 +554,10 @@ def edit_book_param(param, vals):
                            mimetype='application/json')
         elif param == 'comments':
             edit_book_comments(vals['value'], book)
-            ret = Response(json.dumps({'success': True, 'newValue':  book.comments[0].text}),
+            # An empty comment leaves book.comments empty — guard the [0] access
+            # (clearing a description previously 500'd with IndexError).
+            new_comment = book.comments[0].text if book.comments else ""
+            ret = Response(json.dumps({'success': True, 'newValue': new_comment}),
                            mimetype='application/json')
             metadata_changed = True
             log_key = 'comments'

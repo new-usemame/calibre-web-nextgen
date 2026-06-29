@@ -126,6 +126,26 @@ def cover_picker_page(book_id):
     )
 
 
+@cover_picker.route("/book/<int:book_id>/cover/state", methods=["GET"])
+@user_login_required
+@edit_required
+def cover_picker_state(book_id):
+    """Bootstrap state for the SPA cover picker: the current lock state plus
+    whether the e-reader padding preview is available and its admin defaults.
+    Title/authors/current-cover come from /api/v1/books/<id>; this supplies the
+    picker-specific bits the standard book payload doesn't carry. Read-only."""
+    _load_book(book_id)  # 404s if missing/hidden
+    return jsonify({
+        "locked": _get_lock_state(book_id),
+        "ereader_enabled": bool(config.config_kobo_cover_padding_enabled),
+        "ereader_defaults": {
+            "aspect": config.config_kobo_cover_padding_aspect or "kobo_libra_color",
+            "fill_mode": config.config_kobo_cover_padding_fill_mode or "edge_mirror",
+            "color": config.config_kobo_cover_padding_color or "",
+        },
+    })
+
+
 @cover_picker.route("/book/<int:book_id>/cover/candidates", methods=["POST"])
 @user_login_required
 @edit_required

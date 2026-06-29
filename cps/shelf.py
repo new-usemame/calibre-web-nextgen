@@ -46,6 +46,82 @@ def queue_hardcover_sync(shelf_obj, book_ids):
                      TaskHardcoverBulkSync(token, list(book_ids), shelf_obj.name))
 
 
+def _log_shelf_activity(event_type, book_id, shelf_obj):
+    """Best-effort CWA activity log for a shelf add/remove. Never raises — a
+    logging backend failure must not fail the underlying shelf operation."""
+    try:
+        from scripts.cwa_db import CWA_DB
+        import json
+        book = calibre_db.session.query(db.Books).filter(db.Books.id == book_id).one_or_none()
+        CWA_DB().log_activity(
+            user_id=int(current_user.id),
+            user_name=current_user.name,
+            event_type=event_type,
+            item_id=book_id,
+            item_title=book.title if book else None,
+            extra_data=json.dumps({'shelf_name': shelf_obj.name}),
+        )
+    except Exception as e:
+        log.debug("Failed to log shelf activity: %s", e)
+
+
+# ── Shelf membership core ────────────────────────────────────────────────────
+# HTTP-free building blocks shared by the form routes below and the JSON API
+# (cps/api/shelves.py), so every entry point produces identical side effects
+# (ordering, last_modified bump for Kobo, Hardcover sync, activity log).
+# Callers MUST verify edit permission (check_shelf_edit_permissions) first.
+
+# Status codes returned by add_book_to_shelf / remove_book_from_shelf.
+SHELF_OK = "ok"
+SHELF_ALREADY_PRESENT = "already_present"
+SHELF_INVALID_BOOK = "invalid_book"
+SHELF_NOT_PRESENT = "not_present"
+
+
+def add_book_to_shelf(shelf_obj, book_id):
+    """Append ``book_id`` to ``shelf_obj``. Returns ``(status, message)`` where
+    status is SHELF_OK / SHELF_ALREADY_PRESENT / SHELF_INVALID_BOOK. On success
+    the shelf's ``last_modified`` is bumped (Kobo propagation), the activity is
+    logged, and a Hardcover sync is queued. Raises (OperationalError,
+    InvalidRequestError) on DB failure so the caller can roll back + report."""
+    if ub.session.query(ub.BookShelf).filter(ub.BookShelf.shelf == shelf_obj.id,
+                                             ub.BookShelf.book_id == book_id).first():
+        return SHELF_ALREADY_PRESENT, "Book is already part of the shelf: %s" % shelf_obj.name
+
+    book = calibre_db.session.query(db.Books).filter(db.Books.id == book_id).one_or_none()
+    if not book:
+        return SHELF_INVALID_BOOK, "%s is a invalid Book Id. Could not be added to Shelf" % book_id
+
+    max_order = ub.session.query(func.max(ub.BookShelf.order)).filter(
+        ub.BookShelf.shelf == shelf_obj.id).first()[0] or 0
+    shelf_obj.books.append(ub.BookShelf(shelf=shelf_obj.id, book_id=book_id, order=max_order + 1))
+    shelf_obj.last_modified = datetime.now(timezone.utc)
+    ub.session.merge(shelf_obj)
+    ub.session.commit()
+
+    _log_shelf_activity('SHELF_ADD', book_id, shelf_obj)
+    # Hardcover sync runs for every transport (fork #381) — keep it on this core
+    # path so the button used never changes whether Hardcover hears about it.
+    queue_hardcover_sync(shelf_obj, [book_id])
+    return SHELF_OK, None
+
+
+def remove_book_from_shelf(shelf_obj, book_id):
+    """Remove ``book_id`` from ``shelf_obj``. Returns ``(status, message)`` where
+    status is SHELF_OK / SHELF_NOT_PRESENT. Bumps ``last_modified`` and logs the
+    activity on success. Raises on DB failure (caller rolls back)."""
+    book_shelf = ub.session.query(ub.BookShelf).filter(ub.BookShelf.shelf == shelf_obj.id,
+                                                       ub.BookShelf.book_id == book_id).first()
+    if book_shelf is None:
+        return SHELF_NOT_PRESENT, "Book already removed from shelf"
+
+    ub.session.delete(book_shelf)
+    shelf_obj.last_modified = datetime.now(timezone.utc)
+    ub.session.commit()
+    _log_shelf_activity('SHELF_REMOVE', book_id, shelf_obj)
+    return SHELF_OK, None
+
+
 @shelf.route("/shelf/add/<int:shelf_id>/<int:book_id>", methods=["POST"])
 @user_login_required
 def add_to_shelf(shelf_id, book_id):
@@ -64,52 +140,8 @@ def add_to_shelf(shelf_id, book_id):
             return redirect(url_for('web.index'))
         return "Sorry you are not allowed to add a book to the that shelf", 403
 
-    book_in_shelf = ub.session.query(ub.BookShelf).filter(ub.BookShelf.shelf == shelf_id,
-                                                          ub.BookShelf.book_id == book_id).first()
-    if book_in_shelf:
-        log.error("Book %s is already part of %s", book_id, shelf)
-        if not xhr:
-            flash(_("Book is already part of the shelf: %(shelfname)s", shelfname=shelf.name), category="error")
-            return redirect(url_for('web.index'))
-        return "Book is already part of the shelf: %s" % shelf.name, 400
-
-    maxOrder = ub.session.query(func.max(ub.BookShelf.order)).filter(ub.BookShelf.shelf == shelf_id).first()
-    if maxOrder[0] is None:
-        maxOrder = 0
-    else:
-        maxOrder = maxOrder[0]
-
-    book = calibre_db.session.query(db.Books).filter(db.Books.id == book_id).one_or_none()
-    if not book:
-        log.error("Invalid Book Id: %s. Could not be added to shelf %s", book_id, shelf.name)
-        if not xhr:
-            flash(_("%(book_id)s is a invalid Book Id. Could not be added to Shelf", book_id=book_id),
-                  category="error")
-            return redirect(url_for('web.index'))
-        return "%s is a invalid Book Id. Could not be added to Shelf" % book_id, 400
-
-    shelf.books.append(ub.BookShelf(shelf=shelf.id, book_id=book_id, order=maxOrder + 1))
-    shelf.last_modified = datetime.now(timezone.utc)
     try:
-        ub.session.merge(shelf)
-        ub.session.commit()
-        
-        # Track shelf activity
-        try:
-            from scripts.cwa_db import CWA_DB
-            import json
-            cwa_db = CWA_DB()
-            cwa_db.log_activity(
-                user_id=int(current_user.id),
-                user_name=current_user.name,
-                event_type='SHELF_ADD',
-                item_id=book_id,
-                item_title=book.title if book else None,
-                extra_data=json.dumps({'shelf_name': shelf.name})
-            )
-        except Exception as e:
-            log.debug(f"Failed to log shelf activity: {e}")
-            
+        status, _message = add_book_to_shelf(shelf, book_id)
     except (OperationalError, InvalidRequestError) as e:
         ub.session.rollback()
         log.error_or_exception("Settings Database error: {}".format(e))
@@ -118,13 +150,21 @@ def add_to_shelf(shelf_id, book_id):
             return redirect(request.environ["HTTP_REFERER"])
         else:
             return redirect(url_for('web.index'))
-    # Hardcover sync runs for BOTH response flavors — it used to sit after
-    # the non-XHR early-return below, so plain form adds (no JS) silently
-    # skipped Hardcover while XHR adds synced. Same book, same shelf, same
-    # user intent — the transport must not change the outcome. The get-or-add
-    # itself runs as a background task now: inline it blocked the response on
-    # up to two external API calls (fork #381).
-    queue_hardcover_sync(shelf, [book_id])
+
+    if status == SHELF_ALREADY_PRESENT:
+        log.error("Book %s is already part of %s", book_id, shelf)
+        if not xhr:
+            flash(_("Book is already part of the shelf: %(shelfname)s", shelfname=shelf.name), category="error")
+            return redirect(url_for('web.index'))
+        return "Book is already part of the shelf: %s" % shelf.name, 400
+
+    if status == SHELF_INVALID_BOOK:
+        log.error("Invalid Book Id: %s. Could not be added to shelf %s", book_id, shelf.name)
+        if not xhr:
+            flash(_("%(book_id)s is a invalid Book Id. Could not be added to Shelf", book_id=book_id),
+                  category="error")
+            return redirect(url_for('web.index'))
+        return "%s is a invalid Book Id. Could not be added to Shelf" % book_id, 400
 
     if not xhr:
         log.debug("Book has been added to shelf: {}".format(shelf.name))
@@ -284,37 +324,8 @@ def remove_from_shelf(shelf_id, book_id):
     #   false        0             x             0
 
     if check_shelf_edit_permissions(shelf):
-        book_shelf = ub.session.query(ub.BookShelf).filter(ub.BookShelf.shelf == shelf_id,
-                                                           ub.BookShelf.book_id == book_id).first()
-
-        if book_shelf is None:
-            log.error("Book %s already removed from %s", book_id, shelf)
-            if not xhr:
-                return redirect(url_for('web.index'))
-            return "Book already removed from shelf", 410
-
         try:
-            ub.session.delete(book_shelf)
-            shelf.last_modified = datetime.now(timezone.utc)
-            ub.session.commit()
-            
-            # Track shelf activity
-            try:
-                from scripts.cwa_db import CWA_DB
-                import json
-                book = calibre_db.session.query(db.Books).filter(db.Books.id == book_id).one_or_none()
-                cwa_db = CWA_DB()
-                cwa_db.log_activity(
-                    user_id=int(current_user.id),
-                    user_name=current_user.name,
-                    event_type='SHELF_REMOVE',
-                    item_id=book_id,
-                    item_title=book.title if book else None,
-                    extra_data=json.dumps({'shelf_name': shelf.name})
-                )
-            except Exception as e:
-                log.debug(f"Failed to log shelf activity: {e}")
-                
+            status, _message = remove_book_from_shelf(shelf, book_id)
         except (OperationalError, InvalidRequestError) as e:
             ub.session.rollback()
             log.error_or_exception("Settings Database error: {}".format(e))
@@ -323,6 +334,13 @@ def remove_from_shelf(shelf_id, book_id):
                 return redirect(request.environ["HTTP_REFERER"])
             else:
                 return redirect(url_for('web.index'))
+
+        if status == SHELF_NOT_PRESENT:
+            log.error("Book %s already removed from %s", book_id, shelf)
+            if not xhr:
+                return redirect(url_for('web.index'))
+            return "Book already removed from shelf", 410
+
         if not xhr:
             flash(_("Book has been removed from shelf: %(sname)s", sname=shelf.name), category="success")
             if "HTTP_REFERER" in request.environ:

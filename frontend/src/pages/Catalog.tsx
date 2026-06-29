@@ -1,0 +1,374 @@
+import { useState, useEffect, useRef } from 'react';
+import { Link, useSearch } from 'wouter';
+import { Search, ChevronLeft, SlidersHorizontal, ListChecks, Settings } from 'lucide-react';
+import { BookCard } from '../components/BookCard';
+import { BulkBar } from '../components/BulkBar';
+import { Button } from '../components/Button';
+import { Spinner, SpinnerCentered } from '../components/Spinner';
+import { EmptyState } from '../components/EmptyState';
+import { DiscoverSection } from '../components/DiscoverSection';
+import { useBooks, useEntityList, ENTITY_PLURAL } from '../lib/queries';
+import type { EntityKind, ReadFilter, DiscoveryView } from '../lib/queries';
+import type { Book } from '../lib/api';
+import { usePersistentBool } from '../lib/usePersistentBool';
+import { useT } from '../lib/i18n';
+import styles from './Catalog.module.css';
+
+const VIEW_LABEL: Record<DiscoveryView, string> = {
+  hot: 'Hot — Most Downloaded',
+  discover: 'Discover — Random Picks',
+  rated: 'Top Rated',
+  favorites: 'Favorites',
+  archived: 'Archived',
+};
+
+const SORT_OPTIONS = [
+  { label: 'Newest', value: 'new' },
+  { label: 'Oldest', value: 'old' },
+  { label: 'Title A–Z', value: 'abc' },
+  { label: 'Title Z–A', value: 'zyx' },
+  { label: 'Author A–Z', value: 'authaz' },
+  { label: 'Author Z–A', value: 'authza' },
+  { label: 'Newest published', value: 'pubnew' },
+  { label: 'Oldest published', value: 'pubold' },
+];
+
+const READ_FILTERS: { label: string; value: ReadFilter }[] = [
+  { label: 'All', value: 'all' },
+  { label: 'Unread', value: 'unread' },
+  { label: 'Read', value: 'read' },
+];
+
+const KIND_LABEL: Record<EntityKind, string> = {
+  author: 'Author',
+  series: 'Series',
+  tag: 'Tag',
+  publisher: 'Publisher',
+  language: 'Language',
+  rating: 'Rating',
+  format: 'Format',
+};
+
+interface CatalogProps {
+  /** When set, the catalog is scoped to books linked to this entity. */
+  entityKind?: EntityKind;
+  entityId?: string | number;
+  /** When set, render a fixed discovery view (hot/discover/rated/favorites/archived). */
+  view?: DiscoveryView;
+}
+
+function dedupAppend(prev: Book[], next: Book[]): Book[] {
+  const seen = new Set(prev.map((b) => b.id));
+  const fresh = next.filter((b) => !seen.has(b.id));
+  return fresh.length ? [...prev, ...fresh] : prev;
+}
+
+export function Catalog({ entityKind, entityId, view }: CatalogProps) {
+  const t = useT();
+  const filtered = !!entityKind;
+  const isView = !!view;
+  // Library-only controls (search box, advanced link, read-status filter) are
+  // hidden for both entity-scoped and discovery views.
+  const hideLibraryControls = filtered || isView;
+
+  const [page, setPage] = useState(1);
+  const [allBooks, setAllBooks] = useState<Book[]>([]);
+  const [searchInput, setSearchInput] = useState('');
+  const [search, setSearch] = useState('');
+  const [sort, setSort] = useState('new');
+  const [readFilter, setReadFilter] = useState<ReadFilter>('all');
+
+  // Multi-select / bulk mode
+  const [selecting, setSelecting] = useState(false);
+  const [selected, setSelected] = useState<Set<number>>(new Set());
+
+  // Discover section visibility (persisted; toggled by the gear menu or its ×).
+  const [discoverHidden, setDiscoverHidden] = usePersistentBool('cwng_discover_hidden_v1', false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const settingsRef = useRef<HTMLDivElement>(null);
+
+  const accKeyRef = useRef<string>('');
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Resolve the entity's display name (for the heading) from its browse list —
+  // cached when the user arrives from the browse page, a cheap fetch otherwise.
+  const entityListQuery = useEntityList(filtered ? ENTITY_PLURAL[entityKind!] : '');
+  const entityName = filtered
+    ? entityListQuery.data?.items.find((e) => String(e.id) === String(entityId))?.name
+    : undefined;
+
+  // Seed the search box from a ?q= query param (the persistent top-bar search
+  // navigates here as /?q=<term>). Library view only.
+  const rawSearch = useSearch();
+  const urlQ = new URLSearchParams(rawSearch).get('q') || '';
+  useEffect(() => {
+    if (filtered || isView) return;
+    setSearchInput(urlQ);
+    setSearch(urlQ);
+  }, [urlQ, filtered, isView]);
+
+  // Debounce the search box (library view only).
+  useEffect(() => {
+    if (filtered) return;
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => setSearch(searchInput), 300);
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, [searchInput, filtered]);
+
+  // Close the settings menu on outside-click / Escape.
+  useEffect(() => {
+    if (!settingsOpen) return;
+    const onDoc = (e: MouseEvent) => {
+      if (settingsRef.current && !settingsRef.current.contains(e.target as Node)) setSettingsOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setSettingsOpen(false); };
+    document.addEventListener('mousedown', onDoc);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDoc);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [settingsOpen]);
+
+  const resetKey = [search, sort, readFilter, entityKind ?? '', entityId ?? '', view ?? ''].join('|');
+
+  // Any filter change resets paging to the first page.
+  useEffect(() => {
+    setPage(1);
+  }, [resetKey]);
+
+  const { data, isLoading, isFetching, isPlaceholderData, error } = useBooks({
+    page,
+    search,
+    sort,
+    readFilter,
+    entityKind,
+    entityId,
+    view,
+  });
+
+  // Accumulate pages; replace the accumulator whenever the filter set changes.
+  // Skip placeholder data: on a filter change react-query briefly returns the
+  // PREVIOUS result (placeholderData) under the new resetKey — acting on it
+  // would mark the key seen and push the real filtered data onto the append
+  // path, leaving stale cards behind a corrected count.
+  useEffect(() => {
+    if (!data || isPlaceholderData) return;
+    if (resetKey !== accKeyRef.current) {
+      setAllBooks(data.items);
+      accKeyRef.current = resetKey;
+    } else {
+      setAllBooks((prev) => dedupAppend(prev, data.items));
+    }
+  }, [data, isPlaceholderData, resetKey]);
+
+  const total = data?.total ?? 0;
+  const hasMore = allBooks.length < total;
+  const isFirstLoad = isLoading && allBooks.length === 0;
+
+  const heading = isView ? t(VIEW_LABEL[view!]) : filtered ? (entityName ?? '…') : t('Your Library');
+  const countLabel =
+    total > 0
+      ? search && !filtered
+        ? `${total} result${total !== 1 ? 's' : ''} for "${search}"`
+        : `${total} book${total !== 1 ? 's' : ''}`
+      : '';
+
+  return (
+    <main className={styles.container}>
+      {filtered && (
+        <Link href={`/${ENTITY_PLURAL[entityKind!]}`} className={styles.back}>
+          <ChevronLeft size={16} />
+          All {ENTITY_PLURAL[entityKind!]}
+        </Link>
+      )}
+
+      <div className={styles.header}>
+        {filtered && <span className={styles.kindLabel}>{t(KIND_LABEL[entityKind!])}</span>}
+        <h1 className={styles.title}>{heading}</h1>
+        {countLabel && <span className={styles.count}>{countLabel}</span>}
+      </div>
+
+      {/* Toolbar */}
+      <div className={styles.toolbar}>
+        {!hideLibraryControls && (
+          <div className={styles.searchWrap}>
+            <Search size={15} className={styles.searchIcon} />
+            <input
+              type="search"
+              className={styles.searchInput}
+              placeholder={t('Search title, author…')}
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              aria-label={t('Search books')}
+            />
+          </div>
+        )}
+
+        {!hideLibraryControls && (
+          <Link href="/search" className={styles.advancedLink} title={t('Advanced search')}>
+            <SlidersHorizontal size={15} />
+            <span className={styles.advancedLabel}>{t('Advanced')}</span>
+          </Link>
+        )}
+
+        {/* Read-status segmented control (disabled while a text search is active,
+            which the API resolves on a separate code path). Hidden in a fixed
+            discovery view, which owns the server-side filter. */}
+        {!isView && (
+        <div className={styles.segmented} role="group" aria-label={t('Read status filter')}>
+          {READ_FILTERS.map((rf) => (
+            <button
+              key={rf.value}
+              type="button"
+              className={readFilter === rf.value ? styles.segActive : styles.seg}
+              aria-pressed={readFilter === rf.value}
+              disabled={!!search && !filtered}
+              onClick={() => setReadFilter(rf.value)}
+            >
+              {t(rf.label)}
+            </button>
+          ))}
+        </div>
+        )}
+
+        <select
+          className={styles.sortSelect}
+          value={sort}
+          onChange={(e) => setSort(e.target.value)}
+          aria-label={t('Sort order')}
+        >
+          {SORT_OPTIONS.map((opt) => (
+            <option key={opt.value} value={opt.value}>
+              {t(opt.label)}
+            </option>
+          ))}
+        </select>
+
+        <button
+          type="button"
+          className={selecting ? styles.selectBtnActive : styles.selectBtn}
+          onClick={() => {
+            setSelecting((s) => !s);
+            setSelected(new Set());
+          }}
+          aria-pressed={selecting}
+          title={t('Select multiple')}
+        >
+          <ListChecks size={15} />
+          <span className={styles.selectLabel}>{selecting ? t('Done') : t('Select')}</span>
+        </button>
+
+        {/* View settings (library landing only) — currently houses the Discover
+            section toggle; a natural home for future per-view preferences. */}
+        {!hideLibraryControls && (
+          <div className={styles.settingsWrap} ref={settingsRef}>
+            <button
+              type="button"
+              className={settingsOpen ? styles.gearBtnActive : styles.gearBtn}
+              onClick={() => setSettingsOpen((o) => !o)}
+              aria-haspopup="true"
+              aria-expanded={settingsOpen}
+              title={t('View settings')}
+              aria-label={t('View settings')}
+            >
+              <Settings size={15} />
+            </button>
+            {settingsOpen && (
+              <div className={styles.settingsMenu} role="menu">
+                <p className={styles.settingsHead}>{t('View settings')}</p>
+                <label className={styles.settingsItem}>
+                  <input
+                    type="checkbox"
+                    className={styles.settingsCheck}
+                    checked={!discoverHidden}
+                    onChange={(e) => setDiscoverHidden(!e.target.checked)}
+                  />
+                  <span>{t('Show Discover section')}</span>
+                </label>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Discover: random picks, library landing only (not while searching). */}
+      {!hideLibraryControls && !search && !discoverHidden && (
+        <DiscoverSection onClose={() => setDiscoverHidden(true)} />
+      )}
+
+      {isFirstLoad ? (
+        <SpinnerCentered size={36} />
+      ) : error ? (
+        <EmptyState message={error instanceof Error ? error.message : 'Failed to load books.'} />
+      ) : allBooks.length === 0 && !isFetching ? (
+        <EmptyState
+          message={
+            search && !filtered
+              ? `No results for "${search}".`
+              : readFilter !== 'all'
+                ? `No ${readFilter} books here.`
+                : 'No books here.'
+          }
+        />
+      ) : (
+        <>
+          <div className={styles.grid}>
+            {allBooks.map((book, i) => (
+              <BookCard
+                key={book.id}
+                book={book}
+                style={{ animationDelay: `${Math.min(i, 24) * 35}ms` }}
+                selectable={selecting}
+                selected={selected.has(book.id)}
+                onToggleSelect={(b) =>
+                  setSelected((prev) => {
+                    const next = new Set(prev);
+                    if (next.has(b.id)) next.delete(b.id);
+                    else next.add(b.id);
+                    return next;
+                  })
+                }
+              />
+            ))}
+          </div>
+
+          {hasMore && (
+            <div className={styles.loadMore}>
+              <Button variant="ghost" onClick={() => setPage((p) => p + 1)} disabled={isFetching}>
+                {isFetching ? (
+                  <>
+                    <Spinner size={16} />
+                    {t('Loading…')}
+                  </>
+                ) : (
+                  t('Load more')
+                )}
+              </Button>
+            </div>
+          )}
+        </>
+      )}
+
+      {selecting && selected.size > 0 && (
+        <BulkBar
+          ids={[...selected]}
+          onClear={() => {
+            setSelected(new Set());
+            setSelecting(false);
+          }}
+          onChanged={() => {
+            // A bulk action changed read state / membership / removed books.
+            // Reset the accumulated grid so the refetched first page replaces it
+            // (the load-more accumulator otherwise keeps stale/deleted cards).
+            setAllBooks([]);
+            setPage(1);
+            accKeyRef.current = '';
+          }}
+        />
+      )}
+    </main>
+  );
+}

@@ -337,8 +337,17 @@ class TestShelfCallSitePins:
             assert fragment in body, f"gate helper must contain {fragment}"
 
     def test_single_add_uses_helper(self):
-        m = re.search(r"def add_to_shelf\(shelf_id, book_id\):(.*?)\n@shelf", SHELF_SRC, re.S)
-        assert m and "queue_hardcover_sync(shelf, [book_id])" in m.group(1)
+        # Single-add now routes through the shared add_book_to_shelf core, which
+        # queues the Hardcover sync. Pin both hops so the gate can't be bypassed:
+        # the route delegates to the core, and the core calls the helper.
+        route = re.search(r"def add_to_shelf\(shelf_id, book_id\):(.*?)\n@shelf", SHELF_SRC, re.S)
+        assert route and "add_book_to_shelf(shelf, book_id)" in route.group(1), (
+            "add_to_shelf must delegate to the shared add_book_to_shelf core"
+        )
+        core = re.search(r"def add_book_to_shelf\(shelf_obj, book_id\):(.*?)\ndef ", SHELF_SRC, re.S)
+        assert core and "queue_hardcover_sync(shelf_obj, [book_id])" in core.group(1), (
+            "add_book_to_shelf core must queue the Hardcover sync (#381)"
+        )
 
     def test_search_massadd_syncs(self):
         m = re.search(r"def search_to_shelf\(shelf_id\):(.*?)\n@shelf", SHELF_SRC, re.S)

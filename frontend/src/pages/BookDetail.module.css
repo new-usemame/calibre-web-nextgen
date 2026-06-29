@@ -1,0 +1,385 @@
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: var(--sp-6) var(--sp-5);
+}
+
+.back {
+  display: inline-block;
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+  text-decoration: none;
+  margin-bottom: var(--sp-5);
+  transition: color var(--dur-fast) var(--ease);
+}
+
+.back:hover {
+  color: var(--text);
+}
+
+/* Two-column layout: cover left, info right */
+.layout {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: var(--sp-8);
+  align-items: start;
+}
+
+@media (max-width: 700px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Cover column */
+.coverCol {
+  position: sticky;
+  top: calc(56px + var(--sp-5)); /* below TopBar */
+}
+
+.coverWrap { position: relative; }
+
+.cover {
+  width: 100%;
+  border-radius: var(--r-md);
+  box-shadow: var(--cover-shadow);
+  display: block;
+}
+
+/* "Change cover" affordance overlaid on the cover — discoverable for editors
+   without a trip through the edit page. Always present but quiet; lifts on
+   hover/focus. Visible on touch (no hover needed) and reachable by keyboard
+   (it's a focusable link, with a focus-visible ring). */
+.changeCover {
+  position: absolute;
+  left: 50%;
+  bottom: var(--sp-3);
+  transform: translateX(-50%);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--r-full);
+  background: rgba(20, 28, 36, .82);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  border: 1px solid var(--border-strong);
+  color: var(--text);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
+  text-decoration: none;
+  white-space: nowrap;
+  box-shadow: var(--elev-2);
+  opacity: .92;
+  transition: background var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease), opacity var(--dur-fast) var(--ease);
+}
+.coverWrap:hover .changeCover,
+.changeCover:hover,
+.changeCover:focus-visible {
+  background: var(--accent);
+  color: var(--on-accent);
+  border-color: var(--accent);
+  opacity: 1;
+  transform: translateX(-50%) translateY(-2px);
+}
+.changeCover:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--accent-ring); }
+@media (prefers-reduced-motion: reduce) { .changeCover { transition: none; } }
+
+.coverFallback {
+  width: 100%;
+  aspect-ratio: 2 / 3;
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--sp-4);
+  box-sizing: border-box;
+}
+
+.coverFallbackTitle {
+  font-family: var(--font-display);
+  font-size: var(--fs-md);
+  color: var(--text-muted);
+  text-align: center;
+  line-height: var(--lh-snug);
+}
+
+/* Info column */
+.infoCol {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-5);
+}
+
+.title {
+  font-family: var(--font-display);
+  font-size: var(--fs-2xl);
+  color: var(--text);
+  line-height: var(--lh-tight);
+  margin: 0;
+}
+
+.authors {
+  color: var(--text-muted);
+  font-size: var(--fs-md);
+  margin: var(--sp-2) 0 0;
+}
+
+.series {
+  color: var(--text-faint);
+  font-size: var(--fs-sm);
+  margin: var(--sp-1) 0 0;
+}
+
+/* Inline entity links (author, series, language, publisher) */
+.metaLink {
+  color: inherit;
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  transition: color var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
+}
+
+.metaLink:hover {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+/* Tag pills are clickable */
+.tagLink {
+  display: inline-flex;
+}
+
+
+/* Actions row */
+.actions {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+}
+
+/* Primary "Read" link — styled like primary button */
+.actionPrimary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-2);
+  font-size: var(--fs-base);
+  font-weight: var(--fw-semi);
+  font-family: var(--font-body);
+  padding: var(--sp-2) var(--sp-4);
+  height: 38px;
+  border-radius: var(--r-md);
+  background: var(--accent);
+  color: var(--on-accent);
+  text-decoration: none;
+  white-space: nowrap;
+  transition:
+    background var(--dur-fast) var(--ease),
+    box-shadow var(--dur-fast) var(--ease);
+}
+
+.actionPrimary:hover {
+  background: var(--accent-hover);
+}
+
+.actionPrimary:active {
+  background: var(--accent-press);
+}
+
+/* Read-toggle button variants */
+.readToggleActive,
+.readToggleGhost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-2);
+  font-size: var(--fs-base);
+  font-weight: var(--fw-semi);
+  font-family: var(--font-body);
+  padding: var(--sp-2) var(--sp-4);
+  height: 38px;
+  border-radius: var(--r-md);
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    background var(--dur-fast) var(--ease),
+    color var(--dur-fast) var(--ease);
+}
+
+.readToggleActive:disabled,
+.readToggleGhost:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.readToggleActive {
+  background: var(--accent);
+  color: var(--on-accent);
+  border: none;
+}
+
+.readToggleActive:hover:not(:disabled) {
+  background: var(--accent-hover);
+}
+
+.readToggleGhost {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+
+.readToggleGhost:hover:not(:disabled) {
+  background: var(--surface-2);
+}
+
+/* Download button — ghost link styled as button */
+.downloadBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semi);
+  font-family: var(--font-body);
+  padding: var(--sp-2) var(--sp-3);
+  height: 38px;
+  border-radius: var(--r-md);
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text);
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background var(--dur-fast) var(--ease);
+}
+
+.downloadBtn:hover {
+  background: var(--surface-2);
+}
+
+/* Tags row */
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+}
+
+/* Metadata definition list */
+.meta {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--sp-1) var(--sp-4);
+  margin: 0;
+}
+
+.metaLabel {
+  font-size: var(--fs-xs);
+  color: var(--text-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: var(--fw-medium);
+  padding-top: 2px; /* align with value baseline */
+}
+
+.metaValue {
+  font-size: var(--fs-sm);
+  color: var(--text);
+  margin: 0;
+}
+
+/* Description prose */
+.description {
+  color: var(--text);
+  line-height: var(--lh-base);
+  max-width: 70ch;
+  font-size: var(--fs-base);
+}
+
+.description p {
+  margin: 0 0 var(--sp-3);
+}
+
+.description p:last-child {
+  margin-bottom: 0;
+}
+
+/* Mobile adjustments */
+@media (max-width: 700px) {
+  .title {
+    font-size: var(--fs-xl);
+  }
+
+  .coverCol {
+    position: static;
+  }
+
+  .cover {
+    max-width: 200px;
+    margin: 0 auto;
+  }
+
+  .coverFallback {
+    max-width: 200px;
+    margin: 0 auto;
+  }
+}
+
+/* Send-to-e-reader panel */
+.sendPanel {
+  margin-top: var(--sp-3);
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: var(--sp-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  max-width: 560px;
+}
+
+.sendRow {
+  display: grid;
+  grid-template-columns: minmax(120px, 1fr) minmax(180px, 2fr);
+  gap: var(--sp-3);
+}
+
+.sendField {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+}
+
+.sendField select,
+.sendField input {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  padding: var(--sp-2) var(--sp-3);
+  color: var(--text);
+  font-size: var(--fs-sm);
+}
+
+.sendField select:focus,
+.sendField input:focus { outline: 2px solid var(--accent); outline-offset: 0; }
+
+.sendActions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+}
+
+.sendConvert {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+}
+
+.sendOk { color: var(--success); font-size: var(--fs-sm); }
+.sendErr { color: var(--danger); font-size: var(--fs-sm); }

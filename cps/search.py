@@ -242,10 +242,18 @@ def extend_search_term(searchterm,
     return searchterm, pub_start, pub_end
 
 
-def render_adv_search_results(term, offset=None, order=None, limit=None):
-    sort = order[0] if order else [db.Books.sort]
-    pagination = None
+def build_adv_search_query(term):
+    """Build the advanced-search query from a ``term`` dict (the same keys the
+    HTML form posts: title, authors, publisher, comments, read_status,
+    publishstart/publishend, ratinghigh/ratinglow, include_/exclude_<element>,
+    and custom_column_<id>* fields).
 
+    Single source of truth shared by ``render_adv_search_results`` (HTML view)
+    and the ``/api/v1/search/advanced`` JSON endpoint. Returns ``(query,
+    search_term)`` — an un-ordered, un-paginated SQLAlchemy query over the
+    user's visible books and a human-readable list describing the criteria.
+    Callers apply ordering + pagination + serialization.
+    """
     cc = calibre_db.get_cc_columns(config, filter_config_custom_read=True)
     query = calibre_db.generate_linked_query(config.config_read_column, db.Books)
     q = query.outerjoin(db.books_series_link, db.Books.id == db.books_series_link.c.book)\
@@ -351,6 +359,14 @@ def render_adv_search_results(term, offset=None, order=None, limit=None):
             log.debug_or_exception(ex)
             flash(_("Error on search for custom columns, please restart Calibre-Web"), category="error")
 
+    return q, search_term
+
+
+def render_adv_search_results(term, offset=None, order=None, limit=None):
+    sort = order[0] if order else [db.Books.sort]
+    pagination = None
+
+    q, search_term = build_adv_search_query(term)
     q = q.order_by(*sort)
     flask_session['query'] = json.dumps(term)
 

@@ -1,0 +1,95 @@
+.wrap {
+  position: relative;
+}
+
+.control {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-1);
+  min-height: 38px;
+  padding: var(--sp-1) calc(var(--sp-3) + 18px) var(--sp-1) var(--sp-2);
+  background: var(--surface-3);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  cursor: text;
+  transition: border-color var(--dur-fast) var(--ease);
+}
+
+.control:focus-within { border-color: var(--accent); }
+
+.placeholder {
+  color: var(--text-faint);
+  font-size: var(--fs-sm);
+  padding: var(--sp-1);
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+  background: var(--accent-soft);
+  color: var(--accent);
+  border-radius: var(--r-sm);
+  padding: 2px var(--sp-1) 2px var(--sp-2);
+  font-size: var(--fs-sm);
+  max-width: 100%;
+}
+
+.chipX {
+  display: inline-flex;
+  align-items: center;
+  color: var(--accent);
+  opacity: 0.7;
+  transition: opacity var(--dur-fast) var(--ease);
+}
+
+.chipX:hover { opacity: 1; }
+
+.input {
+  flex: 1 1 60px;
+  min-width: 60px;
+  background: none;
+  border: none;
+  outline: none;
+  color: var(--text);
+  font-size: var(--fs-sm);
+  font-family: var(--font-body);
+  padding: var(--sp-1);
+}
+
+.caret {
+  position: absolute;
+  right: var(--sp-2);
+  top: 11px;
+  color: var(--text-faint);
+  pointer-events: none;
+}
+
+.menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: var(--z-overlay);
+  max-height: 220px;
+  overflow-y: auto;
+  background: var(--surface-2);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-md);
+  box-shadow: var(--elev-3);
+  padding: var(--sp-1);
+}
+
+.option {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: var(--sp-2);
+  border-radius: var(--r-sm);
+  color: var(--text);
+  font-size: var(--fs-sm);
+  transition: background var(--dur-fast) var(--ease);
+}
+
+.option:hover { background: var(--surface-3); }

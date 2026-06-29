@@ -1,0 +1,11 @@
+.pill {
+  display: inline-flex;
+  align-items: center;
+  background: var(--surface-2);
+  color: var(--text-muted);
+  font-size: var(--fs-xs);
+  border-radius: var(--r-full);
+  padding: var(--sp-1) var(--sp-3);
+  border: 1px solid var(--border);
+  white-space: nowrap;
+}

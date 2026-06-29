@@ -1,0 +1,137 @@
+# -*- coding: utf-8 -*-
+# SPDX-License-Identifier: GPL-3.0-or-later
+"""Per-book user actions for /api/v1: favorite, hide, archive, send-to-e-reader.
+
+These mirror the legacy web.py routes (toggle_favorite / toggle_hidden /
+toggle_archived / send_to_ereader) and reuse the same models + helpers so the SPA
+and the Jinja UI never diverge. All are per-user actions, so they require a real
+(non-anonymous) session — the anonymous-browse guest can't own favorites/hidden
+state or send mail.
+"""
+from flask import jsonify, request
+
+from . import api_v1
+from .. import ub, config, calibre_db
+from ..cw_login import current_user
+from ..usermanagement import login_required_if_no_ano
+from ..helper import send_mail, valid_email
+from ..kobo_sync_status import change_archived_books, remove_synced_book
+
+
+def _err(code, message, status):
+    return jsonify({"error": {"code": code, "message": message}}), status
+
+
+def _require_real_user():
+    """Per-user actions need a real login — reject the anonymous-browse guest."""
+    if not current_user.is_authenticated or current_user.is_anonymous:
+        return _err("unauthorized", "You must be signed in", 401)
+    return None
+
+
+def _book_or_404(book_id):
+    return calibre_db.get_book(book_id)
+
+
+@api_v1.route("/books/<int:book_id>/favorite", methods=["POST"])
+@login_required_if_no_ano
+def toggle_book_favorite(book_id):
+    """Star/unstar a book for the current user (presence-based, fork #27)."""
+    guard = _require_real_user()
+    if guard:
+        return guard
+    favorite = (ub.session.query(ub.FavoriteBook)
+                .filter(ub.FavoriteBook.user_id == int(current_user.id),
+                        ub.FavoriteBook.book_id == book_id)
+                .first())
+    if favorite:
+        ub.session.delete(favorite)
+        favorited = False
+    else:
+        ub.session.add(ub.FavoriteBook(user_id=int(current_user.id), book_id=book_id))
+        favorited = True
+    ub.session_commit("Book {} favorite bit toggled".format(book_id))
+    return jsonify({"favorited": favorited})
+
+
+@api_v1.route("/books/<int:book_id>/archived", methods=["POST"])
+@login_required_if_no_ano
+def toggle_book_archived(book_id):
+    """Archive/unarchive (sync-pause semantics). Reuses the legacy core so the
+    Kobo synced-books bookkeeping stays identical."""
+    guard = _require_real_user()
+    if guard:
+        return guard
+    archived = change_archived_books(book_id, message="Book {} archive bit toggled".format(book_id))
+    # Force a resync so the device picks up the archive change (matches legacy).
+    remove_synced_book(book_id)
+    return jsonify({"archived": bool(archived)})
+
+
+@api_v1.route("/books/<int:book_id>/hidden", methods=["POST"])
+@login_required_if_no_ano
+def toggle_book_hidden(book_id):
+    """Hide/unhide a book for the current user (fork #64). Hiding is gated on the
+    admin feature flag (#319); unhiding is always allowed so an admin disabling
+    the feature can't strand already-hidden books."""
+    guard = _require_real_user()
+    if guard:
+        return guard
+    existing = (ub.session.query(ub.UserHiddenBook)
+                .filter(ub.UserHiddenBook.user_id == int(current_user.id),
+                        ub.UserHiddenBook.book_id == int(book_id))
+                .first())
+    if existing:
+        ub.session.delete(existing)
+        ub.session.commit()
+        return jsonify({"hidden": False})
+    # Hide path — gated; a direct POST must not bypass the disabled feature.
+    if not bool(getattr(config, "config_user_hide_enabled", False)):
+        return _err("forbidden", "The hide-books feature is disabled", 403)
+    ub.session.add(ub.UserHiddenBook(user_id=int(current_user.id), book_id=int(book_id)))
+    try:
+        ub.session.commit()
+    except Exception:
+        ub.session.rollback()  # likely a dup/race; the row already exists
+    return jsonify({"hidden": True})
+
+
+@api_v1.route("/books/<int:book_id>/send", methods=["POST"])
+@login_required_if_no_ano
+def send_book_to_ereader(book_id):
+    """Email a book to the user's e-reader (Kindle/Kobo), optionally converting.
+    Body: {format, convert?: bool, emails?: "a@x,b@y"}. With no emails, sends to
+    the user's configured kindle_mail. Reuses helper.send_mail."""
+    guard = _require_real_user()
+    if guard:
+        return guard
+    if not current_user.role_download():
+        return _err("forbidden", "You don't have download permission", 403)
+    if not config.get_mail_server_configured():
+        return _err("mail_not_configured", "The server's email settings aren't configured", 400)
+
+    data = request.get_json(silent=True) or {}
+    book_format = (data.get("format") or "").strip().lower()
+    if not book_format:
+        return _err("invalid_request", "A book format is required", 400)
+    convert = 1 if data.get("convert") else 0
+
+    # Recipient: explicit list (validated) or the user's own kindle_mail.
+    emails_raw = (data.get("emails") or "").strip()
+    if emails_raw:
+        try:
+            recipients = valid_email(emails_raw)
+        except Exception as ex:
+            return _err("invalid_request", str(ex), 400)
+    else:
+        recipients = current_user.kindle_mail
+        if not recipients:
+            return _err("no_ereader_email",
+                        "Add an e-reader email to your account first", 400)
+
+    result = send_mail(book_id, book_format, convert, recipients, config.get_book_path(),
+                       current_user.name, current_user.kindle_mail_subject)
+    if result is None:
+        ub.update_download(book_id, int(current_user.id))
+        return jsonify({"ok": True, "message": "Book queued for sending to %s" % recipients})
+    return _err("send_failed", "There was an error sending the book: %s" % result, 502)

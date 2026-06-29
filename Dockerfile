@@ -1,5 +1,26 @@
 # syntax=docker/dockerfile:1
 
+# ── Global build version pins (single source of truth) ──────────────────────
+# Declared before any FROM so they are TRUE global ARGs: usable in FROM lines
+# AND inheritable by every later stage via a bare re-declare. PYTHON_* pin the
+# interpreter and address our GHCR tarball mirror; CALIBRE_RELEASE and
+# KEPUBIFY_RELEASE pin the binaries the dependencies stage downloads. A
+# stage-local ARG (declared after a FROM) only reaches that one stage, so a
+# bare re-declare elsewhere would inherit an empty string and build a malformed
+# download URL. To bump any pin, change ONLY the line here.
+# See notes/PYTHON-BUILD-MIRROR.md.
+ARG PYTHON_VERSION=3.13.14
+ARG PYTHON_BUILD_STANDALONE_RELEASE=20260623
+ARG CALIBRE_RELEASE=9.1.0
+ARG KEPUBIFY_RELEASE=v4.0.4
+
+# Mirror stages: our GHCR images holding build deps that otherwise come from the
+# GitHub release CDN, which intermittently 404s the Actions egress and broke every
+# build. We COPY from these instead of curling at build time. The CI ensure-mirror
+# job (scripts/ensure-python-mirror.sh) builds them from the pins above.
+FROM ghcr.io/new-usemame/pbs-cache:cpython-${PYTHON_VERSION}-${PYTHON_BUILD_STANDALONE_RELEASE} AS pbs_mirror
+FROM ghcr.io/new-usemame/pbs-cache:kepubify-${KEPUBIFY_RELEASE} AS kepubify_mirror
+
 # Simple Example Build Command:
 # docker build \
 # --tag crocodilestick/calibre-web-automated:dev \
@@ -18,15 +39,32 @@
 # --tag crocodilestick/calibre-web-automated:latest .
 
 # ==========================================================================
+# STAGE 0: Frontend - Build the React SPA bundle (Vite).
+# Build-time only: Node/npm never enter the runtime image. The compiled
+# bundle (cps/static/app) is copied into the final stage below. The source
+# tree's cps/static/app is .dockerignore'd, so this stage is the ONLY source
+# of the shipped bundle — CI/production builds the SPA reproducibly instead of
+# silently baking in a developer's local artifact. See
+# notes/FRONTEND-REBUILD-DESIGN.md (§5 build topology).
+# ==========================================================================
+FROM node:22-slim AS frontend-build
+
+WORKDIR /build/frontend
+
+# Install deps first so this layer caches unless package*.json changes.
+COPY frontend/package.json frontend/package-lock.json ./
+RUN --mount=type=cache,target=/root/.npm npm ci
+
+# Then build. vite.config.ts outDir is ../cps/static/app => /build/cps/static/app.
+COPY frontend/ ./
+RUN npm run build
+
+# ==========================================================================
 # STAGE 1: Dependencies - Install system packages and Python dependencies
 # ==========================================================================
-ARG CALIBRE_RELEASE=9.1.0
-ARG KEPUBIFY_RELEASE=v4.0.4
-# Python is installed from python-build-standalone (CDN-backed GitHub releases)
-# rather than the deadsnakes PPA, which has a history of being unavailable.
-# Both x86_64 and aarch64 prebuilds are published by astral-sh.
-ARG PYTHON_BUILD_STANDALONE_RELEASE=20260414
-ARG PYTHON_VERSION=3.13.13
+# CALIBRE_RELEASE / KEPUBIFY_RELEASE / PYTHON_VERSION / PYTHON_BUILD_STANDALONE_RELEASE
+# are declared as global ARGs at the top of this file; the dependencies stage
+# re-declares them bare below so they inherit those global default values.
 
 FROM ghcr.io/linuxserver/baseimage-ubuntu:noble AS dependencies
 
@@ -91,16 +129,18 @@ RUN \
   cd / && \
   rm -rf /tmp/lsof*
 
-# STEP 1.5 - Install Python 3.13 from python-build-standalone (no deadsnakes PPA)
+# STEP 1.5 - Install Python 3.13 from python-build-standalone.
+# We COPY the tarball from OUR OWN GHCR mirror (ghcr.io/new-usemame/pbs-cache)
+# rather than curling the GitHub release CDN during the build. That CDN
+# intermittently 404s the GitHub-Actions egress (proven: 404 for >10 min at a
+# time), which broke every image build; pulling from GHCR — the same registry
+# the base images come from — is reliable. The mirror is built/refreshed
+# automatically by scripts/ensure-python-mirror.sh (a CI job that runs before
+# the image build). To bump Python: change PYTHON_VERSION / PYTHON_BUILD_STANDALONE_RELEASE
+# above — nothing else. Full explanation: notes/PYTHON-BUILD-MIRROR.md.
+COPY --from=pbs_mirror /python.tar.gz /tmp/python.tar.gz
 RUN \
-  echo "**** install Python ${PYTHON_VERSION} from python-build-standalone (${PYTHON_BUILD_STANDALONE_RELEASE}) ****" && \
-  case "$(uname -m)" in \
-    x86_64)  PBS_ARCH="x86_64-unknown-linux-gnu" ;; \
-    aarch64) PBS_ARCH="aarch64-unknown-linux-gnu" ;; \
-    *) echo "Unsupported arch: $(uname -m)"; exit 1 ;; \
-  esac && \
-  PBS_URL="https://github.com/astral-sh/python-build-standalone/releases/download/${PYTHON_BUILD_STANDALONE_RELEASE}/cpython-${PYTHON_VERSION}+${PYTHON_BUILD_STANDALONE_RELEASE}-${PBS_ARCH}-install_only.tar.gz" && \
-  curl -fL --retry 5 --retry-delay 3 "${PBS_URL}" -o /tmp/python.tar.gz && \
+  echo "**** install Python ${PYTHON_VERSION} from mirrored python-build-standalone ****" && \
   mkdir -p /opt && \
   tar -xzf /tmp/python.tar.gz -C /opt && \
   rm /tmp/python.tar.gz && \
@@ -130,23 +170,9 @@ RUN \
   /lsiopy/bin/pip install -U --no-cache-dir --find-links https://wheel-index.linuxserver.io/ubuntu/ -r \
   /app/calibre-web-automated/requirements.txt -r /app/calibre-web-automated/optional-requirements.txt
 
-# STEP 4 - Install kepubify
-RUN \
-  echo "**** install kepubify ****" && \
-  if [[ $KEPUBIFY_RELEASE == 'newest' ]]; then \
-  KEPUBIFY_RELEASE=$(curl -sX GET "https://api.github.com/repos/pgaskin/kepubify/releases/latest" \
-  | awk '/tag_name/{print $4;exit}' FS='[""]'); \
-  fi && \
-  if [ "$(uname -m)" == "x86_64" ]; then \
-  curl -o \
-  /usr/bin/kepubify -L \
-  https://github.com/pgaskin/kepubify/releases/download/${KEPUBIFY_RELEASE}/kepubify-linux-64bit; \
-  elif [ "$(uname -m)" == "aarch64" ]; then \
-  curl -o \
-  /usr/bin/kepubify -L \
-  https://github.com/pgaskin/kepubify/releases/download/${KEPUBIFY_RELEASE}/kepubify-linux-arm64; \
-  fi && \
-  chmod +x /usr/bin/kepubify
+# STEP 4 - Install kepubify from our GHCR mirror (not the GitHub release CDN).
+# The mirror image ships /kepubify already mode 0755 for the build platform.
+COPY --from=kepubify_mirror /kepubify /usr/bin/kepubify
 
 # STEP 5 - Install Calibre
 RUN \
@@ -154,12 +180,12 @@ RUN \
   mkdir -p /app/calibre && \
   # STEP 5.2 - Download the desired version of Calibre, determined by the CALIBRE_RELEASE variable and the architecture of the build environment
   if [ "$(uname -m)" == "x86_64" ]; then \
-  curl -o \
-  /calibre.txz -L \
+  curl -fL --retry 30 --retry-delay 15 --retry-all-errors -o \
+  /calibre.txz \
   "https://download.calibre-ebook.com/${CALIBRE_RELEASE}/calibre-${CALIBRE_RELEASE}-x86_64.txz"; \
   elif [ "$(uname -m)" == "aarch64" ]; then \
-  curl -o \
-  /calibre.txz -L \
+  curl -fL --retry 30 --retry-delay 15 --retry-all-errors -o \
+  /calibre.txz \
   "https://download.calibre-ebook.com/${CALIBRE_RELEASE}/calibre-${CALIBRE_RELEASE}-arm64.txz"; \
   fi && \
   # STEP 5.3 - Extract the downloaded file to /app/calibre
@@ -251,6 +277,12 @@ RUN \
 # STEP 6 - Copy application files
 # Copy the rest of the application code (changes most frequently)
 COPY --chown=abc:abc . /app/calibre-web-automated/
+
+# STEP 6.1 - Copy the Vite-built SPA bundle from the frontend-build stage.
+# The source tree's cps/static/app is .dockerignore'd, so this COPY is the
+# only bundle that ships — guaranteeing the SPA is built in-image rather than
+# inherited from a developer's local build context.
+COPY --from=frontend-build --chown=abc:abc /build/cps/static/app /app/calibre-web-automated/cps/static/app
 
 # STEP 7 - Configure application
 RUN \

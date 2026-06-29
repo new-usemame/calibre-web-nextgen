@@ -114,13 +114,20 @@ _start_time = time.time()
 
 @app.after_request
 def add_security_headers(resp):
+    # The SPA reader (spa.spa_shell serves /app/*) renders EPUBs with epub.js,
+    # which loads in-book images and CSS as blob: URLs inside an iframe — the
+    # same need the legacy web.read_book reader has. Since the SPA serves one
+    # shell for every /app route (client-side nav keeps the initial CSP), the
+    # blob: allowance must cover the whole spa endpoint, not a single path.
+    # blob: URLs are same-origin and JS-created, so this is not a new XSS vector.
+    reader_like = request.endpoint in ("web.read_book", "spa.spa_shell")
     default_src = ([host.strip() for host in config.config_trustedhosts.split(',') if host] +
                    ["'self'", "'unsafe-inline'", "'unsafe-eval'"])
     csp = "default-src " + ' '.join(default_src)
     if request.endpoint == "web.read_book" and config.config_use_google_drive:
         csp +=" blob: "
     csp += "; font-src 'self' data:"
-    if request.endpoint == "web.read_book":
+    if reader_like:
         csp += " blob: "
     csp += "; img-src 'self'"
     if request.path.startswith("/author/") and config.config_use_goodreads:
@@ -128,14 +135,19 @@ def add_security_headers(resp):
     if request.endpoint == "admin.hardcover_review_matches":
         csp += " https:"
     csp += " data:"
-    if request.endpoint in ("edit-book.show_edit_book", "cover_picker.cover_picker_page") or config.config_use_google_drive:
+    if (request.endpoint in ("edit-book.show_edit_book", "cover_picker.cover_picker_page",
+                             "spa.spa_shell")
+            or config.config_use_google_drive):
         # The metadata-search modal (edit-book) and the focused cover-picker
         # page both render thumbnails directly from external provider CDNs
         # (Hardcover, Apple Books, Amazon image CDN, OpenLibrary, Kobo,
-        # Douban, etc.). Allow those img-src origins for these two endpoints
-        # only — all other pages keep the strict same-origin policy.
+        # Douban, etc.). Allow those img-src origins for these endpoints.
+        # The SPA (spa.spa_shell) serves ONE shell for every /app route incl.
+        # its edit page, so the allowance can't be path-scoped within it; we
+        # accept img-src '*' SPA-wide (images are non-executable — this only
+        # widens where covers can load from, not the script/XSS surface).
         csp += " *"
-    if request.endpoint == "web.read_book":
+    if reader_like:
         csp += " blob: ; style-src-elem 'self' blob: 'unsafe-inline'"
     csp += "; object-src 'none';"
     resp.headers['Content-Security-Policy'] = csp

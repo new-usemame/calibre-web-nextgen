@@ -282,15 +282,28 @@ class TestDbErrorMessageNeverCrashes:
 
 class TestHardcoverTransportParity:
     def test_hardcover_block_precedes_response_split(self):
-        """In add_to_shelf, the Hardcover sync must run before the xhr/non-xhr
-        response branches — both transports get the same outcome."""
-        body = SHELF_PY.split("def add_to_shelf", 1)[1].split("\n@shelf.route", 1)[0]
-        # Since fork #381 the sync is a queued task; the enqueue call is the
-        # transport-parity point and must still precede the response split.
-        hardcover_pos = body.find("queue_hardcover_sync(shelf, [book_id])")
-        response_split_pos = body.find('flash(_("Book has been added to shelf')
-        assert hardcover_pos != -1 and response_split_pos != -1
-        assert hardcover_pos < response_split_pos, (
-            "Hardcover sync sat behind the non-XHR early return, so plain "
-            "form adds silently skipped it — it must precede the response split"
+        """Transport parity: the Hardcover sync must run for every transport,
+        before any xhr/non-xhr response branching.
+
+        The membership mutation + side effects now live in the shared
+        ``add_book_to_shelf`` core (so the JSON API and the form route can't
+        diverge). Parity therefore holds structurally as long as:
+          1. ``add_book_to_shelf`` queues the sync before it returns, and
+          2. ``add_to_shelf`` calls that core *before* its response split.
+        That is a stronger guarantee than the old inline check — it covers
+        every caller of the core, not just this one route."""
+        core = SHELF_PY.split("def add_book_to_shelf", 1)[1].split("\ndef ", 1)[0]
+        assert "queue_hardcover_sync(shelf_obj, [book_id])" in core, (
+            "add_book_to_shelf must queue the Hardcover sync on the shared core path"
+        )
+        # The core returns only after queuing — there is no response split inside
+        # it, so the sync cannot be skipped by transport.
+
+        route = SHELF_PY.split("def add_to_shelf", 1)[1].split("\n@shelf.route", 1)[0]
+        core_call_pos = route.find("add_book_to_shelf(shelf, book_id)")
+        response_split_pos = route.find('flash(_("Book has been added to shelf')
+        assert core_call_pos != -1 and response_split_pos != -1
+        assert core_call_pos < response_split_pos, (
+            "add_to_shelf must invoke the shared core (which runs the Hardcover "
+            "sync) before branching on transport, or plain form adds could skip it"
         )

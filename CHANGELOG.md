@@ -16,7 +16,39 @@ is for things you can see or feel when running the app.
 
 ## [Unreleased]
 
+### Changed
+- **The new interface is now offered to everyone — opt in when you're ready.**
+  After updating, a dismissible bar invites you to try the redesigned interface;
+  your classic view stays the default until you tap "Try the new UI" (or the
+  "Switch to New UI" button in the top bar). Dismiss it and it stays gone until
+  the next update, when it gently reminds you again. You can still turn the new
+  interface off entirely by setting `CWNG_SPA=0`. (Previously the new UI was
+  hidden unless an admin opted the whole instance in.)
+
 ### Added
+- **A redesigned "Change cover" screen in the new UI.** Picking a new cover now
+  opens a polished page instead of the old one: your current cover with a one-tap
+  **lock** (so a metadata refresh can't overwrite it), a grid of candidates from
+  every source we search (plus the cover embedded in the book), and tabs to paste
+  a URL or upload your own. If you use a Kobo, flip on **E-reader preview** to see
+  how each candidate looks padded for your device before you choose. You can reach
+  it straight from a book — hover or tap its cover and choose **Change cover** —
+  or from the edit page. Keyboard- and screen-reader-friendly throughout.
+- **A "Discover" shelf of random picks on your library home (new UI).** The
+  redesigned library now opens with a set-apart "Discover" box — a row of random
+  books from your collection to stumble onto something to read. Hit the shuffle
+  button for a fresh set, dismiss it with the × in its corner, and bring it back
+  any time from the new gear (View settings → "Show Discover section"). Your
+  choice is remembered on that device.
+- **"Remember me" and a show-password toggle are back on the new sign-in screen.**
+  The redesigned login page now has the "Remember me" checkbox (on by default, so
+  you stay signed in) and an eye button to reveal what you typed — matching the
+  classic login.
+- **Magic-link sign-in now has a polished page in the new UI.** Choosing "Log in
+  with a magic link" opens a redesigned screen with the QR code, a one-tap copy of
+  the verification link, a live "waiting…" indicator and an expiry countdown. Scan
+  or open it on a device you're already signed in on and the waiting device logs in
+  automatically. (Previously this dropped you onto the old-style page.)
 - **The version number on the Admin page links to its release notes.** The
   "Calibre-Web NextGen" version in the Version Information table (Admin page) is
   now a link to that release's notes on GitHub, so you can see what changed in

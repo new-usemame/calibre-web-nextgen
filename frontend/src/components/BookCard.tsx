@@ -1,0 +1,86 @@
+import { Check, X } from 'lucide-react';
+import { Link } from 'wouter';
+import type { Book } from '../lib/api';
+import { BookCover } from './BookCover';
+import styles from './BookCard.module.css';
+
+interface BookCardProps {
+  book: Book;
+  style?: React.CSSProperties;
+  /** When provided, a remove (×) control is shown on the cover (e.g. on a shelf). */
+  onRemove?: (book: Book) => void;
+  removeLabel?: string;
+  /** Selection mode: render as a toggle (not a link), with a checkbox overlay. */
+  selectable?: boolean;
+  selected?: boolean;
+  onToggleSelect?: (book: Book) => void;
+}
+
+export function BookCard({
+  book, style, onRemove, removeLabel = 'Remove',
+  selectable = false, selected = false, onToggleSelect,
+}: BookCardProps) {
+  const authorStr = book.authors.join(', ');
+
+  const inner = (
+    <article
+      className={selected ? styles.cardSelected : styles.card}
+      style={style}
+      tabIndex={0}
+      aria-pressed={selectable ? selected : undefined}
+    >
+      <div className={styles.coverWrap}>
+        <BookCover coverUrl={book.cover_url} title={book.title} />
+        {book.read && (
+          <span className={styles.readBadge} aria-label="Read" title="Read">
+            <Check size={14} strokeWidth={3} />
+          </span>
+        )}
+        {selectable && (
+          <span className={selected ? styles.checkboxOn : styles.checkboxOff} aria-hidden="true">
+            {selected && <Check size={14} strokeWidth={3} />}
+          </span>
+        )}
+        {onRemove && !selectable && (
+          <button
+            type="button"
+            className={styles.removeBtn}
+            aria-label={removeLabel}
+            title={removeLabel}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onRemove(book);
+            }}
+          >
+            <X size={14} strokeWidth={3} />
+          </button>
+        )}
+      </div>
+      <div className={styles.info}>
+        <p className={styles.title}>{book.title}</p>
+        <p className={styles.author}>{authorStr}</p>
+      </div>
+    </article>
+  );
+
+  // In selection mode the whole card toggles selection instead of navigating.
+  if (selectable) {
+    return (
+      <button
+        type="button"
+        className={styles.cardLink}
+        onClick={() => onToggleSelect?.(book)}
+        aria-label={`${selected ? 'Deselect' : 'Select'} ${book.title}`}
+      >
+        {inner}
+      </button>
+    );
+  }
+
+  return (
+    <Link href={`/book/${book.id}`} className={styles.cardLink}>
+      {inner}
+    </Link>
+  );
+}

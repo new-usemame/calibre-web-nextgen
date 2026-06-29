@@ -1,0 +1,141 @@
+/* Distinct, slightly elevated "Discover" box — set apart from the plain library
+   grid with a soft accent-tinted gradient, a hairline accent edge, and depth. */
+.box {
+  position: relative;
+  margin-bottom: var(--sp-6);
+  padding: var(--sp-4) var(--sp-4) var(--sp-3);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-lg);
+  background:
+    radial-gradient(120% 140% at 0% 0%, color-mix(in srgb, var(--accent) 10%, transparent), transparent 60%),
+    linear-gradient(135deg, var(--surface-2), var(--surface-1));
+  box-shadow: var(--elev-1);
+  overflow: hidden;
+}
+/* Accent stripe down the left edge to mark it as a special shelf. */
+.box::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: linear-gradient(var(--accent), color-mix(in srgb, var(--accent) 40%, transparent));
+}
+
+.head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  margin-bottom: var(--sp-3);
+}
+
+.titleWrap {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  min-width: 0;
+}
+
+.sparkle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  flex: none;
+  border-radius: var(--r-md);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.titleText { min-width: 0; }
+
+.title {
+  font-family: var(--font-display);
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-semi);
+  color: var(--text);
+  margin: 0;
+  line-height: 1.1;
+}
+
+.sub {
+  margin: 2px 0 0;
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-1);
+  flex: none;
+}
+
+.iconBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid transparent;
+  border-radius: var(--r-md);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: color var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease),
+              border-color var(--dur-fast) var(--ease);
+}
+.iconBtn:hover:not(:disabled) {
+  color: var(--accent);
+  background: var(--surface-3);
+  border-color: var(--border-strong);
+}
+.iconBtn:disabled { opacity: 0.6; cursor: default; }
+
+.spin { animation: discoverSpin 0.8s linear infinite; }
+@keyframes discoverSpin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .spin { animation: none; } }
+
+.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 120px;
+}
+
+/* Horizontal, snap-scrolling strip of covers. */
+.strip {
+  display: flex;
+  gap: var(--sp-4);
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+  /* A scroll container with overflow-x:auto also clips the Y axis, so a card's
+     hover-lift (translateY) + focus outline would be cut off at the top/sides.
+     Pad the scroll viewport to give them headroom; negative margins cancel the
+     padding so the box's outer spacing is unchanged. */
+  padding: var(--sp-3) var(--sp-2);
+  margin: calc(-1 * var(--sp-3)) calc(-1 * var(--sp-2)) calc(-1 * var(--sp-1));
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+.strip::-webkit-scrollbar { height: 8px; }
+.strip::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: var(--r-full);
+}
+.strip::-webkit-scrollbar-track { background: transparent; }
+
+.item {
+  flex: 0 0 132px;
+  width: 132px;
+  scroll-snap-align: start;
+}
+
+@media (max-width: 600px) {
+  .box { padding: var(--sp-3) var(--sp-3) var(--sp-2); }
+  .item { flex-basis: 116px; width: 116px; }
+}

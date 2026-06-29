@@ -1,0 +1,73 @@
+# -*- coding: utf-8 -*-
+# SPDX-License-Identifier: GPL-3.0-or-later
+"""Duplicate-books endpoint for /api/v1 (admin/edit).
+
+Serializes the same duplicate groups the legacy /duplicates page renders
+(cps/duplicate_index.get_duplicate_groups_from_index) as JSON so the SPA can
+show them natively. Dismiss/undismiss reuse the existing legacy JSON routes
+(/duplicates/dismiss/<hash>) — no logic duplicated.
+"""
+from flask import jsonify
+
+from . import api_v1
+from .. import logger
+from ..cw_login import current_user
+from ..usermanagement import login_required_if_no_ano
+
+log = logger.create()
+
+
+def _err(code, message, status):
+    return jsonify({"error": {"code": code, "message": message}}), status
+
+
+def _require_admin_or_edit():
+    if not current_user.is_authenticated or current_user.is_anonymous:
+        return _err("unauthorized", "You must be signed in", 401)
+    if not (current_user.role_admin() or current_user.role_edit()):
+        return _err("forbidden", "Admin or edit permission required", 403)
+    return None
+
+
+@api_v1.route("/duplicates")
+@login_required_if_no_ano
+def list_duplicates():
+    guard = _require_admin_or_edit()
+    if guard:
+        return guard
+
+    needs_scan = False
+    groups = []
+    try:
+        from scripts.cwa_db import CWA_DB
+        from ..duplicate_index import (
+            get_duplicate_groups_from_index,
+            duplicate_index_needs_manual_full_scan,
+            library_has_books,
+        )
+        settings = CWA_DB().cwa_settings
+        needs_scan = bool(library_has_books() and duplicate_index_needs_manual_full_scan(settings))
+        if not needs_scan:
+            groups = get_duplicate_groups_from_index(
+                settings, include_dismissed=False,
+                user_id=current_user.id if current_user else None,
+            )
+    except Exception:
+        log.error("Could not load duplicate groups", exc_info=True)
+
+    items = []
+    for g in groups:
+        items.append({
+            "group_hash": g.get("group_hash"),
+            "title": g.get("title"),
+            "author": g.get("author"),
+            "count": g.get("count"),
+            "books": [{
+                "id": b.id,
+                "title": b.title,
+                "authors": (getattr(b, "author_names", "") or "").replace("|", ","),
+                "formats": [d.format for d in (getattr(b, "data", None) or [])],
+                "cover_url": ("/cover/%d/sm" % b.id) if getattr(b, "has_cover", 0) else None,
+            } for b in g.get("books", [])],
+        })
+    return jsonify({"items": items, "needs_scan": needs_scan})

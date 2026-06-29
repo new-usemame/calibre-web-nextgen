@@ -189,3 +189,34 @@ class TestCreateAnnotation:
         # client-side from the KoboSpan id, so a missing server CFI is fine.
         assert row.annotation_id.startswith("cwn-web-")
         assert row.cfi_range is None
+
+
+@pytest.mark.unit
+def test_create_cfi_only_webreader_annotation(memory_db, tmp_path, monkeypatch):
+    """SPA epub.js reader path: a CFI-only payload (no KoboSpan anchor) creates a
+    valid web-reader highlight that stands on its cfi_range."""
+    from cps import annotations as ann_mod, config
+    monkeypatch.setattr(config, "get_book_path", lambda: str(tmp_path / "library"))
+    book = _make_book(tmp_path, with_epub=True)
+    row = ann_mod.create_annotation(
+        {"cfi_range": "epubcfi(/6/4!/4/2,/1:0,/1:9)",
+         "highlighted_text": "cfi only", "highlight_color": "green"},
+        user_id=7, book=book, session=memory_db, commit=memory_db.commit,
+    )
+    assert row.source == "webreader"
+    assert row.annotation_id.startswith("cwn-web-")
+    assert row.cfi_range == "epubcfi(/6/4!/4/2,/1:0,/1:9)"
+    assert row.position_type == "cfi"
+    assert row.highlight_color == "green"
+    assert row.start_container_path == "cfi"
+
+
+@pytest.mark.unit
+def test_create_requires_kobospan_or_cfi(memory_db, tmp_path, monkeypatch):
+    """A payload with neither a KoboSpan nor a cfi_range anchor is rejected."""
+    from cps import annotations as ann_mod, config
+    monkeypatch.setattr(config, "get_book_path", lambda: str(tmp_path / "library"))
+    book = _make_book(tmp_path, with_epub=True)
+    with pytest.raises(ValueError):
+        ann_mod.create_annotation({"highlighted_text": "x"}, user_id=7, book=book,
+                                  session=memory_db, commit=memory_db.commit)

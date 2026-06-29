@@ -1,0 +1,90 @@
+/* ============================================================================
+   Calibre-Web NextGen — design tokens ("caliBlur, elevated")
+   Single source of truth. Dark, bookish, cover-forward. Honors caliBlur's
+   identity (deep blue-charcoal + amber) while introducing a real token layer:
+   color is never hardcoded in components — they consume these vars.
+   Light/other themes later = swap this :root block, nothing else.
+   ============================================================================ */
+
+@layer reset, base, components, utilities;
+
+:root {
+  /* ---- Color: surfaces (deep blue-charcoal, layered for depth) ---- */
+  --bg:            #141c24;   /* page base (slightly deeper than legacy #161f27) */
+  --bg-glow:       #1a2733;   /* top atmosphere of the page gradient */
+  --surface-1:     #1b2530;   /* cards, bars */
+  --surface-2:     #222e3a;   /* raised / hover */
+  --surface-3:     #2a3845;   /* inputs, wells */
+  --border:        #2c3a47;   /* hairline separators */
+  --border-strong: #3a4a59;
+
+  /* ---- Color: amber accent (the caliBlur signature) ---- */
+  --accent:        #cc7b19;
+  --accent-hover:  #e0902a;
+  --accent-press:  #b86d12;
+  --accent-soft:   rgba(204, 123, 25, 0.14);  /* tinted fills, focus halos */
+  --accent-ring:   rgba(224, 144, 42, 0.55);  /* focus-visible ring */
+
+  /* ---- Color: text (warm paper-white, not clinical grey) ---- */
+  --text:          #ece8e1;
+  --text-muted:    #9aa7b2;
+  --text-faint:    #6d7b87;
+  --on-accent:     #1a1206;   /* text on amber fills */
+
+  /* ---- Color: status ---- */
+  --danger:        #e0685f;
+  --danger-soft:   rgba(224, 104, 95, 0.14);
+  --success:       #6cc08a;
+
+  /* ---- Typography (system stacks with character — bookish serif display,
+          humanist sans body. Upgrade to self-hosted woff2 later.) ---- */
+  --font-display: 'Iowan Old Style', 'Palatino Linotype', Palatino, 'Book Antiqua', Georgia, serif;
+  --font-body:    Optima, 'Avenir Next', 'Segoe UI', system-ui, -apple-system, 'Helvetica Neue', sans-serif;
+
+  --fs-xs:   0.75rem;   /* 12 */
+  --fs-sm:   0.8125rem; /* 13 */
+  --fs-base: 0.9375rem; /* 15 */
+  --fs-md:   1.0625rem; /* 17 */
+  --fs-lg:   1.375rem;  /* 22 */
+  --fs-xl:   1.875rem;  /* 30 */
+  --fs-2xl:  2.5rem;    /* 40 */
+
+  --lh-tight: 1.15;
+  --lh-snug:  1.3;
+  --lh-base:  1.55;
+
+  --fw-normal: 400;
+  --fw-medium: 500;
+  --fw-semi:   600;
+  --fw-bold:   700;
+
+  /* ---- Spacing (4px scale) ---- */
+  --sp-1: 0.25rem;  --sp-2: 0.5rem;  --sp-3: 0.75rem; --sp-4: 1rem;
+  --sp-5: 1.5rem;   --sp-6: 2rem;    --sp-8: 3rem;    --sp-10: 4rem;
+
+  /* ---- Radii ---- */
+  --r-sm:  6px;
+  --r-md:  10px;
+  --r-lg:  16px;
+  --r-full: 999px;
+
+  /* ---- Elevation (soft, low-opacity — dark-theme appropriate) ---- */
+  --elev-1: 0 1px 2px rgba(0,0,0,.25), 0 2px 8px rgba(0,0,0,.22);
+  --elev-2: 0 4px 14px rgba(0,0,0,.34), 0 2px 4px rgba(0,0,0,.26);
+  --elev-3: 0 12px 34px rgba(0,0,0,.46);
+  --cover-shadow: 0 6px 18px rgba(0,0,0,.45);
+
+  /* ---- Motion ---- */
+  --ease:      cubic-bezier(.2, .7, .2, 1);
+  --ease-out:  cubic-bezier(.16, 1, .3, 1);
+  --dur-fast:  120ms;
+  --dur-base:  220ms;
+  --dur-slow:  420ms;
+
+  /* ---- Z ---- */
+  --z-bar: 50;
+  --z-overlay: 100;
+
+  /* ---- Layout ---- */
+  --topbar-h: 56px;
+}

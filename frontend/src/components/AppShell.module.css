@@ -1,0 +1,13 @@
+.shell {
+  min-height: 100%;
+}
+
+.body {
+  display: flex;
+  align-items: flex-start;
+}
+
+.content {
+  flex: 1 1 auto;
+  min-width: 0; /* let the grid inside shrink instead of overflowing */
+}

@@ -1,5 +1,7 @@
 {
-  "_comment": "Per-repo Greptile config. Goal: get the highest-value reviews without burning the 50-review/seat/month Pro budget on translation churn, doc-only edits, or per-commit re-reviews.",
+  "_comment": "Per-repo Greptile config. Greptile is now OPT-IN: it does NOT auto-review PRs (skipReview: AUTOMATIC). Each review costs real budget (~$1 overage past the 50/seat/month Pro plan) and most of our PRs are high-confidence UI/CSS/SPA iteration that doesn't need it. Trigger a review on demand by commenting '@greptileai' on the PR. Autopilot policy: only invoke it on IMPORTANT PRs — auth/session/CSRF, crypto/secrets, subprocess/shell, user-controlled file paths, new routes, DB/migrations, or medium+ multi-file logic — not on routine high-confidence UI/CSS/copy changes. The automated security gate for risky changes is /security-review, not Greptile.",
+
+  "skipReview": "AUTOMATIC",
 
   "triggerOnUpdates": false,
   "triggerOnDrafts": false,

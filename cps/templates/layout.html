@@ -177,6 +177,14 @@
       }
       a.cwng-switch-ui:active { transform: translateY(0); }
       a.cwng-switch-ui .glyphicon { top: 1px; font-size: 12px; }
+      /* Tablet band (768–991px): the navbar is still expanded but cramped, and the
+         full-width pill pushes the toolbar over the edge so it wraps onto the page
+         content. Collapse it to an icon (matching the other icon-only toolbar
+         buttons); the bolt glyph + title keep it discoverable. */
+      @media (min-width: 768px) and (max-width: 991px) {
+        a.cwng-switch-ui { padding: 6px 10px !important; gap: 0; }
+        a.cwng-switch-ui .cwng-switch-label { display: none; }
+      }
       @media (max-width: 767px) {
         a.cwng-switch-ui { width: 100%; justify-content: center; }
       }

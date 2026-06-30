@@ -16,6 +16,8 @@ is for things you can see or feel when running the app.
 
 ## [Unreleased]
 
+## [v4.1.0] - 2026-06-30
+
 ### Changed
 - **The new interface is now offered to everyone — opt in when you're ready.**
   After updating, a dismissible bar invites you to try the redesigned interface;

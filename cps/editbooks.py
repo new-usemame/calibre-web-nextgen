@@ -439,9 +439,17 @@ def _truncate_ingest_name(final_name):
     if len(final_name.encode("utf-8")) <= budget:
         return final_name
     stem, ext = os.path.splitext(final_name)
-    # Preserve the extension; give the rest of the budget to the stem, cut on
-    # a byte boundary without splitting a multi-byte UTF-8 sequence.
-    stem_budget = max(0, budget - len(ext.encode("utf-8")))
+    ext_bytes = ext.encode("utf-8")
+    # Pathological case: a crafted name whose "extension" alone exceeds the
+    # budget (e.g. "x." + 250 chars — os.path.splitext treats it all as the
+    # extension). Truncate the extension too so the result still fits NAME_MAX
+    # instead of re-tripping ENAMETOOLONG (the very error we're preventing).
+    if len(ext_bytes) > budget:
+        return ext_bytes[:budget].decode("utf-8", "ignore")
+    # Normal case: keep the extension, spend the rest of the budget on the stem.
+    # Cut on a byte boundary; decode(..., "ignore") drops a dangling partial
+    # multi-byte sequence so we never split a codepoint.
+    stem_budget = budget - len(ext_bytes)
     stem = stem.encode("utf-8")[:stem_budget].decode("utf-8", "ignore")
     return stem + ext
 

@@ -53,6 +53,17 @@ def test_truncate_ingest_name_is_byte_safe_for_multibyte_stems():
 
 
 @pytest.mark.unit
+def test_truncate_ingest_name_overlong_extension_still_fits():
+    """A crafted name whose 'extension' alone exceeds the budget (os.path.splitext
+    treats everything after the last dot as the extension) must still be trimmed
+    to fit NAME_MAX — not returned full-length, which would re-trip ENAMETOOLONG."""
+    from cps.editbooks import _truncate_ingest_name
+    name = "x." + ("a" * 300)  # 302-char "extension", well past the budget
+    out = _truncate_ingest_name(name)
+    assert len((out + ".uploading").encode("utf-8")) <= 255
+
+
+@pytest.mark.unit
 def test_get_ingest_path_long_filename_is_writable(tmp_path, monkeypatch):
     """The real end-to-end check: the path _get_ingest_path returns for a
     238-char filename must be writable (i.e. not trip ENAMETOOLONG) once the

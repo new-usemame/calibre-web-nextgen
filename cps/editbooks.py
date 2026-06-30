@@ -412,8 +412,38 @@ def _get_ingest_path(uploaded_file, prefix_parts=None):
     unique = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S_%f")
     prefix = "_".join([str(p) for p in (prefix_parts or []) if p])
     final_name = f"{prefix + '_' if prefix else ''}{unique}_{base_name}"
+    final_name = _truncate_ingest_name(final_name)
     final_path = os.path.join(ingest_dir, final_name)
     return final_path
+
+
+# Most Unix filesystems (ext4/xfs/btrfs/APFS) cap a single path component at
+# 255 bytes (NAME_MAX). The ingest pipeline appends suffixes to the staging
+# file we drop in — ".uploading" while streaming, ".cwa.json" for the
+# add-format sidecar — so reserve room for the longest of those.
+_INGEST_NAME_MAX_BYTES = 255
+_INGEST_SUFFIX_RESERVE = len(".uploading")
+
+
+def _truncate_ingest_name(final_name):
+    """Trim an over-long staging filename so the path component (plus the
+    suffixes the ingest pipeline appends) stays within the filesystem
+    NAME_MAX, keeping the extension intact.
+
+    The ingest service renames imported books from their metadata, so the
+    staging name is throwaway — but an un-trimmed one raises
+    OSError(ENAMETOOLONG) and the upload fails with no actionable message
+    (issue #553). Truncating lets the upload succeed instead.
+    """
+    budget = _INGEST_NAME_MAX_BYTES - _INGEST_SUFFIX_RESERVE
+    if len(final_name.encode("utf-8")) <= budget:
+        return final_name
+    stem, ext = os.path.splitext(final_name)
+    # Preserve the extension; give the rest of the budget to the stem, cut on
+    # a byte boundary without splitting a multi-byte UTF-8 sequence.
+    stem_budget = max(0, budget - len(ext.encode("utf-8")))
+    stem = stem.encode("utf-8")[:stem_budget].decode("utf-8", "ignore")
+    return stem + ext
 
 # Helper to save file to a temporary path, then atomically rename to final path
 def _save_to_ingest_atomic_rename(uploaded_file, final_path):

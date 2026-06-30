@@ -65,6 +65,12 @@ is for things you can see or feel when running the app.
   delivery. Requested by @froggybottomboys.
 
 ### Fixed
+- **Uploading a book with a very long filename no longer fails.** A file whose
+  name ran past the filesystem limit (~255 characters) used to fail to import
+  with an unhelpful "Failed to queue for processing" message. The temporary
+  staging name is now trimmed to fit (the file is renamed from its metadata on
+  import anyway), so the upload succeeds. Normal filenames are untouched.
+  Reported by @chloeroform (#553).
 - **Bulk actions and drag-to-merge now work behind a reverse proxy on a
   sub-path.** If you run NextGen under a proxy mounted at something like
   `example.com/books/`, marking books read/unread, adding a selection to a

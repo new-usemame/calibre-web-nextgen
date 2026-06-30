@@ -177,11 +177,15 @@
       }
       a.cwng-switch-ui:active { transform: translateY(0); }
       a.cwng-switch-ui .glyphicon { top: 1px; font-size: 12px; }
-      /* Tablet band (768–991px): the navbar is still expanded but cramped, and the
-         full-width pill pushes the toolbar over the edge so it wraps onto the page
-         content. Collapse it to an icon (matching the other icon-only toolbar
-         buttons); the bolt glyph + title keep it discoverable. */
-      @media (min-width: 768px) and (max-width: 991px) {
+      /* Tablet + small-desktop band (768–1199px): the navbar is expanded but
+         doesn't have room for the full-width pill alongside the search box,
+         toolbar icons and the fixed top-right pagination — so the pill wraps to a
+         second row and collides with the pagination. Collapse it to an icon in
+         this whole range (matching the other icon-only toolbar buttons; the bolt
+         glyph + title keep it discoverable). The full label returns at ≥1200px
+         (Bootstrap lg), where it's verified to sit on one row clear of the
+         pagination. Below 768px the pill lives in the collapsed hamburger menu. */
+      @media (min-width: 768px) and (max-width: 1199px) {
         a.cwng-switch-ui { padding: 6px 10px !important; gap: 0; }
         a.cwng-switch-ui .cwng-switch-label { display: none; }
       }

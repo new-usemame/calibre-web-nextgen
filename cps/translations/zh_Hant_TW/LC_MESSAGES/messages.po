@@ -8,7 +8,7 @@ msgstr ""
 "Project-Id-Version: Calibre-Web NextGen\n"
 "Report-Msgid-Bugs-To: https://github.com/crocodilestick/Calibre-Web-"
 "Automated\n"
-"POT-Creation-Date: 2026-06-30 04:39+0000\n"
+"POT-Creation-Date: 2026-06-30 14:11+0000\n"
 "PO-Revision-Date: 2020-09-27 22:18+0800\n"
 "Last-Translator: xlivevil <xlivevil@aliyun.com>\n"
 "Language-Team: zh_Hans_CN <LL@li.org>\n"
@@ -196,7 +196,7 @@ msgstr "無可用本地化"
 msgid "No Valid Book Language Given"
 msgstr "無有效書籍語言"
 
-#: cps/admin.py:908 cps/editbooks.py:611
+#: cps/admin.py:908 cps/editbooks.py:649
 msgid "Parameter not found"
 msgstr "參數未找到"
 
@@ -402,8 +402,8 @@ msgid "Success! Gmail Account Verified."
 msgstr ""
 
 #: cps/admin.py:1885 cps/admin.py:1888 cps/admin.py:2493 cps/admin.py:2725
-#: cps/admin.py:2842 cps/admin.py:3110 cps/editbooks.py:1086
-#: cps/editbooks.py:1988 cps/shelf.py:148 cps/shelf.py:226 cps/shelf.py:297
+#: cps/admin.py:2842 cps/admin.py:3110 cps/editbooks.py:1124
+#: cps/editbooks.py:2026 cps/shelf.py:148 cps/shelf.py:226 cps/shelf.py:297
 #: cps/shelf.py:332 cps/shelf.py:389 cps/shelf.py:464 cps/shelf.py:547
 #: cps/shelf.py:672 cps/tasks/convert.py:145 cps/web.py:3175
 #, python-format
@@ -1303,7 +1303,7 @@ msgstr ""
 
 #: cps/api/upload.py:69 cps/api/upload.py:111 cps/editbooks.py:161
 #: cps/editbooks.py:188 cps/templates/book_edit.html:94
-#: cps/templates/layout.html:354
+#: cps/templates/layout.html:358
 msgid "Upload done, processing, please wait..."
 msgstr "上傳完成，正在處理中，請稍候..."
 
@@ -1326,149 +1326,149 @@ msgstr "書籍已經被成功加入到 %(book_format)s 格式轉換隊列"
 msgid "There was an error converting this book: %(res)s"
 msgstr "轉換此書籍時出現錯誤： %(res)s"
 
-#: cps/editbooks.py:373 cps/editbooks.py:1337 cps/editbooks.py:1935
+#: cps/editbooks.py:373 cps/editbooks.py:1375 cps/editbooks.py:1973
 #, fuzzy
 msgid "File type isn't allowed to be uploaded to this server"
 msgstr "不能上傳文件附檔名為“%(ext)s”的文件到此服務器"
 
-#: cps/editbooks.py:378 cps/editbooks.py:1343 cps/editbooks.py:1946
+#: cps/editbooks.py:378 cps/editbooks.py:1381 cps/editbooks.py:1984
 #, python-format
 msgid "File extension '%(ext)s' is not allowed to be uploaded to this server"
 msgstr "不能上傳文件附檔名為“%(ext)s”的文件到此服務器"
 
-#: cps/editbooks.py:382 cps/editbooks.py:1347 cps/editbooks.py:1951
+#: cps/editbooks.py:382 cps/editbooks.py:1385 cps/editbooks.py:1989
 msgid "File to be uploaded must have an extension"
 msgstr "要上傳的文件必須具有附檔名"
 
-#: cps/editbooks.py:869 cps/editbooks.py:1608 cps/web.py:833 cps/web.py:3356
+#: cps/editbooks.py:907 cps/editbooks.py:1646 cps/web.py:833 cps/web.py:3356
 #: cps/web.py:3538 cps/web.py:3668
 msgid ""
 "Oops! Selected book is unavailable. File does not exist or is not accessible"
 msgstr "糟糕！選擇書名無法打開。文件不存在或者文件不可訪問"
 
-#: cps/editbooks.py:909 cps/editbooks.py:2018
+#: cps/editbooks.py:947 cps/editbooks.py:2056
 msgid "User has no rights to upload cover"
 msgstr ""
 
-#: cps/editbooks.py:917
+#: cps/editbooks.py:955
 msgid "Cover is locked. Unlock it on the cover-picker page first."
 msgstr ""
 
-#: cps/editbooks.py:940 cps/editbooks.py:1325
+#: cps/editbooks.py:978 cps/editbooks.py:1363
 msgid "Identifiers are not Case Sensitive, Overwriting Old Identifier"
 msgstr "標識符不區分大小寫，覆蓋舊標識符"
 
-#: cps/editbooks.py:952 cps/editbooks.py:1299 cps/editbooks.py:1746
+#: cps/editbooks.py:990 cps/editbooks.py:1337 cps/editbooks.py:1784
 #, fuzzy, python-format
 msgid "'%(langname)s' is not a valid language"
 msgstr "%(langname)s 不是一種有效語言"
 
-#: cps/editbooks.py:1071
+#: cps/editbooks.py:1109
 msgid "Metadata successfully updated"
 msgstr "已成功更新元數據"
 
-#: cps/editbooks.py:1091
+#: cps/editbooks.py:1129
 #, python-brace-format
 msgid "Error editing book: {}"
 msgstr ""
 
-#: cps/editbooks.py:1184 cps/editbooks.py:1234 cps/editbooks.py:2036
+#: cps/editbooks.py:1222 cps/editbooks.py:1272 cps/editbooks.py:2074
 #: cps/updater.py:674 cps/uploader.py:97 cps/uploader.py:106
 msgid "Unknown"
 msgstr "未知"
 
-#: cps/editbooks.py:1238
+#: cps/editbooks.py:1276
 msgid ""
 "Uploaded book probably exists in the library, consider to change before "
 "upload new: "
 msgstr "上傳的書籍可能已經存在，建議修改後重新上傳： "
 
-#: cps/editbooks.py:1355
+#: cps/editbooks.py:1393
 #, python-format
 msgid "File %(filename)s could not saved to temp dir"
 msgstr "文件 %(filename)s 無法保存到臨時目錄"
 
-#: cps/editbooks.py:1375
+#: cps/editbooks.py:1413
 #, python-format
 msgid "Failed to Move Cover File %(file)s: %(error)s"
 msgstr "移動封面文件失敗 %(file)s：%(error)s"
 
-#: cps/editbooks.py:1463 cps/editbooks.py:1465
+#: cps/editbooks.py:1501 cps/editbooks.py:1503
 msgid "Book Format Successfully Deleted"
 msgstr "書籍格式已成功刪除"
 
-#: cps/editbooks.py:1472 cps/editbooks.py:1474
+#: cps/editbooks.py:1510 cps/editbooks.py:1512
 msgid "Book Successfully Deleted"
 msgstr "書籍已成功刪除"
 
-#: cps/editbooks.py:1589
+#: cps/editbooks.py:1627
 msgid "You are missing permissions to delete books"
 msgstr ""
 
-#: cps/editbooks.py:1651
+#: cps/editbooks.py:1689
 msgid "edit metadata"
 msgstr "編輯元數據"
 
-#: cps/editbooks.py:1705
+#: cps/editbooks.py:1743
 #, fuzzy, python-format
 msgid "Seriesindex: %(seriesindex)s is not a valid number, skipping"
 msgstr "%(seriesindex)s 不是一個有效的數值，忽略"
 
-#: cps/editbooks.py:1940
+#: cps/editbooks.py:1978
 msgid "User has no rights to upload additional file formats"
 msgstr ""
 
-#: cps/editbooks.py:1964
+#: cps/editbooks.py:2002
 #, python-format
 msgid "Failed to create path %(path)s (Permission denied)."
 msgstr "創建路徑 %(path)s 失敗(權限拒絕)。"
 
-#: cps/editbooks.py:1971
+#: cps/editbooks.py:2009
 #, python-format
 msgid "Failed to store file %(file)s."
 msgstr "保存文件 %(file)s 失敗。"
 
-#: cps/editbooks.py:1995
+#: cps/editbooks.py:2033
 #, python-format
 msgid "File format %(ext)s added to %(book)s"
 msgstr "已添加 %(ext)s 格式到 %(book)s"
 
-#: cps/editbooks.py:2277
+#: cps/editbooks.py:2315
 #, fuzzy
 msgid "Book not found"
 msgstr "找不到Token"
 
-#: cps/editbooks.py:2281
+#: cps/editbooks.py:2319
 msgid "Book has no file formats on disk to reload from"
 msgstr ""
 
-#: cps/editbooks.py:2301
+#: cps/editbooks.py:2339
 #, fuzzy, python-format
 msgid "Book file not found on disk: %(path)s"
 msgstr "硬碟上找不到 %(format)s 格式"
 
-#: cps/editbooks.py:2313
+#: cps/editbooks.py:2351
 #, python-format
 msgid "Could not parse metadata from %(format)s file: %(err)s"
 msgstr ""
 
-#: cps/editbooks.py:2427
+#: cps/editbooks.py:2465
 #, python-format
 msgid ""
 "Could not rename the book folder to match the reloaded metadata: %(err)s"
 msgstr ""
 
-#: cps/editbooks.py:2449
+#: cps/editbooks.py:2487
 #, python-format
 msgid "Could not save reloaded metadata: %(err)s"
 msgstr ""
 
-#: cps/editbooks.py:2455
+#: cps/editbooks.py:2493
 #, python-format
 msgid "Reloaded %(n)d field(s) from on-disk %(fmt)s"
 msgstr ""
 
-#: cps/editbooks.py:2458
+#: cps/editbooks.py:2496
 msgid "On-disk metadata matches current — no fields updated"
 msgstr ""
 
@@ -2003,7 +2003,7 @@ msgstr "文件格式"
 msgid "Books ordered by file formats"
 msgstr "書籍按文件格式排序"
 
-#: cps/opds.py:247 cps/templates/layout.html:618
+#: cps/opds.py:247 cps/templates/layout.html:622
 #: cps/templates/search_form.html:88
 msgid "Shelves"
 msgstr "書架列表"
@@ -2032,8 +2032,8 @@ msgstr "簡介"
 msgid "{} Stars"
 msgstr "{} 星"
 
-#: cps/remotelogin.py:76 cps/templates/layout.html:338
-#: cps/templates/layout.html:379 cps/templates/login.html:11
+#: cps/remotelogin.py:76 cps/templates/layout.html:342
+#: cps/templates/layout.html:383 cps/templates/login.html:11
 #: cps/templates/login.html:39 cps/web.py:2673
 msgid "Login"
 msgstr "登入"
@@ -2177,8 +2177,8 @@ msgstr ""
 
 #: cps/search.py:53 cps/search.py:454 cps/templates/book_edit.html:338
 #: cps/templates/cwa_epub_fixer.html:25 cps/templates/feed.xml:43
-#: cps/templates/index.xml:12 cps/templates/layout.html:309
-#: cps/templates/layout.html:312 cps/templates/search_form.html:247
+#: cps/templates/index.xml:12 cps/templates/layout.html:313
+#: cps/templates/layout.html:316 cps/templates/search_form.html:247
 msgid "Search"
 msgstr "搜尋"
 
@@ -2209,7 +2209,7 @@ msgstr "閱讀狀態 = %(status)s"
 msgid "Error on search for custom columns, please restart Calibre-Web"
 msgstr "搜詢自定義欄位時出錯，請重啟 Calibre-Web"
 
-#: cps/search.py:398 cps/search.py:430 cps/templates/layout.html:320
+#: cps/search.py:398 cps/search.py:430 cps/templates/layout.html:324
 msgid "Advanced Search"
 msgstr "進階搜尋"
 
@@ -2360,7 +2360,7 @@ msgstr ""
 msgid "Could not save order"
 msgstr ""
 
-#: cps/shelf.py:1049 cps/templates/layout.html:627
+#: cps/shelf.py:1049 cps/templates/layout.html:631
 #, fuzzy
 msgid "Reorder Shelves"
 msgstr "排除書架"
@@ -2401,7 +2401,7 @@ msgstr ""
 msgid "Manual (drag below)"
 msgstr ""
 
-#: cps/tasks_status.py:37 cps/templates/layout.html:365
+#: cps/tasks_status.py:37 cps/templates/layout.html:369
 #: cps/templates/tasks.html:7
 msgid "Tasks"
 msgstr "任務列表"
@@ -2577,7 +2577,7 @@ msgstr ""
 msgid "Error creating shelf"
 msgstr "下載封面時出錯"
 
-#: cps/templates/layout.html:637 cps/web.py:1565
+#: cps/templates/layout.html:641 cps/web.py:1565
 #, fuzzy
 msgid "Create Magic Shelf"
 msgstr "創建書架"
@@ -2699,7 +2699,7 @@ msgstr "書籍已經成功加入 %(eReadermail)s 的發送隊列"
 msgid "Please wait one minute to register next user"
 msgstr ""
 
-#: cps/templates/layout.html:339 cps/templates/layout.html:380
+#: cps/templates/layout.html:343 cps/templates/layout.html:384
 #: cps/templates/login.html:48 cps/templates/register.html:17 cps/web.py:2552
 #: cps/web.py:2556 cps/web.py:2561 cps/web.py:2565 cps/web.py:2571
 #: cps/web.py:2596 cps/web.py:2600 cps/web.py:2613 cps/web.py:2616
@@ -3041,7 +3041,7 @@ msgid "Clearing cover thumbnail cache"
 msgstr ""
 
 #: cps/tasks/upload.py:28 cps/templates/admin.html:22
-#: cps/templates/layout.html:357 cps/templates/user_table.html:146
+#: cps/templates/layout.html:361 cps/templates/user_table.html:146
 msgid "Upload"
 msgstr "上傳書籍"
 
@@ -3088,7 +3088,7 @@ msgstr "添加到書架"
 #: cps/templates/detail.html:820 cps/templates/detail.html:990
 #: cps/templates/detail.html:1617 cps/templates/feed.xml:109
 #: cps/templates/feed.xml:111 cps/templates/index.html:162
-#: cps/templates/layout.html:621 cps/templates/layout.html:634
+#: cps/templates/layout.html:625 cps/templates/layout.html:638
 #: cps/templates/listenmp3.html:201 cps/templates/listenmp3.html:218
 #: cps/templates/search.html:23 cps/templates/shelf_reorder.html:31
 msgid "(Public)"
@@ -3241,7 +3241,7 @@ msgstr "接收書籍的Kindle郵箱地址"
 msgid "Send to eReader Subject"
 msgstr "發送到Kindle"
 
-#: cps/templates/admin.html:19 cps/templates/layout.html:368
+#: cps/templates/admin.html:19 cps/templates/layout.html:372
 #: cps/templates/user_table.html:144
 msgid "Admin"
 msgstr "管理權限"
@@ -3504,7 +3504,7 @@ msgstr "詳情"
 msgid "Update available"
 msgstr "更新失敗："
 
-#: cps/templates/admin.html:263 cps/templates/layout.html:474
+#: cps/templates/admin.html:263 cps/templates/layout.html:478
 #, fuzzy
 msgid "Update now"
 msgstr "更新通道"
@@ -3553,8 +3553,8 @@ msgstr "確定"
 #: cps/templates/cwa_convert_library.html:23
 #: cps/templates/cwa_epub_fixer.html:40 cps/templates/detail.html:1184
 #: cps/templates/duplicates.html:696 cps/templates/duplicates.html:719
-#: cps/templates/duplicates.html:746 cps/templates/layout.html:817
-#: cps/templates/layout.html:972 cps/templates/modal_dialogs.html:64
+#: cps/templates/duplicates.html:746 cps/templates/layout.html:821
+#: cps/templates/layout.html:976 cps/templates/modal_dialogs.html:64
 #: cps/templates/modal_dialogs.html:99 cps/templates/modal_dialogs.html:117
 #: cps/templates/modal_dialogs.html:135 cps/templates/read.html:178
 #: cps/templates/schedule_edit.html:46 cps/templates/shelf.html:125
@@ -3620,8 +3620,8 @@ msgid "total entries seen"
 msgstr ""
 
 #: cps/templates/annotations_import.html:49 cps/templates/book_edit.html:94
-#: cps/templates/book_edit.html:111 cps/templates/layout.html:354
-#: cps/templates/layout.html:540
+#: cps/templates/book_edit.html:111 cps/templates/layout.html:358
+#: cps/templates/layout.html:544
 msgid "Uploading..."
 msgstr "正在上傳..."
 
@@ -3729,8 +3729,8 @@ msgstr "轉換書籍"
 
 #: cps/templates/book_edit.html:94 cps/templates/book_edit.html:378
 #: cps/templates/book_table.html:346 cps/templates/duplicates.html:766
-#: cps/templates/layout.html:354 cps/templates/layout.html:711
-#: cps/templates/layout.html:854 cps/templates/modal_dialogs.html:34
+#: cps/templates/layout.html:358 cps/templates/layout.html:715
+#: cps/templates/layout.html:858 cps/templates/modal_dialogs.html:34
 #: cps/templates/shelf.html:110 cps/templates/update_now_modal.html:69
 #: cps/templates/user_edit.html:673
 msgid "Close"
@@ -3745,7 +3745,7 @@ msgstr "關閉"
 #: cps/templates/hardcover_review_matches.html:369
 #: cps/templates/hardcover_review_matches.html:400
 #: cps/templates/hardcover_review_matches.html:409
-#: cps/templates/layout.html:354
+#: cps/templates/layout.html:358
 msgid "Error"
 msgstr "錯誤"
 
@@ -6798,8 +6798,8 @@ msgstr "合併選中的書籍"
 msgid "Dismiss this duplicate group"
 msgstr ""
 
-#: cps/templates/duplicates.html:618 cps/templates/layout.html:400
-#: cps/templates/layout.html:565
+#: cps/templates/duplicates.html:618 cps/templates/layout.html:404
+#: cps/templates/layout.html:569
 msgid "Dismiss"
 msgstr ""
 
@@ -6857,7 +6857,7 @@ msgstr ""
 msgid "The following books will be permanently deleted:"
 msgstr "此書籍將從數據庫中永久刪除"
 
-#: cps/templates/duplicates.html:730 cps/templates/layout.html:769
+#: cps/templates/duplicates.html:730 cps/templates/layout.html:773
 #, fuzzy
 msgid "Merge Books"
 msgstr "未讀書籍"
@@ -6962,8 +6962,8 @@ msgstr "輸入網域名"
 msgid "Denied Domains (Blacklist)"
 msgstr "禁止註冊的網域名（黑名單）"
 
-#: cps/templates/feed.xml:31 cps/templates/layout.html:669
-#: cps/templates/layout.html:695
+#: cps/templates/feed.xml:31 cps/templates/layout.html:673
+#: cps/templates/layout.html:699
 msgid "Next"
 msgstr "下一個"
 
@@ -7224,220 +7224,220 @@ msgstr ""
 msgid "Home"
 msgstr "首頁"
 
-#: cps/templates/layout.html:295
+#: cps/templates/layout.html:299
 msgid "Toggle Navigation"
 msgstr "切換導航"
 
-#: cps/templates/layout.html:310
+#: cps/templates/layout.html:314
 msgid "Search Library"
 msgstr "搜索書庫"
 
-#: cps/templates/layout.html:327
+#: cps/templates/layout.html:331
 #, fuzzy
 msgid "Switch to the new Calibre-Web NextGen interface"
 msgstr "Caliebre-Web電子書路徑"
 
-#: cps/templates/layout.html:329
+#: cps/templates/layout.html:333
 msgid "Switch to New UI"
 msgstr ""
 
-#: cps/templates/layout.html:336 cps/templates/layout.html:372
+#: cps/templates/layout.html:340 cps/templates/layout.html:376
 #: cps/templates/user_edit.html:312 cps/templates/user_edit.html:314
 msgid "Account"
 msgstr "賬號"
 
-#: cps/templates/layout.html:342 cps/templates/layout.html:374
+#: cps/templates/layout.html:346 cps/templates/layout.html:378
 msgid "Logout"
 msgstr "登出"
 
-#: cps/templates/layout.html:368 cps/templates/read.html:103
+#: cps/templates/layout.html:372 cps/templates/read.html:103
 #: cps/templates/readcbr.html:71 cps/templates/readcbr.html:97
 #, fuzzy
 msgid "Settings"
 msgstr "設置"
 
-#: cps/templates/layout.html:370
+#: cps/templates/layout.html:374
 #, fuzzy
 msgid "Refresh Library"
 msgstr "搜索書庫"
 
-#: cps/templates/layout.html:393
+#: cps/templates/layout.html:397
 #, fuzzy
 msgid "New interface available"
 msgstr "無可用發佈信息"
 
-#: cps/templates/layout.html:395
+#: cps/templates/layout.html:399
 #, fuzzy
 msgid "A faster, redesigned Calibre-Web NextGen interface is ready."
 msgstr "Caliebre-Web電子書路徑"
 
-#: cps/templates/layout.html:395
+#: cps/templates/layout.html:399
 msgid "Your classic view stays the default until you switch."
 msgstr ""
 
-#: cps/templates/layout.html:398
+#: cps/templates/layout.html:402
 msgid "Try the new UI"
 msgstr ""
 
-#: cps/templates/layout.html:475
+#: cps/templates/layout.html:479
 msgid "See Changelog"
 msgstr ""
 
-#: cps/templates/layout.html:485
+#: cps/templates/layout.html:489
 #, fuzzy
 msgid "Open Duplicates"
 msgstr "刪除書籍"
 
-#: cps/templates/layout.html:507
+#: cps/templates/layout.html:511
 msgid "Contribute here!"
 msgstr ""
 
-#: cps/templates/layout.html:541
+#: cps/templates/layout.html:545
 msgid "Please do not refresh the page"
 msgstr "請不要刷新頁面"
 
-#: cps/templates/layout.html:601
+#: cps/templates/layout.html:605
 msgid "Browse"
 msgstr "瀏覽"
 
-#: cps/templates/layout.html:624
+#: cps/templates/layout.html:628
 #, fuzzy
 msgid "Create Shelf"
 msgstr "創建書架"
 
-#: cps/templates/layout.html:632
+#: cps/templates/layout.html:636
 msgid "Magic Shelves ✨"
 msgstr ""
 
-#: cps/templates/layout.html:641 cps/templates/stats.html:3
+#: cps/templates/layout.html:645 cps/templates/stats.html:3
 msgid "About"
 msgstr "關於"
 
-#: cps/templates/layout.html:654 cps/templates/layout.html:680
+#: cps/templates/layout.html:658 cps/templates/layout.html:684
 msgid "Previous"
 msgstr "上一個"
 
-#: cps/templates/layout.html:707
+#: cps/templates/layout.html:711
 msgid "Book Details"
 msgstr "書籍詳情"
 
-#: cps/templates/layout.html:775
+#: cps/templates/layout.html:779
 #, fuzzy
 msgid "This cannot be undone."
 msgstr "您確定要關閉嗎？"
 
-#: cps/templates/layout.html:781
+#: cps/templates/layout.html:785
 #, fuzzy
 msgid "Will be deleted"
 msgstr "合併選中的書籍"
 
-#: cps/templates/layout.html:785 cps/templates/layout.html:798
+#: cps/templates/layout.html:789 cps/templates/layout.html:802
 #, fuzzy
 msgid "Formats:"
 msgstr "上傳格式"
 
-#: cps/templates/layout.html:794
+#: cps/templates/layout.html:798
 msgid "Will be kept"
 msgstr ""
 
-#: cps/templates/layout.html:806
+#: cps/templates/layout.html:810
 msgid "Format conflicts — choose what to do:"
 msgstr ""
 
-#: cps/templates/layout.html:812
+#: cps/templates/layout.html:816
 #, fuzzy
 msgid "Result will have formats:"
 msgstr "刪除格式:"
 
-#: cps/templates/layout.html:821
+#: cps/templates/layout.html:825
 msgid "Merge &amp; Delete Source"
 msgstr ""
 
-#: cps/templates/layout.html:855
+#: cps/templates/layout.html:859
 #, fuzzy
 msgid "Duplicate Books Detected"
 msgstr "刪除書籍"
 
-#: cps/templates/layout.html:856
+#: cps/templates/layout.html:860
 msgid "You have unresolved duplicate books in your library"
 msgstr ""
 
-#: cps/templates/layout.html:861
+#: cps/templates/layout.html:865
 #, fuzzy
 msgid "Duplicate Groups Found"
 msgstr "無搜索結果"
 
-#: cps/templates/layout.html:869
+#: cps/templates/layout.html:873
 msgid "Remind Me Later"
 msgstr ""
 
-#: cps/templates/layout.html:872
+#: cps/templates/layout.html:876
 msgid "View & Resolve Duplicates"
 msgstr ""
 
-#: cps/templates/layout.html:881
+#: cps/templates/layout.html:885
 #, fuzzy
 msgid "Scroll to top"
 msgstr "縮放到最佳"
 
-#: cps/templates/layout.html:883
+#: cps/templates/layout.html:887
 #, fuzzy
 msgid "Top"
 msgstr "到："
 
-#: cps/templates/layout.html:973
+#: cps/templates/layout.html:977
 #, fuzzy
 msgid "Confirm"
 msgstr "配置"
 
-#: cps/templates/layout.html:979
+#: cps/templates/layout.html:983
 #, fuzzy, python-brace-format
 msgid "Added {n} books to {shelf}"
 msgstr "添加到書架"
 
-#: cps/templates/layout.html:980
+#: cps/templates/layout.html:984
 #, python-brace-format
 msgid "Added {ok} of {n} books to {shelf} (rest were already there)"
 msgstr ""
 
-#: cps/templates/layout.html:981
+#: cps/templates/layout.html:985
 #, python-brace-format
 msgid "All {n} book(s) were already on {shelf}."
 msgstr ""
 
-#: cps/templates/layout.html:982
+#: cps/templates/layout.html:986
 #, fuzzy, python-brace-format
 msgid "Marked {n} books as read"
 msgstr "合併選中的書籍"
 
-#: cps/templates/layout.html:983
+#: cps/templates/layout.html:987
 #, fuzzy, python-brace-format
 msgid "Marked {n} books as unread"
 msgstr "標為未讀"
 
-#: cps/templates/layout.html:984
+#: cps/templates/layout.html:988
 #, fuzzy, python-brace-format
 msgid "Deleted {n} books"
 msgstr "刪除書籍"
 
-#: cps/templates/layout.html:985
+#: cps/templates/layout.html:989
 #, fuzzy
 msgid "Delete books?"
 msgstr "刪除書籍"
 
-#: cps/templates/layout.html:986
+#: cps/templates/layout.html:990
 #, python-brace-format
 msgid ""
 "This will permanently delete {n} book(s) from your library. This cannot be "
 "undone."
 msgstr ""
 
-#: cps/templates/layout.html:987
+#: cps/templates/layout.html:991
 #, fuzzy
 msgid "Select at least one book first."
 msgstr "創建書架"
 
-#: cps/templates/layout.html:988
+#: cps/templates/layout.html:992
 #, fuzzy, python-brace-format
 msgid "Request failed: {err}"
 msgstr "連接錯誤"

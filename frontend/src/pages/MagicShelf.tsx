@@ -90,6 +90,13 @@ export function MagicShelf({ editId }: { editId?: string }) {
   const setRule = (k: number, patch: Partial<MagicRule>) =>
     setRules((rs) => rs.map((r) => (r._k === k ? { ...r, ...patch } : r)));
 
+  const onCancel = () => {
+    // Discard edits and go back where the user came from; fall back to the shelf
+    // view (editing) or the shelves list (creating) on a direct/bookmarked load.
+    if (window.history.length > 1) window.history.back();
+    else navigate(editId ? `/magic/${editId}` : '/shelves');
+  };
+
   const onSave = () => {
     setErr(null);
     if (!name.trim()) { setErr(t('Give your smart shelf a name.')); return; }
@@ -178,6 +185,7 @@ export function MagicShelf({ editId }: { editId?: string }) {
         <Button onClick={onSave} disabled={saving}>
           <Wand2 size={16} /> {saving ? t('Saving…') : (editId ? t('Save changes') : t('Create smart shelf'))}
         </Button>
+        <Button variant="ghost" onClick={onCancel} disabled={saving}>{t('Cancel')}</Button>
       </div>
     </main>
   );

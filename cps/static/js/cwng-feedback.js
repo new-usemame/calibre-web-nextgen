@@ -81,7 +81,12 @@
   function close() {
     overlay.hidden = true;
     document.body.style.overflow = "";
-    markAnswered(); // dismiss counts as "answered" for this version — don't nag
+    // Suppress future prompts for this version only if the user actually engaged
+    // (answered, or declined from an input step). Do NOT suppress when closing the
+    // error panel — a transient network/Worker failure means no feedback was sent,
+    // so the prompt should reappear next time they switch back.
+    var errored = panels.error && !panels.error.hidden;
+    if (!errored) markAnswered();
     if (lastFocus && lastFocus.focus) { try { lastFocus.focus(); } catch (e) {} }
   }
 

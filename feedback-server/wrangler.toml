@@ -15,5 +15,11 @@ routes = [
 ]
 
 # Secrets (set via `wrangler secret put` or dashboard), NOT committed:
-#   RL_SALT           — random salt for the rate-limit IP hash
-#   TURNSTILE_SECRET  — optional; enables Turnstile verification when set
+#   RL_SALT           — random salt for the rate-limit IP hash. SET in production.
+#                       (If absent the Worker falls back to a weaker static salt but
+#                       still rate-limits; keep it set.)
+#   TURNSTILE_SECRET  — optional bot-wall. ⚠️ FOOTGUN: the shipped popup does NOT yet
+#                       send a turnstileToken, so setting this secret today would make
+#                       the Worker reject EVERY real submission (turnstile_failed).
+#                       Do NOT set it until the client popup is updated to render a
+#                       Turnstile widget and include its token in the POST body.

@@ -119,6 +119,16 @@ def test_two_step_flow_present():
 
 
 # ── the one-shot marker is what shows/strips the popup ───────────────────────
+def test_error_close_does_not_suppress_retry():
+    """A failed send must NOT mark the version answered — otherwise a transient
+    Worker/network failure permanently hides the prompt though no feedback was
+    sent. close() guards markAnswered() on the error panel being visible."""
+    js = FEEDBACK_JS.read_text()
+    assert "panels.error" in js and "errored" in js, (
+        "close() must skip markAnswered() while the error panel is showing"
+    )
+
+
 def test_js_gates_on_marker_and_strips_it():
     js = FEEDBACK_JS.read_text()
     assert "cwng_feedback" in js, "JS must read the ?cwng_feedback marker"

@@ -74,3 +74,25 @@ page to collect anonymous feedback about the redesign. Maximally anonymous —
 3. WIP homepage (apex) — CWNG-styled, links to GitHub.
 4. Classic-theme popup + "Back to old theme" trigger; point at app.calibrewebnextgen.com.
 5. Verify end-to-end (submit → row in D1; rate-limit; Turnstile; anonymity = no IP/identity stored).
+
+---
+
+## DEPLOYMENT STATUS — LIVE (2026-07-01)
+
+All operator-gated blockers cleared this session; the feature is built, deployed, and verified.
+
+- **Domain:** `calibrewebnextgen.com` — registered at Porkbun (paid via crypto), active Cloudflare zone `f26afa37dee5e7e71af66b392ebdd3ed`, account `877ba3b6cb3a042d73e5da640e24a4f0`.
+- **CF token:** in the vault as *"Cloudflare API token (Workers/D1/Pages/DNS — CWNG feedback server)"*. Actual grant is Workers + Zone:Read (NOT Zone:DNS:Edit, NOT D1) — so we used **KV instead of D1** and **worker routes instead of custom domains** (see below).
+- **Feedback Worker:** `cwng-feedback`, LIVE at `https://app.calibrewebnextgen.com/feedback` (custom_domain — `app.` had no conflicting record). Store-only into **KV** (D1 abandoned: token lacks D1 perm):
+  - `FEEDBACK` KV `d941e82e8d404e8dbdb4f0224b231348` — records keyed `fb:<created_at>:<uuid8>` = exactly `{type,reasons,comment,created_at}`.
+  - `RATELIMIT` KV `5d227d602d8d41f3b12e0ba11e594a98` — salted-hash(IP)+type key, TTL 60s, never stores IP. `RL_SALT` secret set.
+  - Type whitelist `["new_version_feedback"]`; `MAX_COMMENT=2000`; permissive CORS; `TURNSTILE_SECRET` **unset** → Turnstile is a no-op for now (rate-limit + whitelist cover abuse). Source: `feedback-server/`.
+  - Verified anonymous end-to-end: submit → 200 `{ok:true}`, stored record had no IP/identity; test record deleted.
+- **Homepage:** `cwng-homepage`, LIVE at `https://calibrewebnextgen.com` + `www` via **worker routes** (`*/*` patterns) that intercept the proxied registrar parking record — no DNS:Edit needed. Source: `homepage/`. WIP splash: CWNG dark+amber, links to GitHub/Discord/Ko-fi + docker pull.
+- **Popup:** shipped in **PR #581** (`feat/60-classic-feedback-popup`) — classic-page partial + `cwng-feedback.js` + SPA "Back to the classic view" entry + the CSP `connect-src` fix. Verified live in a container end-to-end.
+
+### Follow-ups (not blocking)
+- Optional: create a Turnstile widget + set `TURNSTILE_SECRET` on `cwng-feedback` to enable the bot-wall (the Worker already verifies it when the secret is present).
+- Optional cleanup: once a Zone:DNS:Edit token/dashboard is available, delete the apex+www parking records and switch the homepage back to `custom_domain` for a dedicated hostname (cosmetic; routes work fine).
+- When lockdown mode (#61) ships, gate the popup partial off when lockdown is on.
+- Operator reads feedback: `wrangler kv key list --namespace-id d941e82e8d404e8dbdb4f0224b231348` (or the CF dashboard KV browser), then `kv key get <key>`.

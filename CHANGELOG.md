@@ -16,6 +16,15 @@ is for things you can see or feel when running the app.
 
 ## [Unreleased]
 
+### Added
+- **Switching back to the classic view now asks (optionally) what made you
+  switch.** The new interface's user menu has a "Back to the classic view" item;
+  when you use it, the classic page shows a short, two-step prompt — pick what
+  didn't work and add a note if you like. It's completely optional and anonymous:
+  no account, name, IP address, version or device info is sent or stored (it's
+  sent over HTTPS and saved as just your feedback, like unmarked mail). It only
+  appears right after you switch back, and won't nag you again.
+
 ## [v4.1.0] - 2026-06-30
 
 ### Changed

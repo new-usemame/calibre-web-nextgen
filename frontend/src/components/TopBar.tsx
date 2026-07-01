@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback, type ReactNode } from 'react';
-import { BookMarked, LogOut, Menu, Search, ChevronDown, User, Bug, BookOpen } from 'lucide-react';
+import { BookMarked, LogOut, Menu, Search, ChevronDown, User, Bug, BookOpen, Undo2 } from 'lucide-react';
 import { Link, useLocation } from 'wouter';
 import { GithubMark, DiscordMark } from './BrandIcons';
 import { useT } from '../lib/i18n';
@@ -145,6 +145,16 @@ function HelpMenu() {
   );
 }
 
+/** Leave the SPA and return to the classic (legacy) interface. Uses a full-page
+ *  navigation (not wouter) because the classic UI is a separate server-rendered
+ *  surface, and appends a one-shot marker so the classic page offers the short
+ *  "what made you switch back?" feedback prompt on arrival. The base prefix (if
+ *  the app is served under a reverse-proxy subpath, before /app) is preserved. */
+function backToClassicView() {
+  const prefix = window.location.pathname.replace(/\/app(\/.*)?$/, '');
+  window.location.assign((prefix || '') + '/?cwng_feedback=newui');
+}
+
 function UserMenu({ userName, onLogout }: { userName: string; onLogout: () => void }) {
   const t = useT();
   const { open, close, wrapperProps, onTriggerClick } = useMenu();
@@ -164,6 +174,7 @@ function UserMenu({ userName, onLogout }: { userName: string; onLogout: () => vo
       {open && (
         <div className={styles.panel} role="menu">
           <MenuItem icon={<User size={15} />} label={t('My account')} to="/account" onSelect={close} />
+          <MenuItem icon={<Undo2 size={15} />} label={t('Back to the classic view')} onClick={backToClassicView} onSelect={close} />
           <MenuItem icon={<LogOut size={15} />} label={t('Sign out')} danger onClick={onLogout} onSelect={close} />
         </div>
       )}

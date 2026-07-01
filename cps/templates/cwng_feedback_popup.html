@@ -1,0 +1,184 @@
+{# ────────────────────────────────────────────────────────────────────────────
+   CWNG #60 — "Back to the classic view" feedback popup.
+
+   Shown on the CLASSIC (legacy) page when a user has just switched back from the
+   new UI. The new-UI TopBar "Back to the classic view" item navigates here with
+   ?cwng_feedback=newui; this partial's script detects that marker, shows a short,
+   two-step, fully anonymous feedback prompt, then strips the marker from the URL.
+
+   Anonymity ("unmarked mail"): only { type, reasons, comment } is POSTed to the
+   feedback endpoint, which stores nothing identifying — no account, name, IP,
+   version or device. The connection IP terminates at Cloudflare's edge and is used
+   only as a short-lived one-way hash for spam rate-limiting, never stored.
+   See notes/FEEDBACK-SERVER-DESIGN.md.
+
+   caliBlur-safe: every class is cwng-fb-* and styles are scoped here — caliBlur.css
+   hijacks Bootstrap .alert/.modal into fixed toasts, so we use none of those.
+──────────────────────────────────────────────────────────────────────────── #}
+<div id="cwng-fb-overlay" class="cwng-fb-overlay" hidden
+     role="dialog" aria-modal="true" aria-labelledby="cwng-fb-title"
+     data-endpoint="https://app.calibrewebnextgen.com/feedback"
+     data-type="new_version_feedback"
+     data-version="{{ cwng_app_version }}">
+  <div class="cwng-fb-card" role="document">
+    <button type="button" class="cwng-fb-x" data-cwng-fb-dismiss aria-label="{{_('Dismiss')}}">&times;</button>
+
+    {# ── Step 1: reasons ─────────────────────────────────────────────── #}
+    <div class="cwng-fb-panel" data-cwng-fb-step="reasons">
+      <h2 id="cwng-fb-title" class="cwng-fb-title">{{_('Before you go — what made you switch back?')}}</h2>
+      <p class="cwng-fb-sub">{{_('Optional, and completely anonymous. It helps us make the new interface better.')}}</p>
+      <div class="cwng-fb-reasons">
+        <label class="cwng-fb-reason"><input type="checkbox" value="bug"><span>{{_('Something was broken or glitchy')}}</span></label>
+        <label class="cwng-fb-reason"><input type="checkbox" value="look"><span>{{_("I prefer the classic look")}}</span></label>
+        <label class="cwng-fb-reason"><input type="checkbox" value="missing"><span>{{_('A feature I use was missing')}}</span></label>
+        <label class="cwng-fb-reason"><input type="checkbox" value="different"><span>{{_('Too different / hard to find things')}}</span></label>
+        <label class="cwng-fb-reason"><input type="checkbox" value="slow"><span>{{_('It felt slow')}}</span></label>
+      </div>
+      <div class="cwng-fb-actions">
+        <button type="button" class="cwng-fb-btn cwng-fb-btn-ghost" data-cwng-fb-dismiss>{{_('No thanks')}}</button>
+        <button type="button" class="cwng-fb-btn cwng-fb-btn-primary" data-cwng-fb-next>{{_('Next')}}</button>
+      </div>
+    </div>
+
+    {# ── Step 2: comment ─────────────────────────────────────────────── #}
+    <div class="cwng-fb-panel" data-cwng-fb-step="comment" hidden>
+      <h2 class="cwng-fb-title">{{_('Anything you’d like to add?')}}</h2>
+      <p class="cwng-fb-sub">{{_('Optional — a sentence or two is plenty.')}}</p>
+      <textarea class="cwng-fb-comment" maxlength="2000" rows="4"
+                placeholder="{{_('What would have kept you on the new interface?')}}"></textarea>
+      <div class="cwng-fb-actions">
+        <button type="button" class="cwng-fb-btn cwng-fb-btn-ghost" data-cwng-fb-back>{{_('Back')}}</button>
+        <button type="button" class="cwng-fb-btn cwng-fb-btn-primary" data-cwng-fb-submit>{{_('Send feedback')}}</button>
+      </div>
+    </div>
+
+    {# ── Done ────────────────────────────────────────────────────────── #}
+    <div class="cwng-fb-panel cwng-fb-panel-done" data-cwng-fb-step="done" hidden>
+      <div class="cwng-fb-check" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="26" height="26"><path fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" d="M20 6 9 17l-5-5"/></svg>
+      </div>
+      <h2 class="cwng-fb-title">{{_('Thank you')}}</h2>
+      <p class="cwng-fb-sub">{{_('Your feedback was sent anonymously. We read every note.')}}</p>
+      <div class="cwng-fb-actions cwng-fb-actions-center">
+        <button type="button" class="cwng-fb-btn cwng-fb-btn-primary" data-cwng-fb-dismiss>{{_('Close')}}</button>
+      </div>
+    </div>
+
+    {# ── Error (send failed) ─────────────────────────────────────────── #}
+    <div class="cwng-fb-panel" data-cwng-fb-step="error" hidden>
+      <h2 class="cwng-fb-title">{{_('Couldn’t send just now')}}</h2>
+      <p class="cwng-fb-sub">{{_('No problem — your feedback wasn’t saved anywhere. You can close this or try again.')}}</p>
+      <div class="cwng-fb-actions">
+        <button type="button" class="cwng-fb-btn cwng-fb-btn-ghost" data-cwng-fb-dismiss>{{_('Close')}}</button>
+        <button type="button" class="cwng-fb-btn cwng-fb-btn-primary" data-cwng-fb-retry>{{_('Try again')}}</button>
+      </div>
+    </div>
+
+    {# ── Anonymity footer (visible on the reasons + comment steps) ────── #}
+    <div class="cwng-fb-footer" data-cwng-fb-footer>
+      <label class="cwng-fb-anon">
+        <input type="checkbox" id="cwng-fb-anon" checked>
+        <span>{{_('Anonymize my feedback')}}</span>
+      </label>
+      <p class="cwng-fb-lock"><span aria-hidden="true">🔒</span> {{_('No account, name, IP address, version or device info is sent or stored.')}}</p>
+      <p class="cwng-fb-fine">{{_('Sent over HTTPS to a server we run and saved as just your feedback — like unmarked mail. The network edge briefly sees your IP to stop spam; we only use a one-way hash of it for about a minute and never store it.')}}</p>
+      <p class="cwng-fb-fine cwng-fb-optin" data-cwng-fb-optin-note hidden>{{_('Because you turned off anonymizing, your app version will be included to help us reproduce issues.')}}</p>
+    </div>
+  </div>
+</div>
+
+<style>
+  .cwng-fb-overlay{
+    position:fixed; inset:0; z-index:100000;
+    display:flex; align-items:center; justify-content:center; padding:20px;
+    background:rgba(6,9,13,.62); backdrop-filter:blur(3px);
+    -webkit-backdrop-filter:blur(3px);
+    animation:cwng-fb-fade .18s ease;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  }
+  @keyframes cwng-fb-fade{from{opacity:0}to{opacity:1}}
+  @keyframes cwng-fb-rise{from{opacity:0;transform:translateY(10px) scale(.985)}to{opacity:1;transform:none}}
+  .cwng-fb-card{
+    position:relative; width:100%; max-width:440px;
+    background:linear-gradient(180deg,#1b2530,#141c24);
+    color:#ece8e1; border:1px solid rgba(255,255,255,.09);
+    border-radius:16px; padding:26px 24px 20px;
+    box-shadow:0 24px 60px -12px rgba(0,0,0,.6),0 0 0 1px rgba(204,123,25,.10);
+    animation:cwng-fb-rise .22s cubic-bezier(.16,1,.3,1);
+    text-align:left;
+  }
+  .cwng-fb-x{
+    position:absolute; top:12px; right:12px;
+    width:32px; height:32px; border:0; border-radius:8px;
+    background:transparent; color:#9aa7b2; font-size:22px; line-height:1; cursor:pointer;
+    transition:background .15s,color .15s;
+  }
+  .cwng-fb-x:hover{background:rgba(255,255,255,.07); color:#ece8e1;}
+  .cwng-fb-title{
+    margin:0 26px 6px 0; font-size:19px; font-weight:600; line-height:1.25;
+    letter-spacing:-.01em; color:#f4f1ea;
+  }
+  .cwng-fb-sub{margin:0 0 16px; font-size:13.5px; line-height:1.5; color:#9aa7b2;}
+  .cwng-fb-reasons{display:flex; flex-direction:column; gap:8px; margin-bottom:18px;}
+  .cwng-fb-reason{
+    display:flex; align-items:center; gap:11px;
+    padding:11px 13px; border:1px solid rgba(255,255,255,.09); border-radius:10px;
+    font-size:14px; cursor:pointer; transition:border-color .15s,background .15s;
+  }
+  .cwng-fb-reason:hover{background:rgba(255,255,255,.035); border-color:rgba(255,255,255,.16);}
+  .cwng-fb-reason input{
+    width:17px; height:17px; margin:0; flex:0 0 auto; cursor:pointer; accent-color:#cc7b19;
+  }
+  .cwng-fb-reason span{flex:1 1 auto;}
+  .cwng-fb-comment{
+    width:100%; box-sizing:border-box; resize:vertical; min-height:92px;
+    padding:11px 13px; margin-bottom:18px;
+    background:rgba(0,0,0,.22); color:#ece8e1;
+    border:1px solid rgba(255,255,255,.12); border-radius:10px;
+    font-size:14px; line-height:1.5; font-family:inherit;
+  }
+  .cwng-fb-comment:focus{outline:none; border-color:#cc7b19; box-shadow:0 0 0 3px rgba(204,123,25,.22);}
+  .cwng-fb-actions{display:flex; gap:10px; justify-content:flex-end;}
+  .cwng-fb-actions-center{justify-content:center;}
+  .cwng-fb-btn{
+    appearance:none; border:0; border-radius:10px; padding:10px 18px;
+    font-size:14px; font-weight:600; cursor:pointer; font-family:inherit;
+    transition:transform .12s,background .15s,box-shadow .15s,opacity .15s;
+  }
+  .cwng-fb-btn:active{transform:translateY(1px);}
+  .cwng-fb-btn-primary{
+    background:linear-gradient(180deg,#e0902a,#cc7b19); color:#1a1206;
+    box-shadow:0 6px 18px -6px rgba(204,123,25,.6);
+  }
+  .cwng-fb-btn-primary:hover{filter:brightness(1.05);}
+  .cwng-fb-btn-primary[disabled]{opacity:.6; cursor:default; box-shadow:none;}
+  .cwng-fb-btn-ghost{background:rgba(255,255,255,.06); color:#ece8e1; border:1px solid rgba(255,255,255,.1);}
+  .cwng-fb-btn-ghost:hover{background:rgba(255,255,255,.11);}
+  .cwng-fb-panel-done{text-align:center;}
+  .cwng-fb-check{
+    width:52px; height:52px; margin:4px auto 14px; border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    color:#6cc08a; background:rgba(108,192,138,.14);
+  }
+  .cwng-fb-footer{margin-top:18px; padding-top:16px; border-top:1px solid rgba(255,255,255,.08); text-align:center;}
+  .cwng-fb-anon{
+    display:inline-flex; align-items:center; gap:9px; margin-bottom:10px;
+    font-size:13.5px; font-weight:500; color:#dfe3e8; cursor:pointer;
+  }
+  .cwng-fb-anon input{width:16px; height:16px; margin:0; cursor:pointer; accent-color:#cc7b19;}
+  .cwng-fb-lock{margin:0 0 6px; font-size:12.5px; color:#c3cad2; line-height:1.45;}
+  .cwng-fb-fine{margin:0 auto; max-width:38ch; font-size:11.5px; color:#7f8b96; line-height:1.5;}
+  .cwng-fb-optin{margin-top:8px; color:#d0a25a;}
+  @media (max-width:480px){
+    .cwng-fb-card{padding:22px 18px 16px; border-radius:14px;}
+    .cwng-fb-title{font-size:17.5px;}
+    .cwng-fb-actions{flex-direction:column-reverse;}
+    .cwng-fb-btn{width:100%;}
+  }
+  @media (prefers-reduced-motion:reduce){
+    .cwng-fb-overlay,.cwng-fb-card{animation:none;}
+    .cwng-fb-btn:active{transform:none;}
+  }
+</style>
+
+<script src="{{ url_for('static', filename='js/cwng-feedback.js') }}" defer></script>

@@ -427,6 +427,11 @@
         });
       })();
     </script>
+    {# #60: on returning to the classic view from the new UI, offer a short,
+       anonymous "what made you switch back?" prompt. Same gate as the nudge
+       above (SPA present + a real session); the partial self-activates only when
+       the ?cwng_feedback marker is on the URL. #}
+    {% include 'cwng_feedback_popup.html' %}
     {% endif %}
 
     <div class="row-fluid text-center">

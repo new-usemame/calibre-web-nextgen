@@ -1,0 +1,15 @@
+name = "cwng-homepage"
+main = "src/worker.js"
+compatibility_date = "2026-07-01"
+workers_dev = false
+
+# Served via Worker ROUTES (not custom_domain): the apex + www still carry the
+# registrar's imported parking record (a proxied redirect to *.l.ink). A worker
+# route intercepts those proxied requests ahead of the origin, so the homepage
+# serves without needing to delete the parking DNS records (which would require a
+# Zone:DNS:Edit-scoped token / dashboard access). If those records are ever
+# removed, switch these back to `custom_domain = true` for a dedicated hostname.
+routes = [
+  { pattern = "calibrewebnextgen.com/*", zone_name = "calibrewebnextgen.com" },
+  { pattern = "www.calibrewebnextgen.com/*", zone_name = "calibrewebnextgen.com" },
+]

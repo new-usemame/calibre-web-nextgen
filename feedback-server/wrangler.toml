@@ -1,0 +1,25 @@
+name = "cwng-feedback"
+main = "src/worker.js"
+compatibility_date = "2026-07-01"
+workers_dev = false
+
+kv_namespaces = [
+  { binding = "FEEDBACK", id = "d941e82e8d404e8dbdb4f0224b231348" },
+  { binding = "RATELIMIT", id = "5d227d602d8d41f3b12e0ba11e594a98" },
+]
+
+# Custom domain for the feedback endpoint. custom_domain=true makes Cloudflare create/manage
+# the DNS record automatically (zone must be active — it is).
+routes = [
+  { pattern = "app.calibrewebnextgen.com", custom_domain = true },
+]
+
+# Secrets (set via `wrangler secret put` or dashboard), NOT committed:
+#   RL_SALT           — random salt for the rate-limit IP hash. SET in production.
+#                       (If absent the Worker falls back to a weaker static salt but
+#                       still rate-limits; keep it set.)
+#   TURNSTILE_SECRET  — optional bot-wall. ⚠️ FOOTGUN: the shipped popup does NOT yet
+#                       send a turnstileToken, so setting this secret today would make
+#                       the Worker reject EVERY real submission (turnstile_failed).
+#                       Do NOT set it until the client popup is updated to render a
+#                       Turnstile widget and include its token in the POST body.

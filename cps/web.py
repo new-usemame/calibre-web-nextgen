@@ -149,6 +149,17 @@ def add_security_headers(resp):
         csp += " *"
     if reader_like:
         csp += " blob: ; style-src-elem 'self' blob: 'unsafe-inline'"
+    # #60: the "Back to the classic view" feedback popup (layout.html) POSTs to our
+    # first-party feedback endpoint (a Cloudflare Worker on a different origin).
+    # Without an explicit connect-src, fetch()/XHR fall back to default-src 'self'
+    # and the browser blocks the cross-origin POST, so feedback never leaves the
+    # page. Mirror default-src's host list ('self' + configured trusted hosts) so
+    # existing same-origin / reverse-proxy XHR is unchanged, then add just that one
+    # endpoint. connect-src governs fetch/XHR/WebSocket/EventSource only — it does
+    # not widen the script or object surface.
+    connect_src = ([host.strip() for host in config.config_trustedhosts.split(',') if host] +
+                   ["'self'", "https://app.calibrewebnextgen.com"])
+    csp += "; connect-src " + ' '.join(connect_src)
     csp += "; object-src 'none';"
     resp.headers['Content-Security-Policy'] = csp
     resp.headers['X-Content-Type-Options'] = 'nosniff'
